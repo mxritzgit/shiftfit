@@ -25,8 +25,49 @@ class ShiftFitApp extends StatelessWidget {
   }
 }
 
-class ShiftFitHomePage extends StatelessWidget {
+class ShiftFitHomePage extends StatefulWidget {
   const ShiftFitHomePage({super.key});
+
+  @override
+  State<ShiftFitHomePage> createState() => _ShiftFitHomePageState();
+}
+
+class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
+  String selectedEnergy = 'Mittel';
+  String selectedTime = '20 Min';
+  String selectedFocus = 'Recovery';
+
+  String get recommendation {
+    if (selectedEnergy == 'Niedrig') {
+      return '10 Minuten Mobility und Atemfokus';
+    }
+    if (selectedEnergy == 'Hoch' && selectedTime == '40 Min') {
+      return '40 Minuten Krafttraining';
+    }
+    if (selectedFocus == 'Training') {
+      return '25 Minuten Ganzkörper-Workout';
+    }
+    if (selectedFocus == 'Routine') {
+      return '15 Minuten Reset-Routine';
+    }
+    return '20 Minuten Recovery Flow';
+  }
+
+  String get recommendationHint {
+    if (selectedEnergy == 'Niedrig') {
+      return 'Heute zählt Regeneration mehr als Intensität.';
+    }
+    if (selectedEnergy == 'Hoch' && selectedTime == '40 Min') {
+      return 'Du hast genug Energie für eine stärkere Session.';
+    }
+    if (selectedFocus == 'Training') {
+      return 'Kurz, effektiv und passend vor oder nach deiner Schicht.';
+    }
+    if (selectedFocus == 'Routine') {
+      return 'Ideal, wenn du trotz Stress in Bewegung bleiben willst.';
+    }
+    return 'Perfekt für Tage mit Schichtstress und wenig Reserve.';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,14 +87,35 @@ class ShiftFitHomePage extends StatelessWidget {
         child: SafeArea(
           child: ListView(
             padding: const EdgeInsets.all(24),
-            children: const [
-              HeroSection(),
-              SizedBox(height: 24),
-              ShiftOverviewCard(),
-              SizedBox(height: 16),
-              DailyCheckInCard(),
-              SizedBox(height: 16),
-              FocusAreasCard(),
+            children: [
+              const HeroSection(),
+              const SizedBox(height: 24),
+              const ShiftOverviewCard(),
+              const SizedBox(height: 16),
+              DailyCheckInCard(
+                selectedEnergy: selectedEnergy,
+                selectedTime: selectedTime,
+                selectedFocus: selectedFocus,
+                recommendation: recommendation,
+                recommendationHint: recommendationHint,
+                onEnergySelected: (value) {
+                  setState(() {
+                    selectedEnergy = value;
+                  });
+                },
+                onTimeSelected: (value) {
+                  setState(() {
+                    selectedTime = value;
+                  });
+                },
+                onFocusSelected: (value) {
+                  setState(() {
+                    selectedFocus = value;
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+              const FocusAreasCard(),
             ],
           ),
         ),
@@ -135,40 +197,179 @@ class ShiftOverviewCard extends StatelessWidget {
 }
 
 class DailyCheckInCard extends StatelessWidget {
-  const DailyCheckInCard({super.key});
+  const DailyCheckInCard({
+    super.key,
+    required this.selectedEnergy,
+    required this.selectedTime,
+    required this.selectedFocus,
+    required this.recommendation,
+    required this.recommendationHint,
+    required this.onEnergySelected,
+    required this.onTimeSelected,
+    required this.onFocusSelected,
+  });
+
+  final String selectedEnergy;
+  final String selectedTime;
+  final String selectedFocus;
+  final String recommendation;
+  final String recommendationHint;
+  final ValueChanged<String> onEnergySelected;
+  final ValueChanged<String> onTimeSelected;
+  final ValueChanged<String> onFocusSelected;
 
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      title: 'Heute',
-      subtitle: 'So könnte später dein Tages-Check-in aussehen.',
+      title: 'Tages-Check-in',
+      subtitle: 'Wähle deine Tagesform und ShiftFit passt den Fokus an.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.bolt_rounded, color: Color(0xFF7CFF6B)),
-            title: Text('Energie: Mittel'),
-            subtitle: Text('Nach zwei Frühschichten lieber kurz und sauber trainieren.'),
+          CheckInSection(
+            title: 'Wie ist deine Energie?',
+            options: const ['Niedrig', 'Mittel', 'Hoch'],
+            selectedValue: selectedEnergy,
+            onSelected: onEnergySelected,
           ),
-          const SizedBox(height: 8),
-          const ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.access_time_rounded, color: Color(0xFF5BC0FF)),
-            title: Text('Verfügbare Zeit: 20 Minuten'),
-            subtitle: Text('Perfekt für eine kurze Ganzkörper-Session oder Mobility.'),
+          const SizedBox(height: 18),
+          CheckInSection(
+            title: 'Wie viel Zeit hast du?',
+            options: const ['10 Min', '20 Min', '40 Min'],
+            selectedValue: selectedTime,
+            onSelected: onTimeSelected,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 18),
+          CheckInSection(
+            title: 'Was brauchst du heute am meisten?',
+            options: const ['Recovery', 'Training', 'Routine'],
+            selectedValue: selectedFocus,
+            onSelected: onFocusSelected,
+          ),
+          const SizedBox(height: 20),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: const Color(0xFF7CFF6B).withValues(alpha: 0.10),
+              border: Border.all(
+                color: const Color(0xFF7CFF6B).withValues(alpha: 0.30),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Dein Fokus heute: $recommendation',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  recommendationHint,
+                  style: TextStyle(
+                    fontSize: 14,
+                    height: 1.35,
+                    color: Colors.white.withValues(alpha: 0.78),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
               onPressed: () {},
               icon: const Icon(Icons.play_arrow_rounded),
-              label: const Text('Heutige Empfehlung starten'),
+              label: const Text('Check-in speichern'),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class CheckInSection extends StatelessWidget {
+  const CheckInSection({
+    super.key,
+    required this.title,
+    required this.options,
+    required this.selectedValue,
+    required this.onSelected,
+  });
+
+  final String title;
+  final List<String> options;
+  final String selectedValue;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: options
+              .map(
+                (option) => CheckInChoiceChip(
+                  key: ValueKey('$title-$option'),
+                  label: option,
+                  selected: option == selectedValue,
+                  onSelected: () => onSelected(option),
+                ),
+              )
+              .toList(),
+        ),
+      ],
+    );
+  }
+}
+
+class CheckInChoiceChip extends StatelessWidget {
+  const CheckInChoiceChip({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final highlight = const Color(0xFF7CFF6B);
+
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => onSelected(),
+      showCheckmark: false,
+      backgroundColor: Colors.white.withValues(alpha: 0.06),
+      selectedColor: highlight.withValues(alpha: 0.18),
+      side: BorderSide(
+        color: selected
+            ? highlight.withValues(alpha: 0.36)
+            : Colors.white.withValues(alpha: 0.12),
+      ),
+      labelStyle: TextStyle(
+        fontWeight: FontWeight.w700,
+        color: selected ? highlight : Colors.white,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
     );
   }
 }
