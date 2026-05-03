@@ -56,11 +56,54 @@ void main() {
   testWidgets('Plan sheet can be opened from today card', (WidgetTester tester) async {
     await tester.pumpWidget(const ShiftFitApp());
 
-    await tester.ensureVisible(find.text('Plan öffnen'));
-    await tester.tap(find.text('Plan öffnen'));
+    await tester.ensureVisible(find.byKey(const ValueKey('today-open-plan')));
+    await tester.tap(find.byKey(const ValueKey('today-open-plan')));
     await tester.pumpAndSettle();
 
     expect(find.text('Für heute vormerken'), findsOneWidget);
     expect(find.textContaining('Warm-up'), findsWidgets);
+  });
+
+  testWidgets('Bottom navigation switches between Heute, Woche and Trends', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const ShiftFitApp());
+
+    expect(find.text('Train smart.\nRecover better.'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('nav-Woche')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('screen-week')), findsOneWidget);
+    expect(find.text('7 Tage,\nsauber getaktet.'), findsOneWidget);
+    expect(find.text('Schichtplan'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('nav-Trends')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('screen-trends')), findsOneWidget);
+    expect(find.text('Readiness bleibt\nsteuerbar.'), findsOneWidget);
+    expect(find.text('Readiness Verlauf'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('nav-Heute')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('screen-today')), findsOneWidget);
+    expect(find.text('Train smart.\nRecover better.'), findsOneWidget);
+  });
+
+  testWidgets('Week planner updates a day shift and summaries', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const ShiftFitApp());
+
+    await tester.tap(find.byKey(const ValueKey('nav-Woche')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 geplant'), findsOneWidget);
+    expect(find.text('4 Tage'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('week-Mo-Nacht')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('2 geplant'), findsOneWidget);
+    expect(find.text('3 Tage'), findsOneWidget);
   });
 }

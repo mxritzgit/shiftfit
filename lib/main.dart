@@ -51,6 +51,15 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
   String selectedEnergy = 'Normal';
   String selectedStress = 'Mittel';
   int selectedTab = 0;
+  final List<String> weekPlan = [
+    'Früh',
+    'Früh',
+    'Spät',
+    'Spät',
+    'Nacht',
+    'Frei',
+    'Frei',
+  ];
 
   ShiftFitPlan get plan => ShiftFitPlan.from(
     shift: selectedShift,
@@ -76,52 +85,102 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         ),
         child: SafeArea(
           child: SingleChildScrollView(
+            key: ValueKey('tab-scroll-$selectedTab'),
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ShiftFitTopBar(plan: plan),
-                const SizedBox(height: 24),
-                ShiftFitHero(plan: plan),
-                const SizedBox(height: 22),
-                QuickCheckInCard(
-                  selectedShift: selectedShift,
-                  selectedEnergy: selectedEnergy,
-                  selectedStress: selectedStress,
-                  plan: plan,
-                  onShiftSelected: (value) => setState(() => selectedShift = value),
-                  onEnergySelected: (value) => setState(() => selectedEnergy = value),
-                  onStressSelected: (value) => setState(() => selectedStress = value),
-                ),
-                const SizedBox(height: 18),
-                RecoveryScoreCard(plan: plan),
-                const SizedBox(height: 18),
-                SectionHeader(
-                  title: 'Dein Plan für heute',
-                  action: '${plan.totalMinutes} Min',
-                ),
-                const SizedBox(height: 12),
-                DailyPlanCard(plan: plan),
-                const SizedBox(height: 18),
-                SectionHeader(
-                  title: 'Schicht-Kompass',
-                  action: selectedShift,
-                ),
-                const SizedBox(height: 12),
-                ShiftTimeline(shift: selectedShift),
-                const SizedBox(height: 18),
-                const SectionHeader(title: 'Recovery Tools', action: '3 Basics'),
-                const SizedBox(height: 12),
-                RecoveryToolsGrid(plan: plan),
-                const SizedBox(height: 18),
-                const SectionHeader(title: 'Wochenrhythmus', action: 'Demo'),
-                const SizedBox(height: 12),
-                const RhythmWeekCard(),
-              ],
-            ),
+            child: _buildSelectedScreen(),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSelectedScreen() {
+    return switch (selectedTab) {
+      1 => WeekPlannerScreen(
+        plan: plan,
+        weekPlan: weekPlan,
+        onShiftChanged: (dayIndex, shift) {
+          setState(() => weekPlan[dayIndex] = shift);
+        },
+      ),
+      2 => TrendsScreen(plan: plan, weekPlan: weekPlan),
+      _ => TodayDashboard(
+        selectedShift: selectedShift,
+        selectedEnergy: selectedEnergy,
+        selectedStress: selectedStress,
+        plan: plan,
+        onShiftSelected: (value) => setState(() => selectedShift = value),
+        onEnergySelected: (value) => setState(() => selectedEnergy = value),
+        onStressSelected: (value) => setState(() => selectedStress = value),
+      ),
+    };
+  }
+}
+
+class TodayDashboard extends StatelessWidget {
+  const TodayDashboard({
+    super.key,
+    required this.selectedShift,
+    required this.selectedEnergy,
+    required this.selectedStress,
+    required this.plan,
+    required this.onShiftSelected,
+    required this.onEnergySelected,
+    required this.onStressSelected,
+  });
+
+  final String selectedShift;
+  final String selectedEnergy;
+  final String selectedStress;
+  final ShiftFitPlan plan;
+  final ValueChanged<String> onShiftSelected;
+  final ValueChanged<String> onEnergySelected;
+  final ValueChanged<String> onStressSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      key: const ValueKey('screen-today'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ShiftFitTopBar(plan: plan),
+        const SizedBox(height: 24),
+        ShiftFitHero(plan: plan),
+        const SizedBox(height: 22),
+        QuickCheckInCard(
+          selectedShift: selectedShift,
+          selectedEnergy: selectedEnergy,
+          selectedStress: selectedStress,
+          plan: plan,
+          onShiftSelected: onShiftSelected,
+          onEnergySelected: onEnergySelected,
+          onStressSelected: onStressSelected,
+        ),
+        const SizedBox(height: 18),
+        RecoveryScoreCard(plan: plan),
+        const SizedBox(height: 18),
+        SectionHeader(
+          title: 'Dein Plan für heute',
+          action: '${plan.totalMinutes} Min',
+        ),
+        const SizedBox(height: 12),
+        DailyPlanCard(plan: plan),
+        const SizedBox(height: 18),
+        SectionHeader(
+          title: 'Schicht-Kompass',
+          action: selectedShift,
+        ),
+        const SizedBox(height: 12),
+        ShiftTimeline(shift: selectedShift),
+        const SizedBox(height: 18),
+        const SectionHeader(title: 'Recovery Tools', action: '3 Basics'),
+        const SizedBox(height: 12),
+        RecoveryToolsGrid(plan: plan),
+        const SizedBox(height: 18),
+        const SectionHeader(title: 'Wochenrhythmus', action: 'Demo'),
+        const SizedBox(height: 12),
+        const RhythmWeekCard(),
+      ],
     );
   }
 }
@@ -265,6 +324,16 @@ class PlanBlock {
   final String duration;
   final IconData icon;
   final String description;
+}
+
+Color _shiftColor(String shift) {
+  return switch (shift) {
+    'Früh' => _lime,
+    'Spät' => _orange,
+    'Nacht' => _pink,
+    'Frei' => _cyan,
+    _ => Colors.white,
+  };
 }
 
 class ShiftFitTopBar extends StatelessWidget {
@@ -455,6 +524,7 @@ class QuickCheckInCard extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
+                    key: const ValueKey('today-open-plan'),
                     style: FilledButton.styleFrom(
                       backgroundColor: plan.accent,
                       foregroundColor: _bg,
@@ -831,6 +901,480 @@ class RhythmWeekCard extends StatelessWidget {
   }
 }
 
+class WeekPlannerScreen extends StatelessWidget {
+  const WeekPlannerScreen({
+    super.key,
+    required this.plan,
+    required this.weekPlan,
+    required this.onShiftChanged,
+  });
+
+  static const _days = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+  static const _shifts = ['Früh', 'Spät', 'Nacht', 'Frei'];
+
+  final ShiftFitPlan plan;
+  final List<String> weekPlan;
+  final void Function(int dayIndex, String shift) onShiftChanged;
+
+  int get trainingDays =>
+      weekPlan.where((shift) => shift == 'Frei' || shift == 'Früh').length;
+
+  int get nightBlocks => weekPlan.where((shift) => shift == 'Nacht').length;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      key: const ValueKey('screen-week'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ShiftFitTopBar(plan: plan),
+        const SizedBox(height: 24),
+        AppCard(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              StatusPill(label: 'Woche planen', color: _cyan),
+              const SizedBox(height: 18),
+              const Text(
+                '7 Tage,\nsauber getaktet.',
+                style: TextStyle(
+                  fontSize: 40,
+                  height: 1,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -1.6,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Wähle deine Schichten und halte Training, Licht und Schlaf realistisch.',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.64),
+                  height: 1.35,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+        Row(
+          children: [
+            Expanded(
+              child: SummaryCard(
+                icon: Icons.fitness_center,
+                title: 'Training',
+                value: '$trainingDays Tage',
+                color: _lime,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: SummaryCard(
+                icon: Icons.nightlight_round,
+                title: 'Nächte',
+                value: '$nightBlocks geplant',
+                color: _pink,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        const SectionHeader(title: 'Schichtplan', action: 'Antippen'),
+        const SizedBox(height: 12),
+        for (var dayIndex = 0; dayIndex < _days.length; dayIndex++) ...[
+          WeekDayPlannerRow(
+            day: _days[dayIndex],
+            selectedShift: weekPlan[dayIndex],
+            shifts: _shifts,
+            onShiftChanged: (shift) => onShiftChanged(dayIndex, shift),
+          ),
+          if (dayIndex != _days.length - 1) const SizedBox(height: 10),
+        ],
+        const SizedBox(height: 18),
+        const SectionHeader(title: 'Planungstipps', action: '3 Hinweise'),
+        const SizedBox(height: 12),
+        PlanningTipsCard(weekPlan: weekPlan),
+      ],
+    );
+  }
+}
+
+class WeekDayPlannerRow extends StatelessWidget {
+  const WeekDayPlannerRow({
+    super.key,
+    required this.day,
+    required this.selectedShift,
+    required this.shifts,
+    required this.onShiftChanged,
+  });
+
+  final String day;
+  final String selectedShift;
+  final List<String> shifts;
+  final ValueChanged<String> onShiftChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 34,
+            child: Text(day, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final shift in shifts)
+                  ShiftChoiceChip(
+                    key: ValueKey('week-$day-$shift'),
+                    label: shift,
+                    selected: shift == selectedShift,
+                    color: _shiftColor(shift),
+                    onTap: () => onShiftChanged(shift),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ShiftChoiceChip extends StatelessWidget {
+  const ShiftChoiceChip({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.color,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? color : Colors.black.withValues(alpha: 0.22),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: color.withValues(alpha: selected ? 0.70 : 0.28)),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? _bg : Colors.white.withValues(alpha: 0.78),
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class SummaryCard extends StatelessWidget {
+  const SummaryCard({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String title;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color),
+          const SizedBox(height: 12),
+          Text(title, style: TextStyle(color: Colors.white.withValues(alpha: 0.58))),
+          const SizedBox(height: 4),
+          Text(value, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w900)),
+        ],
+      ),
+    );
+  }
+}
+
+class PlanningTipsCard extends StatelessWidget {
+  const PlanningTipsCard({super.key, required this.weekPlan});
+
+  final List<String> weekPlan;
+
+  @override
+  Widget build(BuildContext context) {
+    final nights = weekPlan.where((shift) => shift == 'Nacht').length;
+    final freeDays = weekPlan.where((shift) => shift == 'Frei').length;
+    final tips = [
+      nights > 0
+          ? 'Nach Nachtschichten: Sonnenbrille heimwärts, Schlafraum kühl und dunkel.'
+          : 'Ohne Nachtschicht: Schlafanker möglichst konstant halten.',
+      freeDays > 1
+          ? 'Freie Tage eignen sich für Krafttraining und Meal Prep.'
+          : 'Bei wenig frei: kurze Recovery-Sessions höher priorisieren.',
+      'Härtere Einheiten auf Früh- oder freie Tage legen, Spätdienste eher mobilisieren.',
+    ];
+
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          for (var i = 0; i < tips.length; i++) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 14,
+                  backgroundColor: _cyan.withValues(alpha: 0.16),
+                  child: Text(
+                    '${i + 1}',
+                    style: const TextStyle(color: _cyan, fontWeight: FontWeight.w900),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    tips[i],
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.68),
+                      height: 1.35,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (i != tips.length - 1) const SizedBox(height: 12),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class TrendsScreen extends StatelessWidget {
+  const TrendsScreen({super.key, required this.plan, required this.weekPlan});
+
+  final ShiftFitPlan plan;
+  final List<String> weekPlan;
+
+  int get _streak => 5 + weekPlan.where((shift) => shift == 'Frei').length;
+
+  int get _loadBalance {
+    final nights = weekPlan.where((shift) => shift == 'Nacht').length;
+    final free = weekPlan.where((shift) => shift == 'Frei').length;
+    return (74 + free * 4 - nights * 6).clamp(48, 94).toInt();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bars = [
+      ('Mo', 0.72, _lime),
+      ('Di', 0.78, _lime),
+      ('Mi', 0.64, _orange),
+      ('Do', 0.69, _orange),
+      ('Fr', 0.54, _pink),
+      ('Sa', 0.58, _pink),
+      ('So', 0.86, _cyan),
+    ];
+
+    return Column(
+      key: const ValueKey('screen-trends'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ShiftFitTopBar(plan: plan),
+        const SizedBox(height: 24),
+        AppCard(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              StatusPill(label: 'Trends', color: _lime),
+              const SizedBox(height: 18),
+              const Text(
+                'Readiness bleibt\nsteuerbar.',
+                style: TextStyle(
+                  fontSize: 40,
+                  height: 1,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -1.6,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Deine Muster zeigen, wann Training zieht und wann Recovery mehr bringt.',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.64),
+                  height: 1.35,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+        Row(
+          children: [
+            Expanded(
+              child: SummaryCard(
+                icon: Icons.favorite,
+                title: 'Readiness',
+                value: '${plan.recoveryScore}%',
+                color: plan.accent,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: SummaryCard(
+                icon: Icons.local_fire_department,
+                title: 'Streak',
+                value: '$_streak Tage',
+                color: _orange,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        SummaryCard(
+          icon: Icons.balance,
+          title: 'Belastungsbalance',
+          value: '$_loadBalance%',
+          color: _cyan,
+        ),
+        const SizedBox(height: 18),
+        const SectionHeader(title: 'Readiness Verlauf', action: '7 Tage'),
+        const SizedBox(height: 12),
+        TrendBarsCard(bars: bars),
+        const SizedBox(height: 18),
+        const SectionHeader(title: 'Insights', action: 'Aktuell'),
+        const SizedBox(height: 12),
+        InsightsCard(plan: plan, loadBalance: _loadBalance),
+      ],
+    );
+  }
+}
+
+class TrendBarsCard extends StatelessWidget {
+  const TrendBarsCard({super.key, required this.bars});
+
+  final List<(String, double, Color)> bars;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
+      child: SizedBox(
+        height: 150,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            for (final bar in bars)
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.bottomCenter,
+                        child: FractionallySizedBox(
+                          heightFactor: bar.$2,
+                          child: Container(
+                            width: 18,
+                            decoration: BoxDecoration(
+                              color: bar.$3,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      bar.$1,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.62),
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class InsightsCard extends StatelessWidget {
+  const InsightsCard({super.key, required this.plan, required this.loadBalance});
+
+  final ShiftFitPlan plan;
+  final int loadBalance;
+
+  @override
+  Widget build(BuildContext context) {
+    final insights = [
+      plan.recoveryScore >= 80
+          ? 'Heute ist genug Reserve für Kraft oder intensivere Intervalle da.'
+          : 'Heute lohnt sich ein ruhiger Reset mehr als zusätzlicher Druck.',
+      loadBalance >= 75
+          ? 'Die Woche ist ausgewogen. Halte den Schlafanker stabil.'
+          : 'Mehr Puffer einplanen: Mobility und kurze Spaziergänge statt Volumen.',
+      'Koffein-Stopp und Lichtfenster bleiben deine stärksten Hebel.',
+    ];
+
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          for (var i = 0; i < insights.length; i++) ...[
+            Row(
+              children: [
+                Icon(i == 0 ? Icons.bolt : Icons.check_circle, color: i == 0 ? _lime : _cyan),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    insights[i],
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.68),
+                      height: 1.35,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (i != insights.length - 1) const SizedBox(height: 12),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class ShiftFitBottomNav extends StatelessWidget {
   const ShiftFitBottomNav({
     super.key,
@@ -860,6 +1404,7 @@ class ShiftFitBottomNav extends StatelessWidget {
           for (var i = 0; i < items.length; i++)
             Expanded(
               child: TextButton.icon(
+                key: ValueKey('nav-${items[i].$2}'),
                 onPressed: () => onSelected(i),
                 icon: Icon(items[i].$1, size: 20),
                 label: Text(items[i].$2),
