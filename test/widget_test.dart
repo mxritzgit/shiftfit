@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shiftfit/main.dart';
 
 void main() {
-  testWidgets('ShiftFit start page is clean and updates recommendation', (
+  testWidgets('ShiftFit dashboard shows the expanded start experience', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ShiftFitApp());
@@ -15,16 +15,52 @@ void main() {
       find.text('Kurze Empfehlungen passend zu deiner Schicht.'),
       findsOneWidget,
     );
-    expect(find.text('Heute'), findsOneWidget);
+    expect(find.text('Heute'), findsWidgets);
     expect(find.text('20 Min Training'), findsOneWidget);
-    expect(find.text('Start'), findsOneWidget);
-    expect(find.textContaining('Fitness und Recovery'), findsNothing);
-    expect(find.text('Deine Schichtwoche'), findsNothing);
-    expect(find.text('Tages-Check-in'), findsNothing);
+    expect(find.text('Plan öffnen'), findsOneWidget);
+    expect(find.text('Recovery Score'), findsOneWidget);
+    expect(find.text('Dein Plan für heute'), findsOneWidget);
+    expect(find.text('Schicht-Kompass'), findsOneWidget);
+    expect(find.text('Recovery Tools'), findsOneWidget);
+    expect(find.text('Wochenrhythmus'), findsOneWidget);
+    expect(find.text('Sleep Anchor'), findsOneWidget);
+    expect(find.text('Fuel Reminder'), findsOneWidget);
+    expect(find.text('Breath Reset'), findsOneWidget);
+    expect(find.text('Schichtarbeit. Training. Recovery.'), findsOneWidget);
+  });
 
+  testWidgets('Check-in updates recommendation for fatigue, night and strong energy', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const ShiftFitApp());
+
+    await tester.ensureVisible(find.byKey(const ValueKey('option-Müde')));
     await tester.tap(find.byKey(const ValueKey('option-Müde')));
-    await tester.pump();
-
+    await tester.pumpAndSettle();
     expect(find.text('Recovery Flow'), findsOneWidget);
+    expect(find.text('Runterfahren statt durchbeißen'), findsOneWidget);
+
+    await tester.ensureVisible(find.byKey(const ValueKey('option-Normal')));
+    await tester.tap(find.byKey(const ValueKey('option-Normal')));
+    await tester.ensureVisible(find.byKey(const ValueKey('option-Nacht')));
+    await tester.tap(find.byKey(const ValueKey('option-Nacht')));
+    await tester.pumpAndSettle();
+    expect(find.text('Mobility Reset'), findsOneWidget);
+
+    await tester.ensureVisible(find.byKey(const ValueKey('option-Stark')));
+    await tester.tap(find.byKey(const ValueKey('option-Stark')));
+    await tester.pumpAndSettle();
+    expect(find.text('Kraft Session'), findsOneWidget);
+  });
+
+  testWidgets('Plan sheet can be opened from today card', (WidgetTester tester) async {
+    await tester.pumpWidget(const ShiftFitApp());
+
+    await tester.ensureVisible(find.text('Plan öffnen'));
+    await tester.tap(find.text('Plan öffnen'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Für heute vormerken'), findsOneWidget);
+    expect(find.textContaining('Warm-up'), findsWidgets);
   });
 }
