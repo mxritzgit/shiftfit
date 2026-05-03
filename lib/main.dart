@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -350,7 +352,8 @@ class MealAnalysisScreen extends StatefulWidget {
 
 class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
   final ImagePicker _picker = ImagePicker();
-  final MealAnalyzer _analyzer = const DemoMealAnalyzer();
+  final MealAnalyzer _analyzer = const EdgeFunctionMealAnalyzer();
+  final MealAnalyzer _demoAnalyzer = const DemoMealAnalyzer();
   Uint8List? _selectedImageBytes;
   MealAnalysisResult? _result;
   bool _isLoading = false;
@@ -391,35 +394,57 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
       bytes = null;
     }
 
-    await _runAnalysis(MealAnalysisRequest(imageId: image.path), bytes);
+    await _runAnalysis(
+      MealAnalysisRequest(imageId: image.path, imageBytes: bytes),
+      bytes,
+    );
   }
 
   Future<void> _runDemoAnalysis() async {
     await _runAnalysis(
       const MealAnalysisRequest(imageId: 'manual-demo-analysis'),
       null,
+      analyzer: _demoAnalyzer,
     );
   }
 
   Future<void> _runAnalysis(
     MealAnalysisRequest request,
-    Uint8List? imageBytes,
-  ) async {
+    Uint8List? imageBytes, {
+    MealAnalyzer? analyzer,
+  }) async {
     setState(() {
       _selectedImageBytes = imageBytes;
       _result = null;
       _isLoading = true;
     });
 
-    final result = await _analyzer.analyze(request);
-    if (!mounted) {
-      return;
-    }
+    try {
+      final result = await (analyzer ?? _analyzer).analyze(request);
+      if (!mounted) {
+        return;
+      }
 
-    setState(() {
-      _result = result;
-      _isLoading = false;
-    });
+      setState(() {
+        _result = result;
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Analyse fehlgeschlagen. Prüfe Internet, Supabase und OpenRouter.',
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -463,7 +488,7 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                'Foto aufnehmen oder aus der Galerie wählen. Bis ein Backend angebunden ist, liefert diese Ansicht eine lokale Demo-Schätzung.',
+                'Foto aufnehmen oder aus der Galerie wählen. ShiftFit sendet das Bild an deine Supabase Edge Function; der OpenRouter-Key bleibt im Backend.',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.64),
                   height: 1.35,
@@ -544,13 +569,62 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
 }
 
 class MealAnalysisRequest {
-  const MealAnalysisRequest({required this.imageId});
+  const MealAnalysisRequest({required this.imageId, this.imageBytes});
 
   final String imageId;
+  final Uint8List? imageBytes;
 }
 
 abstract class MealAnalyzer {
   Future<MealAnalysisResult> analyze(MealAnalysisRequest request);
+}
+
+class EdgeFunctionMealAnalyzer implements MealAnalyzer {
+  const EdgeFunctionMealAnalyzer();
+
+  static const String _supabaseUrl = 'https://ftoozzvmduptrvrrrshb.supabase.co';
+  static const String _supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0b296enZtZHVwdHJ2cnJyc2hiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NDEyOTAsImV4cCI6MjA5MzQxNzI5MH0.5kx8LowjRc8q8uWqJmUGU8ZjCnplSRDC1NGhm-oG7to';
+  static const String _functionPath = '/functions/v1/analyze-meal';
+
+  @override
+  Future<MealAnalysisResult> analyze(MealAnalysisRequest request) async {
+    final imageBytes = request.imageBytes;
+    if (imageBytes == null || imageBytes.isEmpty) {
+      throw const FormatException('No image bytes available for analysis.');
+    }
+
+    final client = HttpClient();
+    try {
+      final uri = Uri.parse('$_supabaseUrl$_functionPath');
+      final httpRequest = await client.postUrl(uri);
+      httpRequest.headers.contentType = ContentType.json;
+      httpRequest.headers.set('apikey', _supabaseAnonKey);
+      httpRequest.headers.set('Authorization', 'Bearer $_supabaseAnonKey');
+      httpRequest.write(
+        jsonEncode({
+          'imageBase64': base64Encode(imageBytes),
+          'note': 'ShiftFit iOS Analyse',
+        }),
+      );
+
+      final response = await httpRequest.close();
+      final responseBody = await response.transform(utf8.decoder).join();
+      final decoded = jsonDecode(responseBody) as Map<String, dynamic>;
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw HttpException('Meal analysis failed: $responseBody');
+      }
+
+      final result = decoded['result'];
+      if (result is! Map<String, dynamic>) {
+        throw const FormatException('Unexpected analysis response.');
+      }
+
+      return MealAnalysisResult.fromEdgeFunction(result);
+    } finally {
+      client.close(force: true);
+    }
+  }
 }
 
 class DemoMealAnalyzer implements MealAnalyzer {
@@ -619,6 +693,34 @@ class MealAnalysisResult {
   final String fat;
   final String confidence;
   final String portionNotes;
+
+  factory MealAnalysisResult.fromEdgeFunction(Map<String, dynamic> json) {
+    final calories = json['caloriesKcal'];
+    final protein = json['proteinG'];
+    final carbs = json['carbsG'];
+    final fat = json['fatG'];
+    final confidence = json['confidence']?.toString() ?? 'medium';
+
+    return MealAnalysisResult(
+      mealName: json['mealName']?.toString() ?? 'Unbekannte Mahlzeit',
+      kcalRange: calories == null ? 'kcal unbekannt' : '$calories kcal',
+      protein: protein == null ? '-' : '$protein g',
+      carbs: carbs == null ? '-' : '$carbs g',
+      fat: fat == null ? '-' : '$fat g',
+      confidence: _formatConfidence(confidence),
+      portionNotes: json['explanation']?.toString() ??
+          'KI-Schätzung aus dem Foto. Portionsgröße bitte manuell prüfen.',
+    );
+  }
+
+  static String _formatConfidence(String value) {
+    return switch (value.toLowerCase()) {
+      'low' => 'niedrig',
+      'medium' => 'mittel',
+      'high' => 'hoch',
+      _ => value,
+    };
+  }
 }
 
 class ShiftFitTopBar extends StatelessWidget {
@@ -1732,7 +1834,7 @@ class MealEmptyCard extends StatelessWidget {
           const SizedBox(width: 14),
           Expanded(
             child: Text(
-              'Starte eine Analyse, um eine Demo-Schätzung für Kalorien und Makros zu sehen.',
+              'Starte eine Analyse, um Kalorien und Makros über die Supabase Edge Function zu schätzen.',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.68),
                 height: 1.35,
