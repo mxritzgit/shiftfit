@@ -64,7 +64,7 @@ void main() {
     expect(find.textContaining('Warm-up'), findsWidgets);
   });
 
-  testWidgets('Bottom navigation switches between Heute, Woche and Trends', (
+  testWidgets('Bottom navigation switches between Heute, Woche, Trends and Analyse', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ShiftFitApp());
@@ -83,10 +83,37 @@ void main() {
     expect(find.text('Readiness bleibt\nsteuerbar.'), findsOneWidget);
     expect(find.text('Readiness Verlauf'), findsOneWidget);
 
+    await tester.tap(find.byKey(const ValueKey('nav-Analyse')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('screen-analyse')), findsOneWidget);
+    expect(find.byKey(const ValueKey('analyse-hero-title')), findsOneWidget);
+    expect(find.text('Mahlzeit scannen'), findsOneWidget);
+
     await tester.tap(find.byKey(const ValueKey('nav-Heute')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('screen-today')), findsOneWidget);
     expect(find.text('Train smart.\nRecover better.'), findsOneWidget);
+  });
+
+  testWidgets('Analyse tab can trigger deterministic demo analysis', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const ShiftFitApp());
+
+    await tester.tap(find.byKey(const ValueKey('nav-Analyse')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('analyse-demo-button')));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('analyse-loading')), findsOneWidget);
+
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('analyse-result-card')), findsOneWidget);
+    expect(find.byKey(const ValueKey('analyse-meal-name')), findsOneWidget);
+    expect(find.byKey(const ValueKey('analyse-kcal-range')), findsOneWidget);
+    expect(find.textContaining('Confidence'), findsOneWidget);
+    expect(find.byKey(const ValueKey('analyse-portion-notes')), findsOneWidget);
+    expect(find.byKey(const ValueKey('analyse-disclaimer')), findsOneWidget);
   });
 
   testWidgets('Week planner updates a day shift and summaries', (

@@ -1,4 +1,8 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 
 void main() {
   runApp(const ShiftFitApp());
@@ -104,6 +108,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         },
       ),
       2 => TrendsScreen(plan: plan, weekPlan: weekPlan),
+      3 => const MealAnalysisScreen(),
       _ => TodayDashboard(
         selectedShift: selectedShift,
         selectedEnergy: selectedEnergy,
@@ -334,6 +339,286 @@ Color _shiftColor(String shift) {
     'Frei' => _cyan,
     _ => Colors.white,
   };
+}
+
+class MealAnalysisScreen extends StatefulWidget {
+  const MealAnalysisScreen({super.key});
+
+  @override
+  State<MealAnalysisScreen> createState() => _MealAnalysisScreenState();
+}
+
+class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
+  final ImagePicker _picker = ImagePicker();
+  final MealAnalyzer _analyzer = const DemoMealAnalyzer();
+  Uint8List? _selectedImageBytes;
+  MealAnalysisResult? _result;
+  bool _isLoading = false;
+
+  Future<void> _pickAndAnalyze(ImageSource source) async {
+    XFile? image;
+    try {
+      image = await _picker.pickImage(
+        source: source,
+        imageQuality: 82,
+        maxWidth: 1400,
+      );
+    } on PlatformException catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            source == ImageSource.camera
+                ? 'Kamera konnte nicht geöffnet werden. Prüfe die Berechtigung.'
+                : 'Galerie konnte nicht geöffnet werden. Prüfe die Berechtigung.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (image == null) {
+      return;
+    }
+
+    Uint8List? bytes;
+    try {
+      bytes = await image.readAsBytes();
+    } catch (_) {
+      bytes = null;
+    }
+
+    await _runAnalysis(MealAnalysisRequest(imageId: image.path), bytes);
+  }
+
+  Future<void> _runDemoAnalysis() async {
+    await _runAnalysis(
+      const MealAnalysisRequest(imageId: 'manual-demo-analysis'),
+      null,
+    );
+  }
+
+  Future<void> _runAnalysis(
+    MealAnalysisRequest request,
+    Uint8List? imageBytes,
+  ) async {
+    setState(() {
+      _selectedImageBytes = imageBytes;
+      _result = null;
+      _isLoading = true;
+    });
+
+    final result = await _analyzer.analyze(request);
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _result = result;
+      _isLoading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      key: const ValueKey('screen-analyse'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const ShiftFitTopBar(
+          plan: ShiftFitPlan(
+            recommendation: 'Meal AI',
+            focus: 'KI Kalorienanalyse',
+            tagline: 'Foto aufnehmen, grob einschätzen, bewusst nachjustieren.',
+            totalMinutes: 0,
+            intensity: 'Demo',
+            recoveryScore: 78,
+            accent: _orange,
+            sleepHint: '',
+            fuelHint: '',
+            breathHint: '',
+            blocks: [],
+          ),
+        ),
+        const SizedBox(height: 24),
+        AppCard(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const StatusPill(label: 'Meal AI', color: _orange),
+              const SizedBox(height: 18),
+              const Text(
+                'Mahlzeit scannen',
+                key: ValueKey('analyse-hero-title'),
+                style: TextStyle(
+                  fontSize: 40,
+                  height: 1,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -1.6,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Foto aufnehmen oder aus der Galerie wählen. Bis ein Backend angebunden ist, liefert diese Ansicht eine lokale Demo-Schätzung.',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.64),
+                  height: 1.35,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      key: const ValueKey('analyse-camera-button'),
+                      onPressed: _isLoading
+                          ? null
+                          : () => _pickAndAnalyze(ImageSource.camera),
+                      icon: const Icon(Icons.photo_camera_rounded),
+                      label: const Text('Kamera'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: _orange,
+                        foregroundColor: _bg,
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      key: const ValueKey('analyse-gallery-button'),
+                      onPressed: _isLoading
+                          ? null
+                          : () => _pickAndAnalyze(ImageSource.gallery),
+                      icon: const Icon(Icons.photo_library_rounded),
+                      label: const Text('Galerie'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: BorderSide(color: _orange.withValues(alpha: 0.45)),
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton.icon(
+                  key: const ValueKey('analyse-demo-button'),
+                  onPressed: _isLoading ? null : _runDemoAnalysis,
+                  icon: const Icon(Icons.auto_awesome_rounded),
+                  label: const Text('Demo-Analyse starten'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: _cyan,
+                    textStyle: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+        MealPreviewCard(imageBytes: _selectedImageBytes),
+        const SizedBox(height: 18),
+        if (_isLoading)
+          const MealLoadingCard()
+        else if (_result != null)
+          MealResultCard(result: _result!)
+        else
+          const MealEmptyCard(),
+      ],
+    );
+  }
+}
+
+class MealAnalysisRequest {
+  const MealAnalysisRequest({required this.imageId});
+
+  final String imageId;
+}
+
+abstract class MealAnalyzer {
+  Future<MealAnalysisResult> analyze(MealAnalysisRequest request);
+}
+
+class DemoMealAnalyzer implements MealAnalyzer {
+  const DemoMealAnalyzer();
+
+  @override
+  Future<MealAnalysisResult> analyze(MealAnalysisRequest request) async {
+    await Future<void>.delayed(const Duration(milliseconds: 450));
+    final index = request.imageId.codeUnits.fold<int>(
+          0,
+          (previous, value) => previous + value,
+        ) %
+        _templates.length;
+    return _templates[index];
+  }
+
+  static const List<MealAnalysisResult> _templates = [
+    MealAnalysisResult(
+      mealName: 'Bowl mit Huhn und Reis',
+      kcalRange: '620-760 kcal',
+      protein: '38-48 g',
+      carbs: '68-86 g',
+      fat: '18-28 g',
+      confidence: '72%',
+      portionNotes:
+          'Wirkt wie eine mittlere Bowl mit einer Handfläche Protein und etwa 1,5 Tassen Reis.',
+    ),
+    MealAnalysisResult(
+      mealName: 'Pasta mit Tomatensauce',
+      kcalRange: '540-690 kcal',
+      protein: '18-28 g',
+      carbs: '82-104 g',
+      fat: '12-22 g',
+      confidence: '68%',
+      portionNotes:
+          'Portion und Ölmenge sind visuell schwer zu trennen; Käse oder Öl kann die Spanne erhöhen.',
+    ),
+    MealAnalysisResult(
+      mealName: 'Frühstücksteller',
+      kcalRange: '430-590 kcal',
+      protein: '20-32 g',
+      carbs: '36-58 g',
+      fat: '18-30 g',
+      confidence: '70%',
+      portionNotes:
+          'Schätzung passt zu Eiern, Brot und etwas Fettquelle; Getränke sind nicht eingerechnet.',
+    ),
+  ];
+}
+
+class MealAnalysisResult {
+  const MealAnalysisResult({
+    required this.mealName,
+    required this.kcalRange,
+    required this.protein,
+    required this.carbs,
+    required this.fat,
+    required this.confidence,
+    required this.portionNotes,
+  });
+
+  final String mealName;
+  final String kcalRange;
+  final String protein;
+  final String carbs;
+  final String fat;
+  final String confidence;
+  final String portionNotes;
 }
 
 class ShiftFitTopBar extends StatelessWidget {
@@ -1375,6 +1660,256 @@ class InsightsCard extends StatelessWidget {
   }
 }
 
+class MealPreviewCard extends StatelessWidget {
+  const MealPreviewCard({super.key, required this.imageBytes});
+
+  final Uint8List? imageBytes;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionHeader(title: 'Foto', action: 'Preview'),
+          const SizedBox(height: 12),
+          Container(
+            key: const ValueKey('analyse-image-preview'),
+            height: 190,
+            width: double.infinity,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.22),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+            ),
+            child: imageBytes == null
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.restaurant_menu_rounded,
+                        color: Colors.white.withValues(alpha: 0.42),
+                        size: 42,
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'Noch kein Bild ausgewählt',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.58),
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  )
+                : Image.memory(
+                    imageBytes!,
+                    fit: BoxFit.cover,
+                    gaplessPlayback: true,
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class MealEmptyCard extends StatelessWidget {
+  const MealEmptyCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(18),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 24,
+            backgroundColor: _cyan.withValues(alpha: 0.14),
+            child: const Icon(Icons.info_outline_rounded, color: _cyan),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              'Starte eine Analyse, um eine Demo-Schätzung für Kalorien und Makros zu sehen.',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.68),
+                height: 1.35,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class MealLoadingCard extends StatelessWidget {
+  const MealLoadingCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const AppCard(
+      key: ValueKey('analyse-loading'),
+      padding: EdgeInsets.all(18),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(strokeWidth: 3, color: _orange),
+          ),
+          SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              'KI Kalorienanalyse läuft...',
+              style: TextStyle(fontWeight: FontWeight.w900),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class MealResultCard extends StatelessWidget {
+  const MealResultCard({super.key, required this.result});
+
+  final MealAnalysisResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      key: const ValueKey('analyse-result-card'),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Analyse-Ergebnis',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                ),
+              ),
+              StatusPill(label: 'Confidence ${result.confidence}', color: _lime),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            result.mealName,
+            key: const ValueKey('analyse-meal-name'),
+            style: const TextStyle(
+              fontSize: 28,
+              height: 1.05,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.8,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            result.kcalRange,
+            key: const ValueKey('analyse-kcal-range'),
+            style: const TextStyle(
+              color: _orange,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: MacroTile(label: 'Protein', value: result.protein, color: _lime),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: MacroTile(label: 'Carbs', value: result.carbs, color: _cyan),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: MacroTile(label: 'Fett', value: result.fat, color: _pink),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const FieldLabel('PORTION'),
+          const SizedBox(height: 6),
+          Text(
+            result.portionNotes,
+            key: const ValueKey('analyse-portion-notes'),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.68),
+              height: 1.35,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            key: const ValueKey('analyse-disclaimer'),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: _orange.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: _orange.withValues(alpha: 0.24)),
+            ),
+            child: const Text(
+              'Disclaimer: Bildbasierte Kalorien- und Makro-Schätzungen sind nur Näherungen. Zutaten, Öl, Saucen und Portionsgröße können deutlich abweichen.',
+              style: TextStyle(height: 1.35, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class MacroTile extends StatelessWidget {
+  const MacroTile({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.58),
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            value,
+            style: TextStyle(color: color, fontWeight: FontWeight.w900),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class ShiftFitBottomNav extends StatelessWidget {
   const ShiftFitBottomNav({
     super.key,
@@ -1391,6 +1926,7 @@ class ShiftFitBottomNav extends StatelessWidget {
       (Icons.home_rounded, 'Heute'),
       (Icons.calendar_month_rounded, 'Woche'),
       (Icons.insights_rounded, 'Trends'),
+      (Icons.document_scanner_rounded, 'Analyse'),
     ];
 
     return Container(
@@ -1407,9 +1943,14 @@ class ShiftFitBottomNav extends StatelessWidget {
                 key: ValueKey('nav-${items[i].$2}'),
                 onPressed: () => onSelected(i),
                 icon: Icon(items[i].$1, size: 20),
-                label: Text(items[i].$2),
+                label: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(items[i].$2),
+                ),
                 style: TextButton.styleFrom(
                   foregroundColor: i == selectedIndex ? _lime : Colors.white54,
+                  minimumSize: const Size(0, 44),
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
                   textStyle: const TextStyle(fontWeight: FontWeight.w900),
                 ),
               ),
