@@ -4,34 +4,27 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shiftfit/main.dart';
 
 void main() {
-  testWidgets('ShiftFit daily check-in renders and updates selection', (
+  testWidgets('ShiftFit start page is clean and updates recommendation', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ShiftFitApp());
 
     expect(find.text('ShiftFit'), findsOneWidget);
+    expect(find.text('Train smart.\nRecover better.'), findsOneWidget);
     expect(
-      find.text('Fitness und Recovery für Menschen im Schichtdienst.'),
+      find.text('Kurze Empfehlungen passend zu deiner Schicht.'),
       findsOneWidget,
     );
-    expect(find.text('Deine Schichtwoche'), findsOneWidget);
-    expect(find.text('Tages-Check-in'), findsOneWidget);
-    expect(find.text('Check-in speichern'), findsOneWidget);
-    expect(find.text('Dein Fokus heute: 20 Minuten Recovery Flow'), findsOneWidget);
+    expect(find.text('Heute'), findsOneWidget);
+    expect(find.text('20 Min Training'), findsOneWidget);
+    expect(find.text('Start'), findsOneWidget);
+    expect(find.textContaining('Fitness und Recovery'), findsNothing);
+    expect(find.text('Deine Schichtwoche'), findsNothing);
+    expect(find.text('Tages-Check-in'), findsNothing);
 
-    await tester.tap(find.byKey(const ValueKey('Wie ist deine Energie?-Hoch')));
-    await tester.tap(find.byKey(const ValueKey('Wie viel Zeit hast du?-40 Min')));
-    await tester.tap(
-      find.byKey(
-        const ValueKey('Was brauchst du heute am meisten?-Training'),
-      ),
-    );
+    await tester.tap(find.byKey(const ValueKey('option-Müde')));
     await tester.pump();
 
-    expect(find.text('Dein Fokus heute: 40 Minuten Krafttraining'), findsOneWidget);
-    expect(
-      find.text('Du hast genug Energie für eine stärkere Session.'),
-      findsOneWidget,
-    );
+    expect(find.text('Recovery Flow'), findsOneWidget);
   });
 }
