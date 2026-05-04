@@ -2551,109 +2551,136 @@ Future<int?> _showWeightAdjustmentSheet(
   BuildContext context,
   MealAnalysisResult result,
 ) {
-  final controller = TextEditingController(text: result.estimatedGrams.toString());
-  var grams = result.estimatedGrams;
-
   return showModalBottomSheet<int>(
     context: context,
     backgroundColor: _surface,
     showDragHandle: true,
     isScrollControlled: true,
-    builder: (context) {
-      return StatefulBuilder(
-        builder: (context, setSheetState) {
-          final kcal = (result.kcalPer100G * grams / 100).round();
-          return Padding(
-            padding: EdgeInsets.fromLTRB(
-              22,
-              6,
-              22,
-              28 + MediaQuery.of(context).viewInsets.bottom,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Portion anpassen',
-                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '${result.mealName}: Foto-Schätzung ${result.estimatedGrams} g, Basis ${result.kcalPer100Label}.',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.66),
-                    height: 1.35,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                TextField(
-                  key: const ValueKey('analyse-weight-input'),
-                  controller: controller,
-                  autofocus: true,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: InputDecoration(
-                    labelText: 'Gewicht in Gramm',
-                    suffixText: 'g',
-                    filled: true,
-                    fillColor: Colors.black.withValues(alpha: 0.22),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                  ),
-                  onChanged: (value) {
-                    setSheetState(() {
-                      grams = int.tryParse(value) ?? result.estimatedGrams;
-                    });
-                  },
-                ),
-                const SizedBox(height: 14),
-                Container(
-                  key: const ValueKey('analyse-adjusted-kcal-preview'),
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: _orange.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: _orange.withValues(alpha: 0.24)),
-                  ),
-                  child: Text(
-                    '$grams g ≈ $kcal kcal',
-                    style: const TextStyle(
-                      color: _orange,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    key: const ValueKey('analyse-save-weight-button'),
-                    onPressed: grams <= 0 ? null : () => Navigator.pop(context, grams),
-                    icon: const Icon(Icons.check_rounded),
-                    label: const Text('Übernehmen'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _orange,
-                      foregroundColor: _bg,
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      );
-    },
-  ).whenComplete(controller.dispose);
+    builder: (context) => _MealWeightAdjustmentSheet(result: result),
+  );
 }
+
+class _MealWeightAdjustmentSheet extends StatefulWidget {
+  const _MealWeightAdjustmentSheet({required this.result});
+
+  final MealAnalysisResult result;
+
+  @override
+  State<_MealWeightAdjustmentSheet> createState() =>
+      _MealWeightAdjustmentSheetState();
+}
+
+class _MealWeightAdjustmentSheetState extends State<_MealWeightAdjustmentSheet> {
+  late final TextEditingController _controller;
+  late int _grams;
+
+  @override
+  void initState() {
+    super.initState();
+    _grams = widget.result.estimatedGrams;
+    _controller = TextEditingController(text: _grams.toString());
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final result = widget.result;
+    final kcal = (result.kcalPer100G * _grams / 100).round();
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        22,
+        6,
+        22,
+        28 + MediaQuery.viewInsetsOf(context).bottom,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Portion anpassen',
+            style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${result.mealName}: Foto-Schätzung ${result.estimatedGrams} g, Basis ${result.kcalPer100Label}.',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.66),
+              height: 1.35,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 18),
+          TextField(
+            key: const ValueKey('analyse-weight-input'),
+            controller: _controller,
+            autofocus: true,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: InputDecoration(
+              labelText: 'Gewicht in Gramm',
+              suffixText: 'g',
+              filled: true,
+              fillColor: Colors.black.withValues(alpha: 0.22),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+            ),
+            onChanged: (value) {
+              setState(() {
+                _grams = int.tryParse(value) ?? widget.result.estimatedGrams;
+              });
+            },
+          ),
+          const SizedBox(height: 14),
+          Container(
+            key: const ValueKey('analyse-adjusted-kcal-preview'),
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _orange.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: _orange.withValues(alpha: 0.24)),
+            ),
+            child: Text(
+              '$_grams g ≈ $kcal kcal',
+              style: const TextStyle(
+                color: _orange,
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              key: const ValueKey('analyse-save-weight-button'),
+              onPressed: _grams <= 0 ? null : () => Navigator.pop(context, _grams),
+              icon: const Icon(Icons.check_rounded),
+              label: const Text('Übernehmen'),
+              style: FilledButton.styleFrom(
+                backgroundColor: _orange,
+                foregroundColor: _bg,
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 
 void _showPlanSheet(BuildContext context, ShiftFitPlan plan) {
   showModalBottomSheet<void>(
