@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 void main() {
   runApp(const ShiftFitApp());
@@ -354,10 +355,61 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
   final ImagePicker _picker = ImagePicker();
   final MealAnalyzer _analyzer = const EdgeFunctionMealAnalyzer();
   final MealAnalyzer _demoAnalyzer = const DemoMealAnalyzer();
+  final OpenFoodFactsProductService _productService =
+      const OpenFoodFactsProductService();
   Uint8List? _selectedImageBytes;
   MealAnalysisResult? _result;
   bool _isLoading = false;
   bool _mealConfirmed = false;
+
+  Future<void> _scanBarcode() async {
+    final barcode = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
+    );
+    if (barcode == null || barcode.trim().isEmpty || !mounted) {
+      return;
+    }
+
+    await _lookupBarcode(barcode.trim());
+  }
+
+  Future<void> _runDemoBarcodeLookup() async {
+    await _lookupBarcode('4008400402222');
+  }
+
+  Future<void> _lookupBarcode(String barcode) async {
+    setState(() {
+      _selectedImageBytes = null;
+      _result = null;
+      _isLoading = true;
+      _mealConfirmed = false;
+    });
+
+    try {
+      final result = await _productService.lookupBarcode(barcode);
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _result = result;
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Barcode $barcode nicht gefunden oder OpenFoodFacts ist nicht erreichbar.',
+          ),
+        ),
+      );
+    }
+  }
 
   Future<void> _pickAndAnalyze(ImageSource source) async {
     XFile? image;
@@ -517,7 +569,7 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                'Foto aufnehmen oder aus der Galerie wählen. ShiftFit sendet das Bild an deine Supabase Edge Function; der OpenRouter-Key bleibt im Backend.',
+                'Foto aufnehmen für lose Mahlzeiten oder Barcode scannen für verpackte Produkte. Barcodes werden über OpenFoodFacts mit echten Nährwerten pro 100 g geladen.',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.64),
                   height: 1.35,
@@ -569,16 +621,47 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
-                child: TextButton.icon(
-                  key: const ValueKey('analyse-demo-button'),
-                  onPressed: _isLoading ? null : _runDemoAnalysis,
-                  icon: const Icon(Icons.auto_awesome_rounded),
-                  label: const Text('Demo-Analyse starten'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: _cyan,
-                    textStyle: const TextStyle(fontWeight: FontWeight.w900),
+                child: FilledButton.icon(
+                  key: const ValueKey('analyse-barcode-button'),
+                  onPressed: _isLoading ? null : _scanBarcode,
+                  icon: const Icon(Icons.qr_code_scanner_rounded),
+                  label: const Text('Barcode scannen'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _cyan,
+                    foregroundColor: _bg,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
                   ),
                 ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  TextButton.icon(
+                    key: const ValueKey('analyse-demo-button'),
+                    onPressed: _isLoading ? null : _runDemoAnalysis,
+                    icon: const Icon(Icons.auto_awesome_rounded),
+                    label: const Text('Demo-Fotoanalyse'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: _cyan,
+                      textStyle: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                  TextButton.icon(
+                    key: const ValueKey('analyse-demo-barcode-button'),
+                    onPressed: _isLoading ? null : _runDemoBarcodeLookup,
+                    icon: const Icon(Icons.inventory_2_rounded),
+                    label: const Text('Demo-Barcode laden'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: _lime,
+                      textStyle: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -598,6 +681,104 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
         else
           const MealEmptyCard(),
       ],
+    );
+  }
+}
+
+class BarcodeScannerScreen extends StatefulWidget {
+  const BarcodeScannerScreen({super.key});
+
+  @override
+  State<BarcodeScannerScreen> createState() => _BarcodeScannerScreenState();
+}
+
+class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
+  final MobileScannerController _controller = MobileScannerController(
+    detectionSpeed: DetectionSpeed.noDuplicates,
+    formats: const [BarcodeFormat.ean8, BarcodeFormat.ean13, BarcodeFormat.upcA],
+  );
+  bool _hasReturned = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleDetect(BarcodeCapture capture) {
+    if (_hasReturned) {
+      return;
+    }
+
+    for (final barcode in capture.barcodes) {
+      final rawValue = barcode.rawValue;
+      if (rawValue != null && rawValue.trim().isNotEmpty) {
+        _hasReturned = true;
+        Navigator.of(context).pop(rawValue.trim());
+        return;
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _bg,
+      appBar: AppBar(
+        backgroundColor: _bg,
+        foregroundColor: Colors.white,
+        title: const Text('Barcode scannen'),
+      ),
+      body: Stack(
+        children: [
+          MobileScanner(controller: _controller, onDetect: _handleDetect),
+          Align(
+            alignment: Alignment.topCenter,
+            child: Container(
+              key: const ValueKey('barcode-scanner-hint'),
+              margin: const EdgeInsets.all(18),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: _surface.withValues(alpha: 0.90),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: _cyan.withValues(alpha: 0.35)),
+              ),
+              child: const Text(
+                'Barcode auf der Packung in den Rahmen halten. ShiftFit lädt dann die Nährwerte aus OpenFoodFacts.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontWeight: FontWeight.w800, height: 1.3),
+              ),
+            ),
+          ),
+          Center(
+            child: Container(
+              width: 260,
+              height: 160,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: _cyan, width: 3),
+              ),
+            ),
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: FilledButton.icon(
+                key: const ValueKey('barcode-close-button'),
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.close_rounded),
+                label: const Text('Abbrechen'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: _surfaceSoft,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -656,6 +837,49 @@ class EdgeFunctionMealAnalyzer implements MealAnalyzer {
       }
 
       return MealAnalysisResult.fromEdgeFunction(result);
+    } finally {
+      client.close(force: true);
+    }
+  }
+}
+
+class OpenFoodFactsProductService {
+  const OpenFoodFactsProductService();
+
+  static const String _baseUrl = 'https://world.openfoodfacts.org/api/v2/product';
+  static const String _fields = 'code,product_name,brands,quantity,serving_size,'
+      'serving_quantity,nutriments,image_front_small_url';
+
+  Future<MealAnalysisResult> lookupBarcode(String barcode) async {
+    final cleanBarcode = barcode.replaceAll(RegExp(r'[^0-9]'), '');
+    if (cleanBarcode.isEmpty) {
+      throw const FormatException('Empty barcode.');
+    }
+
+    final client = HttpClient();
+    try {
+      final uri = Uri.parse('$_baseUrl/$cleanBarcode.json?fields=$_fields');
+      final request = await client.getUrl(uri);
+      request.headers.set(
+        HttpHeaders.userAgentHeader,
+        'ShiftFit/1.0 (OpenFoodFacts barcode nutrition lookup)',
+      );
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw HttpException('OpenFoodFacts lookup failed: $body');
+      }
+
+      final decoded = jsonDecode(body) as Map<String, dynamic>;
+      if (decoded['status'] != 1 || decoded['product'] is! Map<String, dynamic>) {
+        throw const FormatException('Product not found in OpenFoodFacts.');
+      }
+
+      return MealAnalysisResult.fromOpenFoodFacts(
+        decoded['product'] as Map<String, dynamic>,
+        cleanBarcode,
+      );
     } finally {
       client.close(force: true);
     }
@@ -728,6 +952,9 @@ class MealAnalysisResult {
     required this.confidence,
     required this.portionNotes,
     this.isAdjusted = false,
+    this.sourceLabel = 'KI-Schätzung',
+    this.barcode,
+    this.brand,
   });
 
   final String mealName;
@@ -740,13 +967,16 @@ class MealAnalysisResult {
   final String confidence;
   final String portionNotes;
   final bool isAdjusted;
+  final String sourceLabel;
+  final String? barcode;
+  final String? brand;
 
   String get kcalRange => '$caloriesKcal kcal';
   String get portionLabel => '$estimatedGrams g geschätzt';
   String get kcalPer100Label => '${kcalPer100G.round()} kcal / 100 g';
 
   MealAnalysisResult adjustedToGrams(int grams) {
-    final factor = grams / estimatedGrams;
+    final factor = estimatedGrams <= 0 ? 1.0 : grams / estimatedGrams;
     final adjustedKcal = (kcalPer100G * grams / 100).round();
     return MealAnalysisResult(
       mealName: mealName,
@@ -758,8 +988,11 @@ class MealAnalysisResult {
       fat: _scaleMacroText(fat, factor),
       confidence: confidence,
       portionNotes:
-          'Manuell angepasst: $grams g statt der ursprünglichen Foto-Schätzung. Kalorien neu berechnet mit ${kcalPer100G.round()} kcal pro 100 g.',
+          'Manuell angepasst: $grams g statt der ursprünglichen Portion. Kalorien neu berechnet mit ${kcalPer100G.round()} kcal pro 100 g.',
       isAdjusted: true,
+      sourceLabel: sourceLabel,
+      barcode: barcode,
+      brand: brand,
     );
   }
 
@@ -807,6 +1040,63 @@ class MealAnalysisResult {
       confidence: _formatConfidence(confidence),
       portionNotes: json['explanation']?.toString() ??
           'KI-Schätzung aus dem Foto. Die Größe wurde nicht exakt vermessen; bitte Portion bestätigen oder Gewicht anpassen.',
+      sourceLabel: 'Foto-KI',
+    );
+  }
+
+  factory MealAnalysisResult.fromOpenFoodFacts(
+    Map<String, dynamic> product,
+    String barcode,
+  ) {
+    final nutriments = product['nutriments'] is Map<String, dynamic>
+        ? product['nutriments'] as Map<String, dynamic>
+        : <String, dynamic>{};
+    final productName = _firstNonEmptyString(product, const [
+          'product_name',
+          'generic_name',
+        ]) ??
+        'Produkt $barcode';
+    final brand = _firstNonEmptyString(product, const ['brands']);
+    final kcalPer100G = _readDouble(nutriments, const [
+          'energy-kcal_100g',
+          'energy_kcal_100g',
+          'energy-kcal_value',
+        ]) ??
+        0;
+    if (kcalPer100G <= 0) {
+      throw const FormatException('OpenFoodFacts product has no kcal per 100 g.');
+    }
+    final servingGrams = _readDouble(product, const ['serving_quantity'])?.round() ??
+        _estimateGramsFromText(product['serving_size']?.toString()) ??
+        100;
+    final calories = (kcalPer100G * servingGrams / 100).round();
+    final protein100 = _readDouble(nutriments, const ['proteins_100g']);
+    final carbs100 = _readDouble(nutriments, const ['carbohydrates_100g']);
+    final fat100 = _readDouble(nutriments, const ['fat_100g']);
+    final quantity = _firstNonEmptyString(product, const ['quantity']);
+    final servingSize = _firstNonEmptyString(product, const ['serving_size']);
+    final details = <String>[
+      'OpenFoodFacts Barcode $barcode.',
+      if (brand != null) 'Marke: $brand.',
+      if (quantity != null) 'Packung: $quantity.',
+      if (servingSize != null) 'Portion laut Datenbank: $servingSize.',
+      'Nährwerte kommen aus der Produktdatenbank, nicht aus einer Foto-Schätzung.',
+      'Du kannst das gegessene Gewicht weiter anpassen.',
+    ].join(' ');
+
+    return MealAnalysisResult(
+      mealName: brand == null ? productName : '$productName · $brand',
+      caloriesKcal: calories,
+      estimatedGrams: servingGrams,
+      kcalPer100G: kcalPer100G,
+      protein: _macroForGrams(protein100, servingGrams),
+      carbs: _macroForGrams(carbs100, servingGrams),
+      fat: _macroForGrams(fat100, servingGrams),
+      confidence: 'Datenbank',
+      portionNotes: details,
+      sourceLabel: 'OpenFoodFacts',
+      barcode: barcode,
+      brand: brand,
     );
   }
 
@@ -844,6 +1134,28 @@ class MealAnalysisResult {
       }
     }
     return null;
+  }
+
+  static String? _firstNonEmptyString(
+    Map<String, dynamic> json,
+    List<String> keys,
+  ) {
+    for (final key in keys) {
+      final value = json[key]?.toString().trim();
+      if (value != null && value.isNotEmpty) {
+        return value;
+      }
+    }
+    return null;
+  }
+
+  static String _macroForGrams(double? per100G, int grams) {
+    if (per100G == null) {
+      return '-';
+    }
+    final value = per100G * grams / 100;
+    final formatted = value >= 10 ? value.round().toString() : value.toStringAsFixed(1);
+    return '${formatted.replaceAll('.', ',')} g';
   }
 
   static int? _extractFirstInt(String? value) {
@@ -2014,7 +2326,7 @@ class MealEmptyCard extends StatelessWidget {
           const SizedBox(width: 14),
           Expanded(
             child: Text(
-              'Starte eine Analyse, um Kalorien und Makros über die Supabase Edge Function zu schätzen.',
+              'Starte eine Fotoanalyse oder scanne einen Barcode. Verpackte Produkte nutzt ShiftFit über OpenFoodFacts mit kcal pro 100 g.',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.68),
                 height: 1.35,
@@ -2086,6 +2398,11 @@ class MealResultCard extends StatelessWidget {
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
                 ),
               ),
+              StatusPill(
+                label: result.sourceLabel,
+                color: result.sourceLabel == 'OpenFoodFacts' ? _cyan : _orange,
+              ),
+              const SizedBox(width: 8),
               StatusPill(
                 label: confirmed ? 'bestätigt' : 'prüfen',
                 color: confirmed ? _lime : _orange,

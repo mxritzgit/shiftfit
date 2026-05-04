@@ -88,6 +88,8 @@ void main() {
     expect(find.byKey(const ValueKey('screen-analyse')), findsOneWidget);
     expect(find.byKey(const ValueKey('analyse-hero-title')), findsOneWidget);
     expect(find.text('Mahlzeit scannen'), findsOneWidget);
+    expect(find.byKey(const ValueKey('analyse-barcode-button')), findsOneWidget);
+    expect(find.text('Barcode scannen'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('nav-Heute')));
     await tester.pumpAndSettle();
