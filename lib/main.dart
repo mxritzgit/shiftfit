@@ -1063,9 +1063,6 @@ class MealAnalysisResult {
           'energy-kcal_value',
         ]) ??
         0;
-    if (kcalPer100G <= 0) {
-      throw const FormatException('OpenFoodFacts product has no kcal per 100 g.');
-    }
     final servingGrams = _readDouble(product, const ['serving_quantity'])?.round() ??
         _estimateGramsFromText(product['serving_size']?.toString()) ??
         100;
