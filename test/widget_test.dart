@@ -111,9 +111,28 @@ void main() {
     expect(find.byKey(const ValueKey('analyse-result-card')), findsOneWidget);
     expect(find.byKey(const ValueKey('analyse-meal-name')), findsOneWidget);
     expect(find.byKey(const ValueKey('analyse-kcal-range')), findsOneWidget);
-    expect(find.textContaining('Confidence'), findsOneWidget);
+    expect(find.byKey(const ValueKey('analyse-portion-confirm-box')), findsOneWidget);
     expect(find.byKey(const ValueKey('analyse-portion-notes')), findsOneWidget);
     expect(find.byKey(const ValueKey('analyse-disclaimer')), findsOneWidget);
+
+    await tester.ensureVisible(find.byKey(const ValueKey('analyse-confirm-button')));
+    await tester.tap(find.byKey(const ValueKey('analyse-confirm-button')));
+    await tester.pumpAndSettle();
+    expect(find.text('bestätigt'), findsOneWidget);
+
+    await tester.ensureVisible(find.byKey(const ValueKey('analyse-adjust-button')));
+    await tester.tap(find.byKey(const ValueKey('analyse-adjust-button')));
+    await tester.pumpAndSettle();
+    expect(find.text('Portion anpassen'), findsOneWidget);
+
+    await tester.enterText(find.byKey(const ValueKey('analyse-weight-input')), '200');
+    await tester.pumpAndSettle();
+    expect(find.text('200 g ≈ 292 kcal'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('analyse-save-weight-button')));
+    await tester.pumpAndSettle();
+    expect(find.text('292 kcal'), findsOneWidget);
+    expect(find.textContaining('200 g manuell angepasst'), findsOneWidget);
   });
 
   testWidgets('Week planner updates a day shift and summaries', (

@@ -357,6 +357,7 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
   Uint8List? _selectedImageBytes;
   MealAnalysisResult? _result;
   bool _isLoading = false;
+  bool _mealConfirmed = false;
 
   Future<void> _pickAndAnalyze(ImageSource source) async {
     XFile? image;
@@ -417,6 +418,7 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
       _selectedImageBytes = imageBytes;
       _result = null;
       _isLoading = true;
+      _mealConfirmed = false;
     });
 
     try {
@@ -445,6 +447,33 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
         ),
       );
     }
+  }
+
+  void _confirmMealEstimate() {
+    setState(() => _mealConfirmed = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Kalorienschätzung bestätigt.')),
+    );
+  }
+
+  Future<void> _adjustMealPortion() async {
+    final result = _result;
+    if (result == null) {
+      return;
+    }
+
+    final adjustedGrams = await _showWeightAdjustmentSheet(context, result);
+    if (adjustedGrams == null || adjustedGrams <= 0 || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _result = result.adjustedToGrams(adjustedGrams);
+      _mealConfirmed = true;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Portion auf $adjustedGrams g angepasst.')),
+    );
   }
 
   @override
@@ -560,7 +589,12 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
         if (_isLoading)
           const MealLoadingCard()
         else if (_result != null)
-          MealResultCard(result: _result!)
+          MealResultCard(
+            result: _result!,
+            confirmed: _mealConfirmed,
+            onConfirmed: _confirmMealEstimate,
+            onAdjustRequested: _adjustMealPortion,
+          )
         else
           const MealEmptyCard(),
       ],
@@ -603,7 +637,8 @@ class EdgeFunctionMealAnalyzer implements MealAnalyzer {
       httpRequest.write(
         jsonEncode({
           'imageBase64': base64Encode(imageBytes),
-          'note': 'ShiftFit iOS Analyse',
+          'note':
+              'ShiftFit iOS Analyse. Bitte wenn möglich mealName, caloriesKcal, estimatedGrams, kcalPer100G, proteinG, carbsG, fatG, confidence und explanation als JSON zurückgeben. Keine exakte Vermessung behaupten; Portionsgröße als Schätzung markieren.',
         }),
       );
 
@@ -644,7 +679,9 @@ class DemoMealAnalyzer implements MealAnalyzer {
   static const List<MealAnalysisResult> _templates = [
     MealAnalysisResult(
       mealName: 'Bowl mit Huhn und Reis',
-      kcalRange: '620-760 kcal',
+      caloriesKcal: 690,
+      estimatedGrams: 480,
+      kcalPer100G: 144,
       protein: '38-48 g',
       carbs: '68-86 g',
       fat: '18-28 g',
@@ -654,7 +691,9 @@ class DemoMealAnalyzer implements MealAnalyzer {
     ),
     MealAnalysisResult(
       mealName: 'Pasta mit Tomatensauce',
-      kcalRange: '540-690 kcal',
+      caloriesKcal: 615,
+      estimatedGrams: 420,
+      kcalPer100G: 146,
       protein: '18-28 g',
       carbs: '82-104 g',
       fat: '12-22 g',
@@ -664,7 +703,9 @@ class DemoMealAnalyzer implements MealAnalyzer {
     ),
     MealAnalysisResult(
       mealName: 'Frühstücksteller',
-      kcalRange: '430-590 kcal',
+      caloriesKcal: 510,
+      estimatedGrams: 360,
+      kcalPer100G: 142,
       protein: '20-32 g',
       carbs: '36-58 g',
       fat: '18-30 g',
@@ -678,39 +719,178 @@ class DemoMealAnalyzer implements MealAnalyzer {
 class MealAnalysisResult {
   const MealAnalysisResult({
     required this.mealName,
-    required this.kcalRange,
+    required this.caloriesKcal,
+    required this.estimatedGrams,
+    required this.kcalPer100G,
     required this.protein,
     required this.carbs,
     required this.fat,
     required this.confidence,
     required this.portionNotes,
+    this.isAdjusted = false,
   });
 
   final String mealName;
-  final String kcalRange;
+  final int caloriesKcal;
+  final int estimatedGrams;
+  final double kcalPer100G;
   final String protein;
   final String carbs;
   final String fat;
   final String confidence;
   final String portionNotes;
+  final bool isAdjusted;
+
+  String get kcalRange => '$caloriesKcal kcal';
+  String get portionLabel => '$estimatedGrams g geschätzt';
+  String get kcalPer100Label => '${kcalPer100G.round()} kcal / 100 g';
+
+  MealAnalysisResult adjustedToGrams(int grams) {
+    final factor = grams / estimatedGrams;
+    final adjustedKcal = (kcalPer100G * grams / 100).round();
+    return MealAnalysisResult(
+      mealName: mealName,
+      caloriesKcal: adjustedKcal,
+      estimatedGrams: grams,
+      kcalPer100G: kcalPer100G,
+      protein: _scaleMacroText(protein, factor),
+      carbs: _scaleMacroText(carbs, factor),
+      fat: _scaleMacroText(fat, factor),
+      confidence: confidence,
+      portionNotes:
+          'Manuell angepasst: $grams g statt der ursprünglichen Foto-Schätzung. Kalorien neu berechnet mit ${kcalPer100G.round()} kcal pro 100 g.',
+      isAdjusted: true,
+    );
+  }
 
   factory MealAnalysisResult.fromEdgeFunction(Map<String, dynamic> json) {
-    final calories = json['caloriesKcal'];
+    final mealName = json['mealName']?.toString() ?? 'Unbekannte Mahlzeit';
+    final calories = _readInt(json, const [
+          'caloriesKcal',
+          'kcal',
+          'calories',
+          'estimatedCaloriesKcal',
+        ]) ??
+        _extractFirstInt(json['caloriesKcal']?.toString()) ??
+        _extractFirstInt(json['calories']?.toString()) ??
+        0;
+    final estimatedGrams = _readInt(json, const [
+          'estimatedGrams',
+          'portionGrams',
+          'grams',
+          'weightG',
+          'estimatedWeightG',
+        ]) ??
+        _estimateGramsFromText(json['explanation']?.toString()) ??
+        150;
+    final kcalPer100G = _readDouble(json, const [
+          'kcalPer100G',
+          'caloriesPer100G',
+          'caloriesPer100g',
+          'kcalPer100g',
+        ]) ??
+        _knownKcalPer100G(mealName) ??
+        (estimatedGrams > 0 && calories > 0 ? calories * 100 / estimatedGrams : 52.0);
     final protein = json['proteinG'];
     final carbs = json['carbsG'];
     final fat = json['fatG'];
     final confidence = json['confidence']?.toString() ?? 'medium';
 
     return MealAnalysisResult(
-      mealName: json['mealName']?.toString() ?? 'Unbekannte Mahlzeit',
-      kcalRange: calories == null ? 'kcal unbekannt' : '$calories kcal',
+      mealName: mealName,
+      caloriesKcal: calories > 0 ? calories : (kcalPer100G * estimatedGrams / 100).round(),
+      estimatedGrams: estimatedGrams,
+      kcalPer100G: kcalPer100G,
       protein: protein == null ? '-' : '$protein g',
       carbs: carbs == null ? '-' : '$carbs g',
       fat: fat == null ? '-' : '$fat g',
       confidence: _formatConfidence(confidence),
       portionNotes: json['explanation']?.toString() ??
-          'KI-Schätzung aus dem Foto. Portionsgröße bitte manuell prüfen.',
+          'KI-Schätzung aus dem Foto. Die Größe wurde nicht exakt vermessen; bitte Portion bestätigen oder Gewicht anpassen.',
     );
+  }
+
+  static int? _readInt(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value is int) {
+        return value;
+      }
+      if (value is double) {
+        return value.round();
+      }
+      if (value is String) {
+        final parsed = _extractFirstInt(value);
+        if (parsed != null) {
+          return parsed;
+        }
+      }
+    }
+    return null;
+  }
+
+  static double? _readDouble(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value is num) {
+        return value.toDouble();
+      }
+      if (value is String) {
+        final normalized = value.replaceAll(',', '.');
+        final match = RegExp(r'\d+(?:\.\d+)?').firstMatch(normalized);
+        if (match != null) {
+          return double.tryParse(match.group(0)!);
+        }
+      }
+    }
+    return null;
+  }
+
+  static int? _extractFirstInt(String? value) {
+    if (value == null) {
+      return null;
+    }
+    final match = RegExp(r'\d+').firstMatch(value);
+    return match == null ? null : int.tryParse(match.group(0)!);
+  }
+
+  static int? _estimateGramsFromText(String? value) {
+    if (value == null) {
+      return null;
+    }
+    final match = RegExp(r'(\d{2,4})\s*g').firstMatch(value.toLowerCase());
+    return match == null ? null : int.tryParse(match.group(1)!);
+  }
+
+  static double? _knownKcalPer100G(String mealName) {
+    final lower = mealName.toLowerCase();
+    if (lower.contains('apfel') || lower.contains('apple')) {
+      return 52;
+    }
+    if (lower.contains('banane') || lower.contains('banana')) {
+      return 89;
+    }
+    if (lower.contains('orange')) {
+      return 47;
+    }
+    if (lower.contains('erdbeer') || lower.contains('strawberr')) {
+      return 32;
+    }
+    return null;
+  }
+
+  static String _scaleMacroText(String value, double factor) {
+    final match = RegExp(r'(\d+(?:[,.]\d+)?)').firstMatch(value);
+    if (match == null) {
+      return value;
+    }
+    final number = double.tryParse(match.group(1)!.replaceAll(',', '.'));
+    if (number == null) {
+      return value;
+    }
+    final scaled = number * factor;
+    final formatted = scaled >= 10 ? scaled.round().toString() : scaled.toStringAsFixed(1);
+    return value.replaceFirst(match.group(1)!, formatted.replaceAll('.', ','));
   }
 
   static String _formatConfidence(String value) {
@@ -1877,9 +2057,18 @@ class MealLoadingCard extends StatelessWidget {
 }
 
 class MealResultCard extends StatelessWidget {
-  const MealResultCard({super.key, required this.result});
+  const MealResultCard({
+    super.key,
+    required this.result,
+    required this.confirmed,
+    required this.onConfirmed,
+    required this.onAdjustRequested,
+  });
 
   final MealAnalysisResult result;
+  final bool confirmed;
+  final VoidCallback onConfirmed;
+  final VoidCallback onAdjustRequested;
 
   @override
   Widget build(BuildContext context) {
@@ -1897,7 +2086,10 @@ class MealResultCard extends StatelessWidget {
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
                 ),
               ),
-              StatusPill(label: 'Confidence ${result.confidence}', color: _lime),
+              StatusPill(
+                label: confirmed ? 'bestätigt' : 'prüfen',
+                color: confirmed ? _lime : _orange,
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -1912,14 +2104,111 @@ class MealResultCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            result.kcalRange,
-            key: const ValueKey('analyse-kcal-range'),
-            style: const TextStyle(
-              color: _orange,
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Text(
+                  result.kcalRange,
+                  key: const ValueKey('analyse-kcal-range'),
+                  style: const TextStyle(
+                    color: _orange,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              Text(
+                result.kcalPer100Label,
+                key: const ValueKey('analyse-kcal-per-100'),
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.58),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            key: const ValueKey('analyse-portion-confirm-box'),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: _cyan.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: _cyan.withValues(alpha: 0.22)),
             ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: _cyan.withValues(alpha: 0.14),
+                  child: const Icon(Icons.scale_rounded, color: _cyan),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        result.isAdjusted
+                            ? '${result.estimatedGrams} g manuell angepasst'
+                            : 'Portion: ${result.portionLabel}',
+                        style: const TextStyle(fontWeight: FontWeight.w900),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'Bestätigen oder Gewicht anpassen. ShiftFit rechnet die kcal neu.',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.62),
+                          height: 1.25,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  key: const ValueKey('analyse-confirm-button'),
+                  onPressed: confirmed ? null : onConfirmed,
+                  icon: Icon(
+                    confirmed ? Icons.check_circle_rounded : Icons.check_rounded,
+                  ),
+                  label: Text(confirmed ? 'Bestätigt' : 'Bestätigen'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _lime,
+                    foregroundColor: _bg,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  key: const ValueKey('analyse-adjust-button'),
+                  onPressed: onAdjustRequested,
+                  icon: const Icon(Icons.tune_rounded),
+                  label: const Text('Anpassen'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: BorderSide(color: _orange.withValues(alpha: 0.45)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           Row(
@@ -2256,6 +2545,114 @@ class FieldLabel extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<int?> _showWeightAdjustmentSheet(
+  BuildContext context,
+  MealAnalysisResult result,
+) {
+  final controller = TextEditingController(text: result.estimatedGrams.toString());
+  var grams = result.estimatedGrams;
+
+  return showModalBottomSheet<int>(
+    context: context,
+    backgroundColor: _surface,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setSheetState) {
+          final kcal = (result.kcalPer100G * grams / 100).round();
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+              22,
+              6,
+              22,
+              28 + MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Portion anpassen',
+                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${result.mealName}: Foto-Schätzung ${result.estimatedGrams} g, Basis ${result.kcalPer100Label}.',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.66),
+                    height: 1.35,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                TextField(
+                  key: const ValueKey('analyse-weight-input'),
+                  controller: controller,
+                  autofocus: true,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: InputDecoration(
+                    labelText: 'Gewicht in Gramm',
+                    suffixText: 'g',
+                    filled: true,
+                    fillColor: Colors.black.withValues(alpha: 0.22),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                  onChanged: (value) {
+                    setSheetState(() {
+                      grams = int.tryParse(value) ?? result.estimatedGrams;
+                    });
+                  },
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  key: const ValueKey('analyse-adjusted-kcal-preview'),
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: _orange.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(color: _orange.withValues(alpha: 0.24)),
+                  ),
+                  child: Text(
+                    '$grams g ≈ $kcal kcal',
+                    style: const TextStyle(
+                      color: _orange,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    key: const ValueKey('analyse-save-weight-button'),
+                    onPressed: grams <= 0 ? null : () => Navigator.pop(context, grams),
+                    icon: const Icon(Icons.check_rounded),
+                    label: const Text('Übernehmen'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _orange,
+                      foregroundColor: _bg,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    },
+  ).whenComplete(controller.dispose);
 }
 
 void _showPlanSheet(BuildContext context, ShiftFitPlan plan) {
