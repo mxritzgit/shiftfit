@@ -3,7 +3,11 @@ import 'dart:io';
 
 import '../models/meal_analysis_result.dart';
 
-class OpenFoodFactsProductService {
+abstract class ProductLookupService {
+  Future<MealAnalysisResult> lookupBarcode(String barcode);
+}
+
+class OpenFoodFactsProductService implements ProductLookupService {
   const OpenFoodFactsProductService();
 
   static const String _baseUrl = 'https://world.openfoodfacts.org/api/v2/product';

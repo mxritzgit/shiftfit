@@ -1,3 +1,5 @@
+import 'meal_component.dart';
+
 class MealAnalysisResult {
   const MealAnalysisResult({
     required this.mealName,
@@ -9,6 +11,7 @@ class MealAnalysisResult {
     required this.fat,
     required this.confidence,
     required this.portionNotes,
+    this.items = const [],
     this.isAdjusted = false,
     this.sourceLabel = 'KI-Schätzung',
     this.barcode,
@@ -24,6 +27,7 @@ class MealAnalysisResult {
   final String fat;
   final String confidence;
   final String portionNotes;
+  final List<MealComponent> items;
   final bool isAdjusted;
   final String sourceLabel;
   final String? barcode;
@@ -32,9 +36,15 @@ class MealAnalysisResult {
   String get kcalRange => '$caloriesKcal kcal';
   String get portionLabel => '$estimatedGrams g geschätzt';
   String get kcalPer100Label => '${kcalPer100G.round()} kcal / 100 g';
+  bool get hasItemizedBreakdown => items.isNotEmpty;
 
   MealAnalysisResult adjustedToGrams(int grams) {
     final factor = estimatedGrams <= 0 ? 1.0 : grams / estimatedGrams;
+    final adjustedItems = hasItemizedBreakdown
+        ? items
+              .map((item) => item.adjustedToGrams((item.grams * factor).round()))
+              .toList(growable: false)
+        : items;
     final adjustedKcal = (kcalPer100G * grams / 100).round();
     return MealAnalysisResult(
       mealName: mealName,
@@ -47,6 +57,34 @@ class MealAnalysisResult {
       confidence: confidence,
       portionNotes:
           'Manuell angepasst: $grams g statt der ursprünglichen Portion. Kalorien neu berechnet mit ${kcalPer100G.round()} kcal pro 100 g.',
+      items: adjustedItems,
+      isAdjusted: true,
+      sourceLabel: sourceLabel,
+      barcode: barcode,
+      brand: brand,
+    );
+  }
+
+  MealAnalysisResult adjustedToItems(List<MealComponent> adjustedItems) {
+    final totalGrams = adjustedItems.fold<int>(0, (sum, item) => sum + item.grams);
+    final totalKcal = adjustedItems.fold<int>(
+      0,
+      (sum, item) => sum + item.caloriesKcal,
+    );
+    final factor = estimatedGrams <= 0 ? 1.0 : totalGrams / estimatedGrams;
+
+    return MealAnalysisResult(
+      mealName: mealName,
+      caloriesKcal: totalKcal,
+      estimatedGrams: totalGrams,
+      kcalPer100G: totalGrams > 0 ? totalKcal * 100 / totalGrams : kcalPer100G,
+      protein: _scaleMacroText(protein, factor),
+      carbs: _scaleMacroText(carbs, factor),
+      fat: _scaleMacroText(fat, factor),
+      confidence: confidence,
+      portionNotes:
+          'Einzelne Bestandteile wurden manuell bestätigt oder angepasst. Gesamtwerte wurden aus der Summe der Positionen neu berechnet.',
+      items: adjustedItems,
       isAdjusted: true,
       sourceLabel: sourceLabel,
       barcode: barcode,
@@ -56,6 +94,9 @@ class MealAnalysisResult {
 
   factory MealAnalysisResult.fromEdgeFunction(Map<String, dynamic> json) {
     final mealName = json['mealName']?.toString() ?? 'Unbekannte Mahlzeit';
+    final items = _readItems(json);
+    final itemCalories = items.fold<int>(0, (sum, item) => sum + item.caloriesKcal);
+    final itemGrams = items.fold<int>(0, (sum, item) => sum + item.grams);
     final calories = _readInt(json, const [
           'caloriesKcal',
           'kcal',
@@ -64,7 +105,7 @@ class MealAnalysisResult {
         ]) ??
         _extractFirstInt(json['caloriesKcal']?.toString()) ??
         _extractFirstInt(json['calories']?.toString()) ??
-        0;
+        (itemCalories > 0 ? itemCalories : 0);
     final estimatedGrams = _readInt(json, const [
           'estimatedGrams',
           'portionGrams',
@@ -73,7 +114,7 @@ class MealAnalysisResult {
           'estimatedWeightG',
         ]) ??
         _estimateGramsFromText(json['explanation']?.toString()) ??
-        150;
+        (itemGrams > 0 ? itemGrams : 150);
     final kcalPer100G = _readDouble(json, const [
           'kcalPer100G',
           'caloriesPer100G',
@@ -81,23 +122,33 @@ class MealAnalysisResult {
           'kcalPer100g',
         ]) ??
         _knownKcalPer100G(mealName) ??
-        (estimatedGrams > 0 && calories > 0 ? calories * 100 / estimatedGrams : 52.0);
+        ((estimatedGrams > 0 && calories > 0)
+            ? calories * 100 / estimatedGrams
+            : 52.0);
     final protein = json['proteinG'];
     final carbs = json['carbsG'];
     final fat = json['fatG'];
     final confidence = json['confidence']?.toString() ?? 'medium';
+    final resolvedCalories =
+        calories > 0 ? calories : (kcalPer100G * estimatedGrams / 100).round();
+    final resolvedGrams = estimatedGrams > 0 ? estimatedGrams : itemGrams;
+    final normalizedItems =
+        itemGrams > 0 || itemCalories > 0 ? items : const <MealComponent>[];
 
     return MealAnalysisResult(
       mealName: mealName,
-      caloriesKcal: calories > 0 ? calories : (kcalPer100G * estimatedGrams / 100).round(),
-      estimatedGrams: estimatedGrams,
+      caloriesKcal: resolvedCalories,
+      estimatedGrams: resolvedGrams,
       kcalPer100G: kcalPer100G,
       protein: protein == null ? '-' : '$protein g',
       carbs: carbs == null ? '-' : '$carbs g',
       fat: fat == null ? '-' : '$fat g',
       confidence: _formatConfidence(confidence),
       portionNotes: json['explanation']?.toString() ??
-          'KI-Schätzung aus dem Foto. Die Größe wurde nicht exakt vermessen; bitte Portion bestätigen oder Gewicht anpassen.',
+          (normalizedItems.isNotEmpty
+              ? 'KI-Schätzung aus dem Foto mit Einzelposten. Bitte Bestandteile und Gramm prüfen.'
+              : 'KI-Schätzung aus dem Foto. Die Größe wurde nicht exakt vermessen; bitte Portion bestätigen oder Gewicht anpassen.'),
+      items: normalizedItems,
       sourceLabel: 'Foto-KI',
     );
   }
@@ -153,6 +204,26 @@ class MealAnalysisResult {
       barcode: barcode,
       brand: brand,
     );
+  }
+
+  static List<MealComponent> _readItems(Map<String, dynamic> json) {
+    for (final key in const ['items', 'components', 'foods', 'foodItems']) {
+      final value = json[key];
+      if (value is List) {
+        return value
+            .whereType<Map>()
+            .map(
+              (item) => MealComponent.fromJson(
+                item.map(
+                  (itemKey, itemValue) => MapEntry(itemKey.toString(), itemValue),
+                ),
+              ),
+            )
+            .where((item) => item.name.trim().isNotEmpty)
+            .toList(growable: false);
+      }
+    }
+    return const <MealComponent>[];
   }
 
   static int? _readInt(Map<String, dynamic> json, List<String> keys) {
@@ -261,11 +332,15 @@ class MealAnalysisResult {
   }
 
   static String _formatConfidence(String value) {
-    return switch (value.toLowerCase()) {
-      'low' => 'niedrig',
-      'medium' => 'mittel',
-      'high' => 'hoch',
-      _ => value,
-    };
+    switch (value.toLowerCase()) {
+      case 'high':
+        return 'Hoch';
+      case 'medium':
+        return 'Mittel';
+      case 'low':
+        return 'Niedrig';
+      default:
+        return value;
+    }
   }
 }

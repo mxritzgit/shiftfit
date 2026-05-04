@@ -33,7 +33,7 @@ class EdgeFunctionMealAnalyzer implements MealAnalyzer {
         jsonEncode({
           'imageBase64': base64Encode(imageBytes),
           'note':
-              'ShiftFit iOS Analyse. Bitte wenn möglich mealName, caloriesKcal, estimatedGrams, kcalPer100G, proteinG, carbsG, fatG, confidence und explanation als JSON zurückgeben. Keine exakte Vermessung behaupten; Portionsgröße als Schätzung markieren.',
+              'ShiftFit iOS Analyse. Antworte wenn moeglich als strukturiertes JSON mit mealName, caloriesKcal, estimatedGrams, kcalPer100G, proteinG, carbsG, fatG, confidence, explanation und einem items-Array. Jedes Item sollte name, grams, caloriesKcal und wenn moeglich kcalPer100G enthalten. Wenn mehrere Lebensmittel sichtbar sind, bitte die Mahlzeit itemisiert zerlegen und Gramm pro Item schaetzen. Keine exakte Vermessung behaupten; Unsicherheit klar als Schaetzung markieren.',
         }),
       );
 
@@ -55,58 +55,4 @@ class EdgeFunctionMealAnalyzer implements MealAnalyzer {
       client.close(force: true);
     }
   }
-}
-
-class DemoMealAnalyzer implements MealAnalyzer {
-  const DemoMealAnalyzer();
-
-  @override
-  Future<MealAnalysisResult> analyze(MealAnalysisRequest request) async {
-    await Future<void>.delayed(const Duration(milliseconds: 450));
-    final index = request.imageId.codeUnits.fold<int>(
-          0,
-          (previous, value) => previous + value,
-        ) %
-        _templates.length;
-    return _templates[index];
-  }
-
-  static const List<MealAnalysisResult> _templates = [
-    MealAnalysisResult(
-      mealName: 'Bowl mit Huhn und Reis',
-      caloriesKcal: 690,
-      estimatedGrams: 480,
-      kcalPer100G: 144,
-      protein: '38-48 g',
-      carbs: '68-86 g',
-      fat: '18-28 g',
-      confidence: '72%',
-      portionNotes:
-          'Wirkt wie eine mittlere Bowl mit einer Handfläche Protein und etwa 1,5 Tassen Reis.',
-    ),
-    MealAnalysisResult(
-      mealName: 'Pasta mit Tomatensauce',
-      caloriesKcal: 615,
-      estimatedGrams: 420,
-      kcalPer100G: 146,
-      protein: '18-28 g',
-      carbs: '82-104 g',
-      fat: '12-22 g',
-      confidence: '68%',
-      portionNotes:
-          'Portion und Ölmenge sind visuell schwer zu trennen; Käse oder Öl kann die Spanne erhöhen.',
-    ),
-    MealAnalysisResult(
-      mealName: 'Frühstücksteller',
-      caloriesKcal: 510,
-      estimatedGrams: 360,
-      kcalPer100G: 142,
-      protein: '20-32 g',
-      carbs: '36-58 g',
-      fat: '18-30 g',
-      confidence: '70%',
-      portionNotes:
-          'Schätzung passt zu Eiern, Brot und etwas Fettquelle; Getränke sind nicht eingerechnet.',
-    ),
-  ];
 }

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../models/shift_fit_plan.dart';
+import '../services/meal_analyzer.dart';
+import '../services/meal_photo_input.dart';
+import '../services/open_food_facts_product_service.dart';
 import '../screens/meal_analysis_screen.dart';
 import '../screens/today_dashboard.dart';
 import '../screens/trends_screen.dart';
@@ -9,7 +12,16 @@ import '../theme/app_colors.dart';
 import '../widgets/app_shell/shiftfit_bottom_nav.dart';
 
 class ShiftFitHomePage extends StatefulWidget {
-  const ShiftFitHomePage({super.key});
+  ShiftFitHomePage({
+    super.key,
+    this.mealAnalyzer,
+    this.productService,
+    this.photoInput,
+  });
+
+  final MealAnalyzer? mealAnalyzer;
+  final ProductLookupService? productService;
+  final MealPhotoInput? photoInput;
 
   @override
   State<ShiftFitHomePage> createState() => _ShiftFitHomePageState();
@@ -20,6 +32,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
   String selectedEnergy = 'Normal';
   String selectedStress = 'Mittel';
   int selectedTab = 0;
+  int dailyConsumedKcal = 0;
   final List<String> weekPlan = [
     'Früh',
     'Früh',
@@ -73,7 +86,15 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         },
       ),
       2 => TrendsScreen(plan: plan, weekPlan: weekPlan),
-      3 => const MealAnalysisScreen(),
+      3 => MealAnalysisScreen(
+        analyzer: widget.mealAnalyzer,
+        productService: widget.productService,
+        photoInput: widget.photoInput,
+        dailyConsumedKcal: dailyConsumedKcal,
+        onAddToDailyTotal: (kcal) {
+          setState(() => dailyConsumedKcal += kcal);
+        },
+      ),
       _ => TodayDashboard(
         selectedShift: selectedShift,
         selectedEnergy: selectedEnergy,

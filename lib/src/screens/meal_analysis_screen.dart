@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../models/meal_component.dart';
 import '../models/meal_analysis_request.dart';
 import '../models/meal_analysis_result.dart';
 import '../models/shift_fit_plan.dart';
 import '../services/meal_analyzer.dart';
+import '../services/meal_photo_input.dart';
 import '../services/open_food_facts_product_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/common/basic_widgets.dart';
@@ -16,22 +18,34 @@ import '../widgets/shared/shiftfit_top_bar.dart';
 import 'barcode_scanner_screen.dart';
 
 class MealAnalysisScreen extends StatefulWidget {
-  const MealAnalysisScreen({super.key});
+  MealAnalysisScreen({
+    super.key,
+    MealAnalyzer? analyzer,
+    ProductLookupService? productService,
+    MealPhotoInput? photoInput,
+    required this.dailyConsumedKcal,
+    required this.onAddToDailyTotal,
+  }) : analyzer = analyzer ?? const EdgeFunctionMealAnalyzer(),
+       productService = productService ?? const OpenFoodFactsProductService(),
+       photoInput = photoInput ?? DeviceMealPhotoInput();
+
+  final MealAnalyzer analyzer;
+  final ProductLookupService productService;
+  final MealPhotoInput photoInput;
+  final int dailyConsumedKcal;
+  final ValueChanged<int> onAddToDailyTotal;
 
   @override
   State<MealAnalysisScreen> createState() => _MealAnalysisScreenState();
 }
 
 class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
-  final ImagePicker picker = ImagePicker();
-  final MealAnalyzer analyzer = const EdgeFunctionMealAnalyzer();
-  final MealAnalyzer demoAnalyzer = const DemoMealAnalyzer();
-  final OpenFoodFactsProductService productService =
-      const OpenFoodFactsProductService();
   Uint8List? selectedImageBytes;
   MealAnalysisResult? result;
   bool isLoading = false;
   bool mealConfirmed = false;
+  bool addedToDailyTotal = false;
+  int? addedCaloriesSnapshot;
 
   Future<void> scanBarcode() async {
     final barcode = await Navigator.of(context).push<String>(
@@ -44,20 +58,18 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
     await lookupBarcode(barcode.trim());
   }
 
-  Future<void> runDemoBarcodeLookup() async {
-    await lookupBarcode('4008400402222');
-  }
-
   Future<void> lookupBarcode(String barcode) async {
     setState(() {
       selectedImageBytes = null;
       result = null;
       isLoading = true;
       mealConfirmed = false;
+      addedToDailyTotal = false;
+      addedCaloriesSnapshot = null;
     });
 
     try {
-      final lookupResult = await productService.lookupBarcode(barcode);
+      final lookupResult = await widget.productService.lookupBarcode(barcode);
       if (!mounted) {
         return;
       }
@@ -83,13 +95,9 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
   }
 
   Future<void> pickAndAnalyze(ImageSource source) async {
-    XFile? image;
+    MealPhotoSelection? selection;
     try {
-      image = await picker.pickImage(
-        source: source,
-        imageQuality: 82,
-        maxWidth: 1400,
-      );
+      selection = await widget.photoInput.pick(source);
     } on PlatformException catch (_) {
       if (!mounted) {
         return;
@@ -107,45 +115,28 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
       return;
     }
 
-    if (image == null) {
+    if (selection == null) {
       return;
     }
 
-    Uint8List? bytes;
-    try {
-      bytes = await image.readAsBytes();
-    } catch (_) {
-      bytes = null;
-    }
-
-    await runAnalysis(
-      MealAnalysisRequest(imageId: image.path, imageBytes: bytes),
-      bytes,
-    );
-  }
-
-  Future<void> runDemoAnalysis() async {
-    await runAnalysis(
-      const MealAnalysisRequest(imageId: 'manual-demo-analysis'),
-      null,
-      analyzerOverride: demoAnalyzer,
-    );
+    await runAnalysis(selection.request, selection.previewBytes);
   }
 
   Future<void> runAnalysis(
     MealAnalysisRequest request,
-    Uint8List? imageBytes, {
-    MealAnalyzer? analyzerOverride,
-  }) async {
+    Uint8List? imageBytes,
+  ) async {
     setState(() {
       selectedImageBytes = imageBytes;
       result = null;
       isLoading = true;
       mealConfirmed = false;
+      addedToDailyTotal = false;
+      addedCaloriesSnapshot = null;
     });
 
     try {
-      final analysisResult = await (analyzerOverride ?? analyzer).analyze(request);
+      final analysisResult = await widget.analyzer.analyze(request);
       if (!mounted) {
         return;
       }
@@ -179,24 +170,82 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
     );
   }
 
+  void addCurrentResultToDailyTotal() {
+    final currentResult = result;
+    if (currentResult == null || addedToDailyTotal) {
+      return;
+    }
+
+    widget.onAddToDailyTotal(currentResult.caloriesKcal);
+    setState(() {
+      addedToDailyTotal = true;
+      addedCaloriesSnapshot = currentResult.caloriesKcal;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${currentResult.caloriesKcal} kcal zu heute hinzugefügt.'),
+      ),
+    );
+  }
+
   Future<void> adjustMealPortion() async {
     final currentResult = result;
     if (currentResult == null) {
       return;
     }
 
-    final adjustedGrams = await showWeightAdjustmentSheet(context, currentResult);
-    if (adjustedGrams == null || adjustedGrams <= 0 || !mounted) {
+    final adjustment = await showWeightAdjustmentSheet(context, currentResult);
+    if (!mounted || adjustment == null) {
       return;
     }
 
+    MealAnalysisResult? updatedResult;
+
+    if (adjustment is int && adjustment > 0) {
+      updatedResult = currentResult.adjustedToGrams(adjustment);
+    } else if (adjustment is List<MealComponent>) {
+      updatedResult = currentResult.adjustedToItems(adjustment);
+    }
+
+    if (updatedResult == null) {
+      return;
+    }
+
+    final wasAdded = addedToDailyTotal;
+    final previousAddedCalories = addedCaloriesSnapshot;
+
     setState(() {
-      result = currentResult.adjustedToGrams(adjustedGrams);
+      result = updatedResult;
       mealConfirmed = true;
+      if (wasAdded) {
+        addedToDailyTotal = true;
+        addedCaloriesSnapshot = updatedResult!.caloriesKcal;
+      } else {
+        addedToDailyTotal = false;
+        addedCaloriesSnapshot = null;
+      }
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Portion auf $adjustedGrams g angepasst.')),
-    );
+
+    if (wasAdded && previousAddedCalories != null) {
+      final delta = updatedResult.caloriesKcal - previousAddedCalories;
+      if (delta != 0) {
+        widget.onAddToDailyTotal(delta);
+      }
+    }
+
+    if (adjustment is int && adjustment > 0) {
+      final message = wasAdded
+          ? 'Portion auf $adjustment g angepasst. Tageswert aktualisiert.'
+          : 'Portion auf $adjustment g angepasst.';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    } else if (adjustment is List<MealComponent>) {
+      final message = wasAdded
+          ? 'Bestandteile und Tageswert aktualisiert.'
+          : 'Bestandteile und Gramm angepasst.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    }
   }
 
   @override
@@ -211,7 +260,7 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
             focus: 'KI Kalorienanalyse',
             tagline: 'Foto aufnehmen, grob einschätzen, bewusst nachjustieren.',
             totalMinutes: 0,
-            intensity: 'Demo',
+            intensity: 'Live',
             recoveryScore: 78,
             accent: orange,
             sleepHint: '',
@@ -230,7 +279,7 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
               const SizedBox(height: 18),
               const Text(
                 'Mahlzeit scannen',
-                key: const ValueKey('analyse-hero-title'),
+                key: ValueKey('analyse-hero-title'),
                 style: TextStyle(
                   fontSize: 40,
                   height: 1,
@@ -307,36 +356,11 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  TextButton.icon(
-                    key: const ValueKey('analyse-demo-button'),
-                    onPressed: isLoading ? null : runDemoAnalysis,
-                    icon: const Icon(Icons.auto_awesome_rounded),
-                    label: const Text('Demo-Fotoanalyse'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: cyan,
-                      textStyle: const TextStyle(fontWeight: FontWeight.w900),
-                    ),
-                  ),
-                  TextButton.icon(
-                    key: const ValueKey('analyse-demo-barcode-button'),
-                    onPressed: isLoading ? null : runDemoBarcodeLookup,
-                    icon: const Icon(Icons.inventory_2_rounded),
-                    label: const Text('Demo-Barcode laden'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: lime,
-                      textStyle: const TextStyle(fontWeight: FontWeight.w900),
-                    ),
-                  ),
-                ],
-              ),
             ],
           ),
         ),
+        const SizedBox(height: 18),
+        MealDailyTotalCard(dailyConsumedKcal: widget.dailyConsumedKcal),
         const SizedBox(height: 18),
         MealPreviewCard(imageBytes: selectedImageBytes),
         const SizedBox(height: 18),
@@ -346,8 +370,10 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
           MealResultCard(
             result: result!,
             confirmed: mealConfirmed,
+            addedToDailyTotal: addedToDailyTotal,
             onConfirmed: confirmMealEstimate,
             onAdjustRequested: adjustMealPortion,
+            onAddToDailyRequested: addCurrentResultToDailyTotal,
           )
         else
           const MealEmptyCard(),
