@@ -93,12 +93,13 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('nav-Kcal')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('screen-kcal-tracker')), findsOneWidget);
-    expect(find.byKey(const ValueKey('kcal-tracker-hero-title')), findsOneWidget);
-    expect(find.text('Kalorien\ntracken'), findsOneWidget);
-    expect(find.byKey(const ValueKey('analyse-barcode-button')), findsOneWidget);
     expect(find.byKey(const ValueKey('analyse-daily-kcal-card')), findsOneWidget);
+    expect(find.byKey(const ValueKey('analyse-daily-kcal-total')), findsOneWidget);
+    expect(find.byKey(const ValueKey('analyse-camera-button')), findsOneWidget);
+    expect(find.byKey(const ValueKey('analyse-gallery-button')), findsOneWidget);
+    expect(find.byKey(const ValueKey('analyse-barcode-button')), findsOneWidget);
     expect(find.byKey(const ValueKey('kcal-product-search-card')), findsOneWidget);
-    expect(find.text('Barcode scannen'), findsOneWidget);
+    expect(find.text('Barcode'), findsOneWidget);
     expect(find.text('Demo-Fotoanalyse'), findsNothing);
     expect(find.text('Demo-Barcode laden'), findsNothing);
 
