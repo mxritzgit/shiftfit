@@ -228,11 +228,38 @@ void main() {
       find.byKey(const ValueKey('kcal-product-search-input')),
       'Dr Oetker',
     );
-    await tester.pump(const Duration(milliseconds: 450));
+    await tester.pump(const Duration(milliseconds: 650));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('kcal-product-suggestion-0')), findsOneWidget);
     expect(find.textContaining('Dr. Oetker'), findsWidgets);
+  });
+
+  testWidgets('Kcal live product search waits through transient failures', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      ShiftFitApp(productService: _FlakyProductLookupService()),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('nav-Kcal')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const ValueKey('kcal-product-search-input')),
+      'Dr Oetker',
+    );
+    await tester.pump(const Duration(milliseconds: 650));
+    await tester.pump(const Duration(milliseconds: 20));
+
+    expect(find.text('OpenFoodFacts-Suche gerade nicht erreichbar.'), findsNothing);
+
+    await tester.pump(const Duration(milliseconds: 900));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('kcal-product-suggestion-0')), findsOneWidget);
+    expect(find.textContaining('Dr. Oetker'), findsWidgets);
+    expect(find.text('OpenFoodFacts-Suche gerade nicht erreichbar.'), findsNothing);
   });
 
   testWidgets('Week planner updates a day shift and summaries', (
@@ -328,14 +355,34 @@ class _FakeProductLookupService implements ProductLookupService {
   @override
   Future<List<ProductSearchResult>> searchProducts(String query) async {
     await Future<void>.delayed(const Duration(milliseconds: 10));
-    return <ProductSearchResult>[
-      ProductSearchResult(
-        code: '4001724012345',
-        title: 'Die Ofenfrische Salami · Dr. Oetker',
-        subtitle: 'Dr. Oetker · 390 g · 252 kcal / 100 g',
-        kcalPer100G: 252,
-        result: salamiPizza,
-      ),
-    ];
+    return productSuggestions;
+  }
+
+  static List<ProductSearchResult> get productSuggestions =>
+      <ProductSearchResult>[
+        ProductSearchResult(
+          code: '4001724012345',
+          title: 'Die Ofenfrische Salami · Dr. Oetker',
+          subtitle: 'Dr. Oetker · 390 g · 252 kcal / 100 g',
+          kcalPer100G: 252,
+          result: salamiPizza,
+        ),
+      ];
+}
+
+class _FlakyProductLookupService implements ProductLookupService {
+  int searchAttempts = 0;
+
+  @override
+  Future<MealAnalysisResult> lookupBarcode(String barcode) async =>
+      _FakeProductLookupService.salamiPizza;
+
+  @override
+  Future<List<ProductSearchResult>> searchProducts(String query) async {
+    searchAttempts++;
+    if (searchAttempts == 1) {
+      throw Exception('temporary OpenFoodFacts failure');
+    }
+    return _FakeProductLookupService.productSuggestions;
   }
 }

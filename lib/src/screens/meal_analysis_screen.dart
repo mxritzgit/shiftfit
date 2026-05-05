@@ -51,6 +51,8 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
   List<ProductSearchResult> productSuggestions = const <ProductSearchResult>[];
   bool isSearchingProducts = false;
   String? productSearchMessage;
+  static const Duration _productSearchDebounceDelay = Duration(milliseconds: 600);
+  static const Duration _productSearchRetryDelay = Duration(milliseconds: 700);
 
   @override
   void dispose() {
@@ -121,12 +123,15 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
     }
 
     productSearchDebounce = Timer(
-      const Duration(milliseconds: 350),
-      () => searchProducts(queryOverride: query),
+      _productSearchDebounceDelay,
+      () => searchProducts(queryOverride: query, showTransientError: false),
     );
   }
 
-  Future<void> searchProducts({String? queryOverride}) async {
+  Future<void> searchProducts({
+    String? queryOverride,
+    bool showTransientError = true,
+  }) async {
     productSearchDebounce?.cancel();
     final query = (queryOverride ?? searchController.text).trim();
     if (query.length < 2) {
@@ -142,11 +147,10 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
     setState(() {
       isSearchingProducts = true;
       productSearchMessage = null;
-      productSuggestions = const <ProductSearchResult>[];
     });
 
     try {
-      final suggestions = await widget.productService.searchProducts(query);
+      final suggestions = await searchProductsWithRetry(query, requestId);
       if (!mounted) {
         return;
       }
@@ -175,9 +179,32 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
 
       setState(() {
         isSearchingProducts = false;
-        productSearchMessage = 'OpenFoodFacts-Suche gerade nicht erreichbar.';
+        productSearchMessage = showTransientError
+            ? 'OpenFoodFacts-Suche gerade nicht erreichbar.'
+            : null;
       });
     }
+  }
+
+  Future<List<ProductSearchResult>> searchProductsWithRetry(
+    String query,
+    int requestId,
+  ) async {
+    Object? lastError;
+
+    for (var attempt = 0; attempt < 2; attempt++) {
+      try {
+        return await widget.productService.searchProducts(query);
+      } catch (error) {
+        lastError = error;
+        if (attempt == 1 || requestId != productSearchRequestId) {
+          break;
+        }
+        await Future<void>.delayed(_productSearchRetryDelay);
+      }
+    }
+
+    throw lastError ?? Exception('OpenFoodFacts search failed.');
   }
 
   void selectProduct(ProductSearchResult product) {
