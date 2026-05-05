@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -45,12 +46,15 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
   bool addedToDailyTotal = false;
   int? addedCaloriesSnapshot;
   final TextEditingController searchController = TextEditingController();
+  Timer? productSearchDebounce;
+  int productSearchRequestId = 0;
   List<ProductSearchResult> productSuggestions = const <ProductSearchResult>[];
   bool isSearchingProducts = false;
   String? productSearchMessage;
 
   @override
   void dispose() {
+    productSearchDebounce?.cancel();
     searchController.dispose();
     super.dispose();
   }
@@ -102,8 +106,29 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
     }
   }
 
-  Future<void> searchProducts() async {
-    final query = searchController.text.trim();
+  void scheduleProductSearch(String value) {
+    final query = value.trim();
+    productSearchDebounce?.cancel();
+
+    if (query.length < 2) {
+      productSearchRequestId++;
+      setState(() {
+        isSearchingProducts = false;
+        productSuggestions = const <ProductSearchResult>[];
+        productSearchMessage = null;
+      });
+      return;
+    }
+
+    productSearchDebounce = Timer(
+      const Duration(milliseconds: 350),
+      () => searchProducts(queryOverride: query),
+    );
+  }
+
+  Future<void> searchProducts({String? queryOverride}) async {
+    productSearchDebounce?.cancel();
+    final query = (queryOverride ?? searchController.text).trim();
     if (query.length < 2) {
       setState(() {
         productSuggestions = const <ProductSearchResult>[];
@@ -111,6 +136,8 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
       });
       return;
     }
+
+    final requestId = ++productSearchRequestId;
 
     setState(() {
       isSearchingProducts = true;
@@ -124,6 +151,11 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
         return;
       }
 
+      if (requestId != productSearchRequestId ||
+          query != searchController.text.trim()) {
+        return;
+      }
+
       setState(() {
         productSuggestions = suggestions;
         isSearchingProducts = false;
@@ -133,6 +165,11 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
       });
     } catch (_) {
       if (!mounted) {
+        return;
+      }
+
+      if (requestId != productSearchRequestId ||
+          query != searchController.text.trim()) {
         return;
       }
 
@@ -321,6 +358,7 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
             key: const ValueKey('kcal-product-search-input'),
             controller: searchController,
             textInputAction: TextInputAction.search,
+            onChanged: scheduleProductSearch,
             onSubmitted: (_) => searchProducts(),
             style: const TextStyle(fontWeight: FontWeight.w800),
             decoration: InputDecoration(

@@ -214,6 +214,27 @@ void main() {
     );
   });
 
+  testWidgets('Kcal product search shows suggestions while typing', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      ShiftFitApp(productService: _FakeProductLookupService()),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('nav-Kcal')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const ValueKey('kcal-product-search-input')),
+      'Dr Oetker',
+    );
+    await tester.pump(const Duration(milliseconds: 450));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('kcal-product-suggestion-0')), findsOneWidget);
+    expect(find.textContaining('Dr. Oetker'), findsWidgets);
+  });
+
   testWidgets('Week planner updates a day shift and summaries', (
     WidgetTester tester,
   ) async {
