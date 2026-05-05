@@ -228,7 +228,7 @@ void main() {
       find.byKey(const ValueKey('kcal-product-search-input')),
       'Dr Oetker',
     );
-    await tester.pump(const Duration(milliseconds: 950));
+    await tester.pump(const Duration(milliseconds: 1100));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('kcal-product-suggestion-0')), findsOneWidget);
@@ -249,12 +249,12 @@ void main() {
       find.byKey(const ValueKey('kcal-product-search-input')),
       'Dr Oetker',
     );
-    await tester.pump(const Duration(milliseconds: 950));
+    await tester.pump(const Duration(milliseconds: 1100));
     await tester.pump(const Duration(milliseconds: 20));
 
     expect(find.text('OpenFoodFacts-Suche gerade nicht erreichbar.'), findsNothing);
 
-    await tester.pump(const Duration(milliseconds: 2600));
+    await tester.pump(const Duration(milliseconds: 3600));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('kcal-product-suggestion-0')), findsOneWidget);
@@ -276,7 +276,7 @@ void main() {
       find.byKey(const ValueKey('kcal-product-search-input')),
       'Wagner Salami',
     );
-    await tester.pump(const Duration(milliseconds: 950));
+    await tester.pump(const Duration(milliseconds: 1100));
     await tester.pump(const Duration(milliseconds: 20));
 
     expect(
@@ -284,7 +284,7 @@ void main() {
       findsNothing,
     );
 
-    await tester.pump(const Duration(milliseconds: 2600));
+    await tester.pump(const Duration(milliseconds: 3600));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('kcal-product-suggestion-0')), findsOneWidget);

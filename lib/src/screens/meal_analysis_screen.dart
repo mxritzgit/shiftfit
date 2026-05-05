@@ -53,9 +53,9 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
   List<ProductSearchResult> productSuggestions = const <ProductSearchResult>[];
   bool isSearchingProducts = false;
   String? productSearchMessage;
-  static const Duration _productSearchDebounceDelay = Duration(milliseconds: 900);
-  static const Duration _productSearchRetryDelay = Duration(milliseconds: 1200);
-  static const int _productSearchMaxAttempts = 3;
+  static const Duration _productSearchDebounceDelay = Duration(milliseconds: 1000);
+  static const Duration _productSearchRetryDelay = Duration(milliseconds: 1500);
+  static const int _productSearchMaxAttempts = 6;
 
   @override
   void dispose() {

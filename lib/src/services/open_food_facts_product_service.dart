@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -57,7 +58,10 @@ class OpenFoodFactsProductService implements ProductLookupService {
   const OpenFoodFactsProductService();
 
   static const String _productBaseUrl = 'https://world.openfoodfacts.org/api/v2/product';
-  static const String _searchBaseUrl = 'https://world.openfoodfacts.org/cgi/search.pl';
+  static const List<String> _searchBaseUrls = <String>[
+    'https://de.openfoodfacts.org/cgi/search.pl',
+    'https://world.openfoodfacts.org/cgi/search.pl',
+  ];
   static const String _fields = 'code,product_name,generic_name,brands,quantity,serving_size,'
       'serving_quantity,nutriments,image_front_small_url,image_front_url,'
       'image_small_url,image_url';
@@ -102,45 +106,76 @@ class OpenFoodFactsProductService implements ProductLookupService {
       return const <ProductSearchResult>[];
     }
 
-    final client = HttpClient();
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 8);
     try {
-      final uri = Uri.parse(_searchBaseUrl).replace(
-        queryParameters: <String, String>{
-          'search_terms': cleanQuery,
-          'search_simple': '1',
-          'action': 'process',
-          'json': '1',
-          'page_size': '12',
-          'fields': _fields,
-        },
-      );
-      final request = await client.getUrl(uri);
-      _setUserAgent(request);
-      final response = await request.close();
-      final body = await response.transform(utf8.decoder).join();
+      Object? lastError;
 
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw HttpException('OpenFoodFacts search failed: $body');
+      for (final baseUrl in _searchBaseUrls) {
+        try {
+          final results = await _searchProductsFromEndpoint(
+            client: client,
+            baseUrl: baseUrl,
+            query: cleanQuery,
+          );
+          if (results.isNotEmpty) {
+            return results;
+          }
+        } catch (error) {
+          lastError = error;
+        }
       }
 
-      final decoded = jsonDecode(body) as Map<String, dynamic>;
-      final products = decoded['products'];
-      if (products is! List) {
-        return const <ProductSearchResult>[];
+      if (lastError != null) {
+        throw lastError;
       }
 
-      return products
-          .whereType<Map>()
-          .map(
-            (product) => ProductSearchResult.fromOpenFoodFacts(
-              product.map((key, value) => MapEntry(key.toString(), value)),
-            ),
-          )
-          .where((product) => product.title.trim().isNotEmpty)
-          .toList(growable: false);
+      return const <ProductSearchResult>[];
     } finally {
       client.close(force: true);
     }
+  }
+
+  static Future<List<ProductSearchResult>> _searchProductsFromEndpoint({
+    required HttpClient client,
+    required String baseUrl,
+    required String query,
+  }) async {
+    final uri = Uri.parse(baseUrl).replace(
+      queryParameters: <String, String>{
+        'search_terms': query,
+        'search_simple': '1',
+        'action': 'process',
+        'json': '1',
+        'page_size': '12',
+        'fields': _fields,
+      },
+    );
+    final request = await client.getUrl(uri).timeout(const Duration(seconds: 8));
+    _setUserAgent(request);
+    final response = await request.close().timeout(const Duration(seconds: 12));
+    final body = await response.transform(utf8.decoder).join().timeout(
+      const Duration(seconds: 12),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw HttpException('OpenFoodFacts search failed: ${response.statusCode}');
+    }
+
+    final decoded = jsonDecode(body) as Map<String, dynamic>;
+    final products = decoded['products'];
+    if (products is! List) {
+      return const <ProductSearchResult>[];
+    }
+
+    return products
+        .whereType<Map>()
+        .map(
+          (product) => ProductSearchResult.fromOpenFoodFacts(
+            product.map((key, value) => MapEntry(key.toString(), value)),
+          ),
+        )
+        .where((product) => product.title.trim().isNotEmpty)
+        .toList(growable: false);
   }
 
   static void _setUserAgent(HttpClientRequest request) {
