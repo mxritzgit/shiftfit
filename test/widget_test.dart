@@ -8,6 +8,7 @@ import 'package:shiftfit/src/models/meal_analysis_result.dart';
 import 'package:shiftfit/src/models/meal_component.dart';
 import 'package:shiftfit/src/services/meal_analyzer.dart';
 import 'package:shiftfit/src/services/meal_photo_input.dart';
+import 'package:shiftfit/src/services/open_food_facts_product_service.dart';
 
 void main() {
   testWidgets('ShiftFit dashboard shows the expanded start experience', (
@@ -70,7 +71,7 @@ void main() {
     expect(find.textContaining('Warm-up'), findsWidgets);
   });
 
-  testWidgets('Bottom navigation switches between Heute, Woche, Trends and Analyse', (
+  testWidgets('Bottom navigation switches between Heute, Woche, Trends and Kcal', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ShiftFitApp());
@@ -89,13 +90,14 @@ void main() {
     expect(find.text('Readiness bleibt\nsteuerbar.'), findsOneWidget);
     expect(find.text('Readiness Verlauf'), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('nav-Analyse')));
+    await tester.tap(find.byKey(const ValueKey('nav-Kcal')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('screen-analyse')), findsOneWidget);
-    expect(find.byKey(const ValueKey('analyse-hero-title')), findsOneWidget);
-    expect(find.text('Mahlzeit scannen'), findsOneWidget);
+    expect(find.byKey(const ValueKey('screen-kcal-tracker')), findsOneWidget);
+    expect(find.byKey(const ValueKey('kcal-tracker-hero-title')), findsOneWidget);
+    expect(find.text('Kalorien\ntracken'), findsOneWidget);
     expect(find.byKey(const ValueKey('analyse-barcode-button')), findsOneWidget);
     expect(find.byKey(const ValueKey('analyse-daily-kcal-card')), findsOneWidget);
+    expect(find.byKey(const ValueKey('kcal-product-search-card')), findsOneWidget);
     expect(find.text('Barcode scannen'), findsOneWidget);
     expect(find.text('Demo-Fotoanalyse'), findsNothing);
     expect(find.text('Demo-Barcode laden'), findsNothing);
@@ -106,7 +108,7 @@ void main() {
     expect(find.text('Train smart.\nRecover better.'), findsOneWidget);
   });
 
-  testWidgets('Analyse tab supports deterministic itemized photo results and daily kcal adding', (
+  testWidgets('Kcal tab supports deterministic itemized photo results and daily kcal adding', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -116,7 +118,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byKey(const ValueKey('nav-Analyse')));
+    await tester.tap(find.byKey(const ValueKey('nav-Kcal')));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('analyse-daily-kcal-total')), findsOneWidget);
@@ -167,6 +169,45 @@ void main() {
       find.descendant(
         of: find.byKey(const ValueKey('analyse-daily-kcal-card')),
         matching: find.text('815 kcal'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('Kcal tab searches OpenFoodFacts products and adds selected item', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      ShiftFitApp(productService: _FakeProductLookupService()),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('nav-Kcal')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const ValueKey('kcal-product-search-input')),
+      'Dr Oetker Salami',
+    );
+    await tester.tap(find.byKey(const ValueKey('kcal-product-search-button')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Dr. Oetker'), findsWidgets);
+    expect(find.byKey(const ValueKey('kcal-product-suggestion-0')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('kcal-product-suggestion-0')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('analyse-result-card')), findsOneWidget);
+    expect(find.textContaining('Die Ofenfrische Salami'), findsWidgets);
+    expect(find.text('252 kcal'), findsWidgets);
+
+    await tester.ensureVisible(find.byKey(const ValueKey('analyse-add-daily-button')));
+    await tester.tap(find.byKey(const ValueKey('analyse-add-daily-button')));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('analyse-daily-kcal-card')),
+        matching: find.text('252 kcal'),
       ),
       findsOneWidget,
     );
@@ -238,5 +279,41 @@ class _FakeMealPhotoInput implements MealPhotoInput {
       request: MealAnalysisRequest(imageId: 'test-photo'),
       previewBytes: null,
     );
+  }
+}
+
+class _FakeProductLookupService implements ProductLookupService {
+  static final MealAnalysisResult salamiPizza = MealAnalysisResult.fromOpenFoodFacts(
+    const <String, dynamic>{
+      'code': '4001724012345',
+      'product_name': 'Die Ofenfrische Salami',
+      'brands': 'Dr. Oetker',
+      'quantity': '390 g',
+      'serving_quantity': 100,
+      'nutriments': <String, dynamic>{
+        'energy-kcal_100g': 252,
+        'proteins_100g': 10,
+        'carbohydrates_100g': 31,
+        'fat_100g': 9,
+      },
+    },
+    '4001724012345',
+  );
+
+  @override
+  Future<MealAnalysisResult> lookupBarcode(String barcode) async => salamiPizza;
+
+  @override
+  Future<List<ProductSearchResult>> searchProducts(String query) async {
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    return <ProductSearchResult>[
+      ProductSearchResult(
+        code: '4001724012345',
+        title: 'Die Ofenfrische Salami · Dr. Oetker',
+        subtitle: 'Dr. Oetker · 390 g · 252 kcal / 100 g',
+        kcalPer100G: 252,
+        result: salamiPizza,
+      ),
+    ];
   }
 }

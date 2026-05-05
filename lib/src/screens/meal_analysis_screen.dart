@@ -46,6 +46,16 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
   bool mealConfirmed = false;
   bool addedToDailyTotal = false;
   int? addedCaloriesSnapshot;
+  final TextEditingController searchController = TextEditingController();
+  List<ProductSearchResult> productSuggestions = const <ProductSearchResult>[];
+  bool isSearchingProducts = false;
+  String? productSearchMessage;
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
 
   Future<void> scanBarcode() async {
     final barcode = await Navigator.of(context).push<String>(
@@ -92,6 +102,58 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
         ),
       );
     }
+  }
+
+  Future<void> searchProducts() async {
+    final query = searchController.text.trim();
+    if (query.length < 2) {
+      setState(() {
+        productSuggestions = const <ProductSearchResult>[];
+        productSearchMessage = 'Gib mindestens 2 Zeichen ein, z.B. Dr Oetker Salami.';
+      });
+      return;
+    }
+
+    setState(() {
+      isSearchingProducts = true;
+      productSearchMessage = null;
+      productSuggestions = const <ProductSearchResult>[];
+    });
+
+    try {
+      final suggestions = await widget.productService.searchProducts(query);
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        productSuggestions = suggestions;
+        isSearchingProducts = false;
+        productSearchMessage = suggestions.isEmpty
+            ? 'Keine passenden Produkte gefunden. Versuche Marke + Produktname.'
+            : null;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        isSearchingProducts = false;
+        productSearchMessage = 'OpenFoodFacts-Suche gerade nicht erreichbar.';
+      });
+    }
+  }
+
+  void selectProduct(ProductSearchResult product) {
+    setState(() {
+      selectedImageBytes = null;
+      result = product.result;
+      mealConfirmed = false;
+      addedToDailyTotal = false;
+      addedCaloriesSnapshot = null;
+      productSearchMessage = '${product.title} ausgewählt. Prüfe die Gramm und füge es dann zu heute hinzu.';
+    });
   }
 
   Future<void> pickAndAnalyze(ImageSource source) async {
@@ -248,21 +310,80 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
     }
   }
 
+  Widget buildProductSearchCard() {
+    return AppCard(
+      key: const ValueKey('kcal-product-search-card'),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionHeader(title: 'Produktsuche', action: 'OpenFoodFacts'),
+          const SizedBox(height: 12),
+          TextField(
+            key: const ValueKey('kcal-product-search-input'),
+            controller: searchController,
+            textInputAction: TextInputAction.search,
+            onSubmitted: (_) => searchProducts(),
+            style: const TextStyle(fontWeight: FontWeight.w800),
+            decoration: InputDecoration(
+              hintText: 'z.B. Dr Oetker Salami',
+              prefixIcon: const Icon(Icons.search_rounded),
+              suffixIcon: IconButton(
+                key: const ValueKey('kcal-product-search-button'),
+                onPressed: isSearchingProducts ? null : searchProducts,
+                icon: isSearchingProducts
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.arrow_forward_rounded),
+              ),
+            ),
+          ),
+          if (productSearchMessage != null) ...[
+            const SizedBox(height: 10),
+            Text(
+              productSearchMessage!,
+              key: const ValueKey('kcal-product-search-message'),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.64),
+                fontWeight: FontWeight.w700,
+                height: 1.3,
+              ),
+            ),
+          ],
+          if (productSuggestions.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            for (var index = 0; index < productSuggestions.length; index++) ...[
+              ProductSuggestionTile(
+                key: ValueKey('kcal-product-suggestion-$index'),
+                product: productSuggestions[index],
+                onTap: () => selectProduct(productSuggestions[index]),
+              ),
+              if (index != productSuggestions.length - 1) const SizedBox(height: 10),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
-      key: const ValueKey('screen-analyse'),
+      key: const ValueKey('screen-kcal-tracker'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const ShiftFitTopBar(
           plan: ShiftFitPlan(
-            recommendation: 'Meal AI',
-            focus: 'KI Kalorienanalyse',
-            tagline: 'Foto aufnehmen, grob einschätzen, bewusst nachjustieren.',
+            recommendation: 'Kcal Tracker',
+            focus: 'Suchen, scannen, Foto-KI',
+            tagline: 'Produkte finden, Portion anpassen und sauber zu heute hinzufügen.',
             totalMinutes: 0,
             intensity: 'Live',
             recoveryScore: 78,
-            accent: orange,
+            accent: lime,
             sleepHint: '',
             fuelHint: '',
             breathHint: '',
@@ -275,11 +396,11 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const StatusPill(label: 'Meal AI', color: orange),
+              const StatusPill(label: 'Kcal Tracker', color: lime),
               const SizedBox(height: 18),
               const Text(
-                'Mahlzeit scannen',
-                key: ValueKey('analyse-hero-title'),
+                'Kalorien\ntracken',
+                key: ValueKey('kcal-tracker-hero-title'),
                 style: TextStyle(
                   fontSize: 40,
                   height: 1,
@@ -289,7 +410,7 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                'Foto aufnehmen für lose Mahlzeiten oder Barcode scannen für verpackte Produkte. Barcodes werden über OpenFoodFacts mit echten Nährwerten pro 100 g geladen.',
+                'Suche Produkte über OpenFoodFacts, scanne einen Barcode oder nutze Foto-KI für lose Mahlzeiten. Wenn mehrere Lebensmittel erkannt werden, kannst du jedes einzeln in Gramm anpassen.',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.64),
                   height: 1.35,
@@ -362,6 +483,8 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
         const SizedBox(height: 18),
         MealDailyTotalCard(dailyConsumedKcal: widget.dailyConsumedKcal),
         const SizedBox(height: 18),
+        buildProductSearchCard(),
+        const SizedBox(height: 18),
         MealPreviewCard(imageBytes: selectedImageBytes),
         const SizedBox(height: 18),
         if (isLoading)
@@ -378,6 +501,86 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
         else
           const MealEmptyCard(),
       ],
+    );
+  }
+}
+
+class ProductSuggestionTile extends StatelessWidget {
+  const ProductSuggestionTile({
+    super.key,
+    required this.product,
+    required this.onTap,
+  });
+
+  final ProductSearchResult product;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.22),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: product.imageUrl == null
+                  ? Icon(
+                      Icons.fastfood_rounded,
+                      color: Colors.white.withValues(alpha: 0.38),
+                    )
+                  : Image.network(
+                      product.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Icon(
+                        Icons.fastfood_rounded,
+                        color: Colors.white.withValues(alpha: 0.38),
+                      ),
+                    ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    product.subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.58),
+                      fontWeight: FontWeight.w700,
+                      height: 1.2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Icon(Icons.add_circle_rounded, color: lime),
+          ],
+        ),
+      ),
     );
   }
 }

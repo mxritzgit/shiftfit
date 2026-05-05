@@ -131,7 +131,7 @@ class MealEmptyCard extends StatelessWidget {
           const SizedBox(width: 14),
           Expanded(
             child: Text(
-              'Starte eine Fotoanalyse oder scanne einen Barcode. Verpackte Produkte nutzt ShiftFit über OpenFoodFacts mit kcal pro 100 g.',
+              'Suche ein Produkt, scanne einen Barcode oder starte die Foto-KI. Danach Gewicht prüfen und zur Tagesbilanz hinzufügen.',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.68),
                 height: 1.35,
