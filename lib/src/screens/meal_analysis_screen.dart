@@ -48,11 +48,14 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
   final TextEditingController searchController = TextEditingController();
   Timer? productSearchDebounce;
   int productSearchRequestId = 0;
+  final Map<String, List<ProductSearchResult>> productSearchCache =
+      <String, List<ProductSearchResult>>{};
   List<ProductSearchResult> productSuggestions = const <ProductSearchResult>[];
   bool isSearchingProducts = false;
   String? productSearchMessage;
-  static const Duration _productSearchDebounceDelay = Duration(milliseconds: 600);
-  static const Duration _productSearchRetryDelay = Duration(milliseconds: 700);
+  static const Duration _productSearchDebounceDelay = Duration(milliseconds: 900);
+  static const Duration _productSearchRetryDelay = Duration(milliseconds: 1200);
+  static const int _productSearchMaxAttempts = 3;
 
   @override
   void dispose() {
@@ -142,6 +145,20 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
       return;
     }
 
+    final cacheKey = normalizeProductSearchQuery(query);
+    final cachedSuggestions = productSearchCache[cacheKey];
+    if (cachedSuggestions != null) {
+      productSearchRequestId++;
+      setState(() {
+        productSuggestions = cachedSuggestions;
+        isSearchingProducts = false;
+        productSearchMessage = cachedSuggestions.isEmpty
+            ? 'Keine passenden Produkte gefunden. Versuche Marke + Produktname.'
+            : null;
+      });
+      return;
+    }
+
     final requestId = ++productSearchRequestId;
 
     setState(() {
@@ -191,20 +208,38 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
     int requestId,
   ) async {
     Object? lastError;
+    List<ProductSearchResult> lastSuggestions = const <ProductSearchResult>[];
 
-    for (var attempt = 0; attempt < 2; attempt++) {
+    for (var attempt = 0; attempt < _productSearchMaxAttempts; attempt++) {
       try {
-        return await widget.productService.searchProducts(query);
+        final suggestions = await widget.productService.searchProducts(query);
+        lastError = null;
+        if (suggestions.isNotEmpty) {
+          productSearchCache[normalizeProductSearchQuery(query)] = suggestions;
+          return suggestions;
+        }
+        lastSuggestions = suggestions;
       } catch (error) {
         lastError = error;
-        if (attempt == 1 || requestId != productSearchRequestId) {
-          break;
-        }
-        await Future<void>.delayed(_productSearchRetryDelay);
       }
+
+      if (attempt == _productSearchMaxAttempts - 1 ||
+          requestId != productSearchRequestId) {
+        break;
+      }
+
+      await Future<void>.delayed(_productSearchRetryDelay);
     }
 
-    throw lastError ?? Exception('OpenFoodFacts search failed.');
+    if (lastError == null) {
+      return lastSuggestions;
+    }
+
+    throw lastError;
+  }
+
+  static String normalizeProductSearchQuery(String query) {
+    return query.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
   }
 
   void selectProduct(ProductSearchResult product) {

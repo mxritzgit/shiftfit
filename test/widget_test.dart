@@ -228,7 +228,7 @@ void main() {
       find.byKey(const ValueKey('kcal-product-search-input')),
       'Dr Oetker',
     );
-    await tester.pump(const Duration(milliseconds: 650));
+    await tester.pump(const Duration(milliseconds: 950));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('kcal-product-suggestion-0')), findsOneWidget);
@@ -249,17 +249,50 @@ void main() {
       find.byKey(const ValueKey('kcal-product-search-input')),
       'Dr Oetker',
     );
-    await tester.pump(const Duration(milliseconds: 650));
+    await tester.pump(const Duration(milliseconds: 950));
     await tester.pump(const Duration(milliseconds: 20));
 
     expect(find.text('OpenFoodFacts-Suche gerade nicht erreichbar.'), findsNothing);
 
-    await tester.pump(const Duration(milliseconds: 900));
+    await tester.pump(const Duration(milliseconds: 2600));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('kcal-product-suggestion-0')), findsOneWidget);
     expect(find.textContaining('Dr. Oetker'), findsWidgets);
     expect(find.text('OpenFoodFacts-Suche gerade nicht erreichbar.'), findsNothing);
+  });
+
+  testWidgets('Kcal live product search retries temporary empty results', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      ShiftFitApp(productService: _EmptyThenSuccessProductLookupService()),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('nav-Kcal')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const ValueKey('kcal-product-search-input')),
+      'Wagner Salami',
+    );
+    await tester.pump(const Duration(milliseconds: 950));
+    await tester.pump(const Duration(milliseconds: 20));
+
+    expect(
+      find.text('Keine passenden Produkte gefunden. Versuche Marke + Produktname.'),
+      findsNothing,
+    );
+
+    await tester.pump(const Duration(milliseconds: 2600));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('kcal-product-suggestion-0')), findsOneWidget);
+    expect(find.textContaining('Dr. Oetker'), findsWidgets);
+    expect(
+      find.text('Keine passenden Produkte gefunden. Versuche Marke + Produktname.'),
+      findsNothing,
+    );
   });
 
   testWidgets('Week planner updates a day shift and summaries', (
@@ -380,8 +413,25 @@ class _FlakyProductLookupService implements ProductLookupService {
   @override
   Future<List<ProductSearchResult>> searchProducts(String query) async {
     searchAttempts++;
-    if (searchAttempts == 1) {
+    if (searchAttempts <= 2) {
       throw Exception('temporary OpenFoodFacts failure');
+    }
+    return _FakeProductLookupService.productSuggestions;
+  }
+}
+
+class _EmptyThenSuccessProductLookupService implements ProductLookupService {
+  int searchAttempts = 0;
+
+  @override
+  Future<MealAnalysisResult> lookupBarcode(String barcode) async =>
+      _FakeProductLookupService.salamiPizza;
+
+  @override
+  Future<List<ProductSearchResult>> searchProducts(String query) async {
+    searchAttempts++;
+    if (searchAttempts <= 2) {
+      return const <ProductSearchResult>[];
     }
     return _FakeProductLookupService.productSuggestions;
   }
