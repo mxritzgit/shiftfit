@@ -971,17 +971,19 @@ class _MealItemAdjustmentSheet extends StatefulWidget {
 }
 
 class _MealItemAdjustmentSheetState extends State<_MealItemAdjustmentSheet> {
+  late final List<MealComponent> _items;
   late final List<TextEditingController> _controllers;
-  late List<int> _grams;
+  late final List<int> _grams;
   Set<int> _removed = const <int>{};
 
   @override
   void initState() {
     super.initState();
-    _grams = widget.result.items.map((item) => item.grams).toList(growable: true);
+    _items = [...widget.result.items];
+    _grams = _items.map((item) => item.grams).toList(growable: true);
     _controllers = _grams
         .map((grams) => TextEditingController(text: grams.toString()))
-        .toList(growable: false);
+        .toList(growable: true);
   }
 
   @override
@@ -1000,8 +1002,26 @@ class _MealItemAdjustmentSheetState extends State<_MealItemAdjustmentSheet> {
     setState(() => _removed = {..._removed}..remove(index));
   }
 
+  void _appendItem(MealComponent item) {
+    setState(() {
+      _items.add(item);
+      _grams.add(item.grams);
+      _controllers.add(TextEditingController(text: item.grams.toString()));
+    });
+  }
+
+  Future<void> _addItemDialog() async {
+    final newItem = await showDialog<MealComponent>(
+      context: context,
+      builder: (context) => const _AddItemDialog(),
+    );
+    if (newItem != null) {
+      _appendItem(newItem);
+    }
+  }
+
   int _itemKcalFor(int index) {
-    final item = widget.result.items[index];
+    final item = _items[index];
     final grams = _grams[index];
     final per100 = item.kcalPer100G;
     if (per100 != null && per100 > 0) {
@@ -1013,12 +1033,22 @@ class _MealItemAdjustmentSheetState extends State<_MealItemAdjustmentSheet> {
     return item.caloriesKcal;
   }
 
+  String _statusLine(int addedCount) {
+    final parts = <String>[];
+    if (_removed.isNotEmpty) parts.add('${_removed.length} entfernt');
+    if (addedCount > 0) parts.add('$addedCount manuell ergänzt');
+    if (parts.isEmpty) {
+      return 'Pro Lebensmittel das Gewicht anpassen oder mit X entfernen.';
+    }
+    return parts.join(' · ');
+  }
+
   @override
   Widget build(BuildContext context) {
     final adjustedItems = <MealComponent>[
-      for (var index = 0; index < widget.result.items.length; index++)
+      for (var index = 0; index < _items.length; index++)
         if (!_removed.contains(index))
-          widget.result.items[index].adjustedToGrams(_grams[index]),
+          _items[index].adjustedToGrams(_grams[index]),
     ];
     final totalGrams = adjustedItems.fold<int>(
       0,
@@ -1029,10 +1059,11 @@ class _MealItemAdjustmentSheetState extends State<_MealItemAdjustmentSheet> {
       (sum, item) => sum + item.caloriesKcal,
     );
     final invalidGrams = [
-      for (var index = 0; index < widget.result.items.length; index++)
+      for (var index = 0; index < _items.length; index++)
         if (!_removed.contains(index) && _grams[index] <= 0) index,
     ];
     final canSave = adjustedItems.isNotEmpty && invalidGrams.isEmpty;
+    final addedCount = _items.length - widget.result.items.length;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -1056,9 +1087,7 @@ class _MealItemAdjustmentSheetState extends State<_MealItemAdjustmentSheet> {
             ),
             const SizedBox(height: 6),
             Text(
-              _removed.isEmpty
-                  ? 'Pro Lebensmittel das Gewicht anpassen oder mit X komplett entfernen.'
-                  : '${_removed.length} entfernt — Tap auf "Wiederherstellen" um zurückzuholen.',
+              _statusLine(addedCount),
               style: const TextStyle(
                 color: textMuted,
                 fontSize: 13,
@@ -1067,18 +1096,16 @@ class _MealItemAdjustmentSheetState extends State<_MealItemAdjustmentSheet> {
               ),
             ),
             const SizedBox(height: 18),
-            for (var index = 0;
-                index < widget.result.items.length;
-                index++) ...[
+            for (var index = 0; index < _items.length; index++) ...[
               if (_removed.contains(index))
                 _RemovedItemCard(
-                  name: widget.result.items[index].name,
+                  name: _items[index].name,
                   onUndo: () => _undoRemove(index),
                 )
               else
                 _ItemEditCard(
                   index: index,
-                  item: widget.result.items[index],
+                  item: _items[index],
                   controller: _controllers[index],
                   liveKcal: _itemKcalFor(index),
                   liveGrams: _grams[index],
@@ -1088,6 +1115,27 @@ class _MealItemAdjustmentSheetState extends State<_MealItemAdjustmentSheet> {
                 ),
               const SizedBox(height: 10),
             ],
+            OutlinedButton.icon(
+              key: const ValueKey('analyse-item-add-button'),
+              onPressed: _addItemDialog,
+              icon: const Icon(Icons.add_rounded, size: 17),
+              label: const Text(
+                'Bestandteil hinzufügen',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: cyan,
+                side: BorderSide(color: cyan.withValues(alpha: 0.45)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
             Container(
               key: const ValueKey('analyse-adjusted-kcal-preview'),
               width: double.infinity,
@@ -1335,6 +1383,149 @@ class _RemovedItemCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _AddItemDialog extends StatefulWidget {
+  const _AddItemDialog();
+
+  @override
+  State<_AddItemDialog> createState() => _AddItemDialogState();
+}
+
+class _AddItemDialogState extends State<_AddItemDialog> {
+  final _name = TextEditingController();
+  final _grams = TextEditingController();
+  final _kcal = TextEditingController();
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _grams.dispose();
+    _kcal.dispose();
+    super.dispose();
+  }
+
+  bool get _isValid {
+    if (_name.text.trim().isEmpty) return false;
+    final g = int.tryParse(_grams.text.trim());
+    final k = int.tryParse(_kcal.text.trim());
+    return g != null && g > 0 && k != null && k >= 0;
+  }
+
+  void _submit() {
+    final name = _name.text.trim();
+    final grams = int.tryParse(_grams.text.trim()) ?? 0;
+    final kcal = int.tryParse(_kcal.text.trim()) ?? 0;
+    if (name.isEmpty || grams <= 0) return;
+    final per100 = grams > 0 ? kcal * 100 / grams : null;
+    Navigator.pop(
+      context,
+      MealComponent(
+        name: name,
+        grams: grams,
+        caloriesKcal: kcal,
+        kcalPer100G: per100,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Text(
+        'Bestandteil hinzufügen',
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.4,
+        ),
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Manuell — wenn die KI etwas übersehen hat.',
+              style: TextStyle(
+                color: textMuted,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              key: const ValueKey('analyse-add-item-name'),
+              controller: _name,
+              autofocus: true,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                labelText: 'Name',
+                hintText: 'z. B. Tomate',
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    key: const ValueKey('analyse-add-item-grams'),
+                    controller: _grams,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: const InputDecoration(
+                      labelText: 'Gewicht',
+                      suffixText: 'g',
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    key: const ValueKey('analyse-add-item-kcal'),
+                    controller: _kcal,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: const InputDecoration(
+                      labelText: 'Kalorien',
+                      suffixText: 'kcal',
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          style: TextButton.styleFrom(foregroundColor: textMuted),
+          child: const Text('Abbrechen'),
+        ),
+        FilledButton(
+          key: const ValueKey('analyse-add-item-save'),
+          onPressed: _isValid ? _submit : null,
+          style: FilledButton.styleFrom(
+            backgroundColor: cyan,
+            foregroundColor: bg,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          child: const Text(
+            'Hinzufügen',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
     );
   }
 }
