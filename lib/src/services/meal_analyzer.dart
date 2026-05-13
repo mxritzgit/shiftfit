@@ -19,38 +19,56 @@ class EdgeFunctionMealAnalyzer implements MealAnalyzer {
   static const String _basePrompt = '''
 ShiftFit Foto-Kalorienanalyse. Du bist ein präziser Ernährungsschätzer.
 
-Vorgehen:
-1. Identifiziere ALLE sichtbaren Lebensmittel einzeln (auch Beilagen, Saucen, Öl).
-2. Schätze für jedes Lebensmittel das tatsächliche GEWICHT in Gramm anhand visueller
-   Größenmerkmale: Tellergröße (Standard 27 cm), Besteck (Gabel ≈ 20 cm), Hände,
-   Verpackung, Standardobjekte im Hintergrund.
-3. Gib pro Item separat: name, grams, kcalPer100G (typischer Wert für DIESE Variante),
-   caloriesKcal (= grams * kcalPer100G / 100).
-4. Summiere zur Gesamtportion.
+STRENGE ITEMIZATION — ABSOLUT PFLICHT:
+- Jedes sichtbar getrennte Lebensmittel ist ein EIGENER Eintrag in items[].
+- Steak + Kartoffeln + Brokkoli = drei items, NIEMALS ein gemeinsamer "Teller".
+- Auch Beilagen, Saucen, Dressings, sichtbares Öl/Butter werden eigene items.
+- Wenn mehrere Stücke desselben Lebensmittels sichtbar sind (z. B. 3 Kartoffeln),
+  fasse sie in EINEM Item mit Gesamtgramm zusammen ("Kartoffeln", grams = Summe).
+- Brot/Burger-Brötchen + Belag/Patty = jeweils eigene items.
+- "mealName" ist der Sammelname (z. B. "Teller mit Steak, Kartoffeln, Brokkoli");
+  "items[]" ist die strikte Einzelauflistung.
 
-WICHTIG — keine Default-Antworten:
-- Ein kleiner Apfel ≈ 120 g (~62 kcal), mittel ≈ 180 g (~94 kcal), groß ≈ 250 g (~130 kcal).
-  Schau aktiv hin: ist der Apfel klein, normal oder groß? Antworte UNTERSCHIEDLICH je nach Foto.
-- Pasta-Portionen variieren stark: 80 g trocken / 200 g gekocht für eine Person ist Standard,
-  aber ein voller Teller hat oft 300-400 g gekocht.
-- Bei Fleisch: Steak 150-250 g typisch, Hähnchenbrust 120-180 g pro Stück.
-- Wenn das Foto klare Größen zeigt (z. B. Schale fast voll vs. nur Boden), berücksichtige das.
+GRÖSSEN-LOGIK:
+- Schätze pro Item das tatsächliche GEWICHT in Gramm anhand visueller Anhaltspunkte:
+  Teller (Standard 27 cm), Besteck (Gabel ≈ 20 cm), Hände, Verpackung.
+- Antworte UNTERSCHIEDLICH je nach Foto. Niemals Default-Werte für eine
+  Lebensmittelkategorie wiederholen.
+
+REFERENZ-RANGES (nur als Korridore — exakter Wert kommt aus dem Foto):
+- Apfel: klein ≈ 120 g (~62 kcal), mittel ≈ 180 g (~94 kcal), groß ≈ 250 g (~130 kcal).
+- Banane: klein ≈ 80 g, mittel ≈ 120 g, groß ≈ 180 g.
+- Pasta gekocht: 200 g pro Person Standard, voller Teller 300-400 g.
+- Reis gekocht: 150-250 g pro Portion.
+- Steak: 150-250 g typisch, ein dickes Stück bis 350 g.
+- Hähnchenbrust: 120-180 g pro Stück.
+- Kartoffeln gekocht: 150-250 g pro Portion.
+- Brokkoli/Gemüse: 80-150 g pro Portion.
+- Scheibe Brot: 30-50 g.
+
+JEDES ITEM enthält:
+- name: konkret, deutsch wenn möglich ("Steak", "Kartoffeln", nicht "meat", "carbs")
+- grams: int, aus dem Foto geschätzt
+- kcalPer100G: typischer Wert für DIESE Variante (z. B. Steak medium ~220, Kartoffeln
+  gekocht ~80, Brokkoli ~35)
+- caloriesKcal: int, = grams * kcalPer100G / 100 (rechne korrekt nach)
 
 Falls keinerlei Größenanhaltspunkte erkennbar sind, gib confidence "low" und
 einen konservativen Mittelwert mit klarem Hinweis in explanation.
 
-Ausgabe (JSON):
+Ausgabe (strikt JSON, kein Fließtext daneben):
 {
-  "mealName": "kurzer Name",
-  "caloriesKcal": int,
-  "estimatedGrams": int (Summe),
-  "kcalPer100G": double,
+  "mealName": "Sammelname der Mahlzeit",
+  "caloriesKcal": int (Summe aller items),
+  "estimatedGrams": int (Summe aller items),
+  "kcalPer100G": double (Gesamtmittelwert),
   "proteinG": int|null,
   "carbsG": int|null,
   "fatG": int|null,
   "confidence": "high"|"medium"|"low",
-  "explanation": "1-2 Sätze mit GRÖSSEN-BEGRÜNDUNG (warum diese Gramm, woran erkannt)",
+  "explanation": "1-2 Sätze mit Größen-Begründung (woran erkannt)",
   "items": [
+    { "name": "...", "grams": int, "caloriesKcal": int, "kcalPer100G": double },
     { "name": "...", "grams": int, "caloriesKcal": int, "kcalPer100G": double }
   ]
 }

@@ -389,13 +389,17 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
     );
   }
 
-  Future<void> adjustMealPortion() async {
+  Future<void> adjustMealPortion(Set<int> editableIndices) async {
     final currentResult = result;
     if (currentResult == null) {
       return;
     }
 
-    final adjustment = await showWeightAdjustmentSheet(context, currentResult);
+    final adjustment = await showWeightAdjustmentSheet(
+      context,
+      currentResult,
+      editableIndices: editableIndices,
+    );
     if (!mounted || adjustment == null) {
       return;
     }
@@ -582,19 +586,35 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
           MealPreviewCard(imageBytes: selectedImageBytes),
           const SizedBox(height: 14),
         ],
-        if (isLoading)
-          const MealLoadingCard()
-        else if (result != null)
-          MealResultCard(
-            result: result!,
-            confirmed: mealConfirmed,
-            addedToDailyTotal: addedToDailyTotal,
-            onConfirmed: confirmMealEstimate,
-            onAdjustRequested: adjustMealPortion,
-            onAddToDailyRequested: addCurrentResultToDailyTotal,
-          )
-        else
-          const MealEmptyCard(),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 280),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          transitionBuilder: (child, animation) {
+            return FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.04),
+                  end: Offset.zero,
+                ).animate(animation),
+                child: child,
+              ),
+            );
+          },
+          child: isLoading
+              ? const MealLoadingCard()
+              : result != null
+                  ? MealResultCard(
+                      result: result!,
+                      confirmed: mealConfirmed,
+                      addedToDailyTotal: addedToDailyTotal,
+                      onConfirmed: confirmMealEstimate,
+                      onAdjustRequested: adjustMealPortion,
+                      onAddToDailyRequested: addCurrentResultToDailyTotal,
+                    )
+                  : const MealEmptyCard(),
+        ),
       ],
     );
   }

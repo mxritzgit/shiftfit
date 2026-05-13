@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -160,29 +161,118 @@ class MealEmptyCard extends StatelessWidget {
   }
 }
 
-class MealLoadingCard extends StatelessWidget {
+class MealLoadingCard extends StatefulWidget {
   const MealLoadingCard({super.key});
 
   @override
+  State<MealLoadingCard> createState() => _MealLoadingCardState();
+}
+
+class _MealLoadingCardState extends State<MealLoadingCard>
+    with SingleTickerProviderStateMixin {
+  Timer? _stepTimer;
+  late final AnimationController _pulse;
+  int _stepIndex = 0;
+
+  static const List<(IconData, String)> _stages = [
+    (Icons.image_search_rounded, 'Erkenne Lebensmittel...'),
+    (Icons.straighten_rounded, 'Schätze Mengen...'),
+    (Icons.calculate_rounded, 'Berechne Kalorien...'),
+    (Icons.auto_awesome_rounded, 'Letzter Feinschliff...'),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    _stepTimer = Timer.periodic(const Duration(milliseconds: 1200), (_) {
+      if (!mounted) return;
+      setState(() => _stepIndex = (_stepIndex + 1) % _stages.length);
+    });
+  }
+
+  @override
+  void dispose() {
+    _stepTimer?.cancel();
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return const AppCard(
-      key: ValueKey('analyse-loading'),
-      padding: EdgeInsets.all(16),
-      child: Row(
+    final stage = _stages[_stepIndex];
+    return AppCard(
+      key: const ValueKey('analyse-loading'),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2.4, color: orange),
-          ),
-          SizedBox(width: 14),
-          Expanded(
-            child: Text(
-              'Analyse läuft...',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+          Row(
+            children: [
+              FadeTransition(
+                opacity: Tween<double>(begin: 0.5, end: 1.0).animate(_pulse),
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: orange.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(stage.$1, color: orange, size: 18),
+                ),
               ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  transitionBuilder: (child, anim) => FadeTransition(
+                    opacity: anim,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, 0.25),
+                        end: Offset.zero,
+                      ).animate(anim),
+                      child: child,
+                    ),
+                  ),
+                  child: Column(
+                    key: ValueKey(_stepIndex),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        stage.$2,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Schritt ${_stepIndex + 1} von ${_stages.length}',
+                        style: const TextStyle(
+                          color: textMuted,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: (_stepIndex + 1) / _stages.length,
+              minHeight: 3,
+              backgroundColor: hairline,
+              color: orange,
             ),
           ),
         ],
@@ -191,7 +281,7 @@ class MealLoadingCard extends StatelessWidget {
   }
 }
 
-class MealResultCard extends StatelessWidget {
+class MealResultCard extends StatefulWidget {
   const MealResultCard({
     super.key,
     required this.result,
@@ -206,12 +296,56 @@ class MealResultCard extends StatelessWidget {
   final bool confirmed;
   final bool addedToDailyTotal;
   final VoidCallback onConfirmed;
-  final VoidCallback onAdjustRequested;
+  final ValueChanged<Set<int>> onAdjustRequested;
   final VoidCallback onAddToDailyRequested;
 
   @override
+  State<MealResultCard> createState() => _MealResultCardState();
+}
+
+class _MealResultCardState extends State<MealResultCard> {
+  Set<int> _selected = const <int>{};
+  int _previousKcal = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _previousKcal = 0;
+  }
+
+  @override
+  void didUpdateWidget(covariant MealResultCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.result != widget.result) {
+      _previousKcal = oldWidget.result.caloriesKcal;
+      // Clear selection when the result swaps for a different meal.
+      if (oldWidget.result.mealName != widget.result.mealName) {
+        _selected = const <int>{};
+      }
+    }
+  }
+
+  void _toggle(int index) {
+    setState(() {
+      final next = {..._selected};
+      if (next.contains(index)) {
+        next.remove(index);
+      } else {
+        next.add(index);
+      }
+      _selected = next;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final result = widget.result;
     final isBarcode = result.sourceLabel == 'OpenFoodFacts';
+    final selectionCount = _selected.length;
+    final adjustLabel = selectionCount == 0
+        ? (result.hasItemizedBreakdown ? 'Anpassen' : 'Anpassen')
+        : '$selectionCount anpassen';
+
     return AppCard(
       key: const ValueKey('analyse-result-card'),
       padding: const EdgeInsets.all(18),
@@ -226,8 +360,8 @@ class MealResultCard extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               StatusPill(
-                label: confirmed ? 'bestätigt' : 'prüfen',
-                color: confirmed ? lime : orange,
+                label: widget.confirmed ? 'bestätigt' : 'prüfen',
+                color: widget.confirmed ? lime : orange,
               ),
               const Spacer(),
               IconButton(
@@ -259,15 +393,9 @@ class MealResultCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Expanded(
-                child: Text(
-                  result.kcalRange,
-                  key: const ValueKey('analyse-kcal-range'),
-                  style: const TextStyle(
-                    color: orange,
-                    fontSize: 26,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.6,
-                  ),
+                child: _AnimatedKcal(
+                  from: _previousKcal,
+                  to: result.caloriesKcal,
                 ),
               ),
               Text(
@@ -285,9 +413,37 @@ class MealResultCard extends StatelessWidget {
           _PortionLine(result: result),
           if (result.hasItemizedBreakdown) ...[
             const SizedBox(height: 14),
-            const FieldLabel('BESTANDTEILE'),
+            Row(
+              children: [
+                const Expanded(child: FieldLabel('BESTANDTEILE')),
+                if (selectionCount > 0)
+                  Text(
+                    '$selectionCount ausgewählt',
+                    style: const TextStyle(
+                      color: orange,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.4,
+                    ),
+                  )
+                else
+                  const Text(
+                    'tippen zum auswählen',
+                    style: TextStyle(
+                      color: textMuted,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+              ],
+            ),
             const SizedBox(height: 6),
-            _ItemBreakdownList(items: result.items),
+            _ItemBreakdownList(
+              items: result.items,
+              selected: _selected,
+              onToggle: _toggle,
+            ),
           ],
           const SizedBox(height: 14),
           Row(
@@ -323,15 +479,15 @@ class MealResultCard extends StatelessWidget {
               Expanded(
                 child: FilledButton.icon(
                   key: const ValueKey('analyse-confirm-button'),
-                  onPressed: confirmed ? null : onConfirmed,
+                  onPressed: widget.confirmed ? null : widget.onConfirmed,
                   icon: Icon(
-                    confirmed
+                    widget.confirmed
                         ? Icons.check_circle_rounded
                         : Icons.check_rounded,
                     size: 17,
                   ),
                   label: Text(
-                    confirmed ? 'Bestätigt' : 'Bestätigen',
+                    widget.confirmed ? 'Bestätigt' : 'Bestätigen',
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   style: FilledButton.styleFrom(
@@ -348,15 +504,19 @@ class MealResultCard extends StatelessWidget {
               Expanded(
                 child: OutlinedButton.icon(
                   key: const ValueKey('analyse-adjust-button'),
-                  onPressed: onAdjustRequested,
+                  onPressed: () => widget.onAdjustRequested(_selected),
                   icon: const Icon(Icons.tune_rounded, size: 17),
                   label: Text(
-                    result.hasItemizedBreakdown ? 'Bestandteile' : 'Anpassen',
+                    adjustLabel,
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: textPrimary,
-                    side: const BorderSide(color: hairline),
+                    foregroundColor: selectionCount > 0 ? orange : textPrimary,
+                    side: BorderSide(
+                      color: selectionCount > 0
+                          ? orange.withValues(alpha: 0.45)
+                          : hairline,
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -371,15 +531,17 @@ class MealResultCard extends StatelessWidget {
             width: double.infinity,
             child: FilledButton.icon(
               key: const ValueKey('analyse-add-daily-button'),
-              onPressed: addedToDailyTotal ? null : onAddToDailyRequested,
+              onPressed: widget.addedToDailyTotal
+                  ? null
+                  : widget.onAddToDailyRequested,
               icon: Icon(
-                addedToDailyTotal
+                widget.addedToDailyTotal
                     ? Icons.check_circle_rounded
                     : Icons.add_circle_outline_rounded,
                 size: 17,
               ),
               label: Text(
-                addedToDailyTotal
+                widget.addedToDailyTotal
                     ? 'Zu heute hinzugefügt'
                     : 'Zu heute hinzufügen',
                 style: const TextStyle(fontWeight: FontWeight.w600),
@@ -400,6 +562,7 @@ class MealResultCard extends StatelessWidget {
   }
 
   void _showInfo(BuildContext context) {
+    final result = widget.result;
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: surface,
@@ -541,72 +704,136 @@ class _PortionLine extends StatelessWidget {
   }
 }
 
-class _ItemBreakdownList extends StatelessWidget {
-  const _ItemBreakdownList({required this.items});
+class _AnimatedKcal extends StatelessWidget {
+  const _AnimatedKcal({required this.from, required this.to});
 
-  final List<MealComponent> items;
+  final int from;
+  final int to;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: from.toDouble(), end: to.toDouble()),
+      duration: const Duration(milliseconds: 520),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, _) {
+        return Text(
+          '${value.round()} kcal',
+          key: const ValueKey('analyse-kcal-range'),
+          style: const TextStyle(
+            color: orange,
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.8,
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ItemBreakdownList extends StatelessWidget {
+  const _ItemBreakdownList({
+    required this.items,
+    required this.selected,
+    required this.onToggle,
+  });
+
+  final List<MealComponent> items;
+  final Set<int> selected;
+  final ValueChanged<int> onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
       key: const ValueKey('analyse-item-breakdown'),
-      decoration: BoxDecoration(
-        color: surfaceSoft,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          for (var index = 0; index < items.length; index++) ...[
-            _ItemBreakdownRow(item: items[index], index: index),
-            if (index < items.length - 1)
-              const Divider(height: 1, color: hairline),
-          ],
+      children: [
+        for (var index = 0; index < items.length; index++) ...[
+          _ItemBreakdownRow(
+            item: items[index],
+            index: index,
+            selected: selected.contains(index),
+            onTap: () => onToggle(index),
+          ),
+          if (index < items.length - 1) const SizedBox(height: 6),
         ],
-      ),
+      ],
     );
   }
 }
 
 class _ItemBreakdownRow extends StatelessWidget {
-  const _ItemBreakdownRow({required this.item, required this.index});
+  const _ItemBreakdownRow({
+    required this.item,
+    required this.index,
+    required this.selected,
+    required this.onTap,
+  });
 
   final MealComponent item;
   final int index;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return InkWell(
       key: ValueKey('analyse-item-row-$index'),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              item.name,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.fromLTRB(14, 11, 12, 11),
+        decoration: BoxDecoration(
+          color: selected ? orange.withValues(alpha: 0.10) : surfaceSoft,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? orange.withValues(alpha: 0.45) : hairline,
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.name,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${item.gramsLabel} · ${item.caloriesLabel}',
+                    style: const TextStyle(
+                      color: textMuted,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-          Text(
-            item.gramsLabel,
-            style: const TextStyle(
-              color: textMuted,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
+            const SizedBox(width: 10),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                color: selected ? orange : Colors.transparent,
+                borderRadius: BorderRadius.circular(7),
+                border: Border.all(
+                  color: selected ? orange : textMuted.withValues(alpha: 0.45),
+                ),
+              ),
+              child: selected
+                  ? Icon(Icons.check_rounded, color: bg, size: 14)
+                  : null,
             ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            item.caloriesLabel,
-            style: const TextStyle(
-              color: orange,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -661,15 +888,19 @@ class MacroTile extends StatelessWidget {
 
 Future<Object?> showWeightAdjustmentSheet(
   BuildContext context,
-  MealAnalysisResult result,
-) {
+  MealAnalysisResult result, {
+  Set<int> editableIndices = const <int>{},
+}) {
   return showModalBottomSheet<Object>(
     context: context,
     backgroundColor: surface,
     showDragHandle: true,
     isScrollControlled: true,
     builder: (context) => result.hasItemizedBreakdown
-        ? _MealItemAdjustmentSheet(result: result)
+        ? _MealItemAdjustmentSheet(
+            result: result,
+            editableIndices: editableIndices,
+          )
         : _MealWeightAdjustmentSheet(result: result),
   );
 }
@@ -798,9 +1029,16 @@ class _MealWeightAdjustmentSheetState extends State<_MealWeightAdjustmentSheet> 
 }
 
 class _MealItemAdjustmentSheet extends StatefulWidget {
-  const _MealItemAdjustmentSheet({required this.result});
+  const _MealItemAdjustmentSheet({
+    required this.result,
+    this.editableIndices = const <int>{},
+  });
 
   final MealAnalysisResult result;
+
+  /// Indices of items the user can edit in this sheet. Empty means all items
+  /// are editable (the "no selection → adjust everything" default).
+  final Set<int> editableIndices;
 
   @override
   State<_MealItemAdjustmentSheet> createState() => _MealItemAdjustmentSheetState();
@@ -809,6 +1047,7 @@ class _MealItemAdjustmentSheet extends StatefulWidget {
 class _MealItemAdjustmentSheetState extends State<_MealItemAdjustmentSheet> {
   late final List<TextEditingController> _controllers;
   late List<int> _grams;
+  late final Set<int> _editable;
 
   @override
   void initState() {
@@ -817,6 +1056,9 @@ class _MealItemAdjustmentSheetState extends State<_MealItemAdjustmentSheet> {
     _controllers = _grams
         .map((grams) => TextEditingController(text: grams.toString()))
         .toList(growable: false);
+    _editable = widget.editableIndices.isEmpty
+        ? {for (var i = 0; i < widget.result.items.length; i++) i}
+        : widget.editableIndices;
   }
 
   @override
@@ -839,6 +1081,12 @@ class _MealItemAdjustmentSheetState extends State<_MealItemAdjustmentSheet> {
       (sum, item) => sum + item.caloriesKcal,
     );
 
+    final editableList = <int>[
+      for (var i = 0; i < widget.result.items.length; i++)
+        if (_editable.contains(i)) i,
+    ];
+    final unchangedCount = widget.result.items.length - editableList.length;
+
     return Padding(
       padding: EdgeInsets.fromLTRB(
         20,
@@ -860,16 +1108,18 @@ class _MealItemAdjustmentSheetState extends State<_MealItemAdjustmentSheet> {
               ),
             ),
             const SizedBox(height: 6),
-            const Text(
-              'Gramm pro Lebensmittel anpassen.',
-              style: TextStyle(
+            Text(
+              unchangedCount > 0
+                  ? '${editableList.length} ausgewählt · $unchangedCount unverändert.'
+                  : 'Gramm pro Lebensmittel anpassen.',
+              style: const TextStyle(
                 color: textMuted,
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(height: 18),
-            for (var index = 0; index < widget.result.items.length; index++) ...[
+            for (final index in editableList) ...[
               Text(
                 widget.result.items[index].name,
                 style: const TextStyle(
