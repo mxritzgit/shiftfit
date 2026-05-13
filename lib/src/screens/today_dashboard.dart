@@ -1,28 +1,14 @@
 import 'package:flutter/material.dart';
 
-import '../models/caffeine_entry.dart';
-import '../models/daily_mood.dart';
-import '../models/habit.dart';
 import '../models/plan_block.dart';
 import '../models/shift_fit_plan.dart';
 import '../models/sleep_entry.dart';
-import '../models/weight_log.dart';
 import '../services/health_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/common/basic_widgets.dart';
 import '../widgets/shared/shiftfit_top_bar.dart';
-import '../widgets/today/caffeine_card.dart';
-import '../widgets/today/caffeine_half_life_card.dart';
-import '../widgets/today/day_overview_card.dart';
-import '../widgets/today/day_summary_sheet.dart';
-import '../widgets/today/habits_card.dart';
-import '../widgets/today/mood_card.dart';
-import '../widgets/today/steps_card.dart';
-import '../widgets/today/smart_reminders_card.dart';
-import '../widgets/today/tip_of_day_card.dart';
+import '../widgets/today/daily_tracker_card.dart';
 import '../widgets/today/today_widgets.dart';
-import '../widgets/today/weight_card.dart';
-import '../widgets/today/wellness_widgets.dart';
 import '../widgets/today/workout_timer_sheet.dart';
 
 class TodayDashboard extends StatelessWidget {
@@ -35,36 +21,19 @@ class TodayDashboard extends StatelessWidget {
     required this.onShiftSelected,
     required this.onEnergySelected,
     required this.onStressSelected,
+    required this.dailyConsumedKcal,
+    required this.kcalGoal,
     required this.dailyWaterMl,
     required this.waterGoalMl,
-    required this.onAddWater,
-    required this.onResetWater,
+    required this.dailySteps,
+    required this.stepsGoal,
     required this.lastSleep,
     required this.sleepGoalMinutes,
-    required this.onLogSleep,
     required this.completedBlockIds,
     required this.onToggleBlock,
     required this.workoutStreak,
-    required this.caffeineDay,
-    required this.onAddCaffeine,
-    required this.onResetCaffeine,
-    required this.dailySteps,
-    required this.stepsGoal,
-    required this.onAddSteps,
-    required this.onSetSteps,
-    required this.mood,
-    required this.onMoodChanged,
-    required this.onEditMoodNote,
-    required this.habits,
-    required this.habitDefinitions,
-    required this.onToggleHabit,
-    required this.weightLog,
-    required this.onLogWeight,
-    required this.dailyConsumedKcal,
-    required this.kcalGoal,
     required this.healthAuthState,
     required this.healthLastFetch,
-    required this.healthSyncing,
     required this.onConnectHealth,
     required this.onRefreshHealth,
     required this.onSettingsPressed,
@@ -77,36 +46,19 @@ class TodayDashboard extends StatelessWidget {
   final ValueChanged<String> onShiftSelected;
   final ValueChanged<String> onEnergySelected;
   final ValueChanged<String> onStressSelected;
+  final int dailyConsumedKcal;
+  final int kcalGoal;
   final int dailyWaterMl;
   final int waterGoalMl;
-  final ValueChanged<int> onAddWater;
-  final VoidCallback onResetWater;
+  final int dailySteps;
+  final int stepsGoal;
   final SleepEntry? lastSleep;
   final int sleepGoalMinutes;
-  final VoidCallback onLogSleep;
   final Set<String> completedBlockIds;
   final ValueChanged<String> onToggleBlock;
   final int workoutStreak;
-  final CaffeineDay caffeineDay;
-  final ValueChanged<int> onAddCaffeine;
-  final VoidCallback onResetCaffeine;
-  final int dailySteps;
-  final int stepsGoal;
-  final ValueChanged<int> onAddSteps;
-  final ValueChanged<int> onSetSteps;
-  final DailyMood mood;
-  final ValueChanged<int> onMoodChanged;
-  final VoidCallback onEditMoodNote;
-  final HabitState habits;
-  final List<Habit> habitDefinitions;
-  final ValueChanged<String> onToggleHabit;
-  final WeightLog weightLog;
-  final ValueChanged<double> onLogWeight;
-  final int dailyConsumedKcal;
-  final int kcalGoal;
   final HealthAuthState healthAuthState;
   final DateTime? healthLastFetch;
-  final bool healthSyncing;
   final VoidCallback onConnectHealth;
   final VoidCallback onRefreshHealth;
   final VoidCallback onSettingsPressed;
@@ -119,19 +71,52 @@ class TodayDashboard extends StatelessWidget {
         ? '${plan.totalMinutes} Min'
         : '$completedCount/$total · ${plan.totalMinutes} Min';
 
+    final sleepMinutes = lastSleep?.duration.inMinutes ?? 0;
+    final double kcalRatio = kcalGoal <= 0
+        ? 0.0
+        : (dailyConsumedKcal / kcalGoal).clamp(0.0, 1.0).toDouble();
     final double waterRatio = waterGoalMl <= 0
         ? 0.0
         : (dailyWaterMl / waterGoalMl).clamp(0.0, 1.0).toDouble();
-    final sleepMinutes = lastSleep?.duration.inMinutes ?? 0;
-    final double sleepRatio = sleepGoalMinutes <= 0
-        ? 0.0
-        : (sleepMinutes / sleepGoalMinutes).clamp(0.0, 1.0).toDouble();
-    final double workoutRatio = total <= 0
-        ? 0.0
-        : (completedCount / total).clamp(0.0, 1.0).toDouble();
     final double stepsRatio = stepsGoal <= 0
         ? 0.0
         : (dailySteps / stepsGoal).clamp(0.0, 1.0).toDouble();
+    final double sleepRatio = sleepGoalMinutes <= 0
+        ? 0.0
+        : (sleepMinutes / sleepGoalMinutes).clamp(0.0, 1.0).toDouble();
+
+    final stats = <TrackerStat>[
+      TrackerStat(
+        icon: Icons.local_fire_department_outlined,
+        label: 'Kcal',
+        value: '$dailyConsumedKcal',
+        color: orange,
+        ratio: kcalRatio,
+      ),
+      TrackerStat(
+        icon: Icons.water_drop_outlined,
+        label: 'Wasser',
+        value: '${(dailyWaterMl / 1000).toStringAsFixed(1)}L',
+        color: cyan,
+        ratio: waterRatio,
+      ),
+      TrackerStat(
+        icon: Icons.directions_walk_outlined,
+        label: 'Schritte',
+        value: _formatSteps(dailySteps),
+        color: lime,
+        ratio: stepsRatio,
+      ),
+      TrackerStat(
+        icon: Icons.bedtime_outlined,
+        label: 'Schlaf',
+        value: lastSleep == null
+            ? '–'
+            : '${(sleepMinutes / 60).toStringAsFixed(sleepMinutes % 60 == 0 ? 0 : 1)}h',
+        color: pink,
+        ratio: sleepRatio,
+      ),
+    ];
 
     return Column(
       key: const ValueKey('screen-today'),
@@ -140,24 +125,6 @@ class TodayDashboard extends StatelessWidget {
         ShiftFitTopBar(plan: plan, onSettingsPressed: onSettingsPressed),
         const SizedBox(height: 20),
         ShiftFitHero(plan: plan),
-        const SizedBox(height: 14),
-        DayOverviewCard(
-          waterRatio: waterRatio,
-          sleepRatio: sleepRatio,
-          workoutRatio: workoutRatio,
-          stepsRatio: stepsRatio,
-        ),
-        const SizedBox(height: 14),
-        SmartRemindersCard(
-          shift: selectedShift,
-          dailyWaterMl: dailyWaterMl,
-          waterGoalMl: waterGoalMl,
-          caffeineDay: caffeineDay,
-          lastBedtimeMinutes: lastSleep?.bedtimeMinutes,
-          sleepGoalMinutes: sleepGoalMinutes,
-        ),
-        const SizedBox(height: 10),
-        TipOfDayCard(shift: selectedShift),
         const SizedBox(height: 14),
         QuickCheckInCard(
           selectedShift: selectedShift,
@@ -171,63 +138,15 @@ class TodayDashboard extends StatelessWidget {
         const SizedBox(height: 14),
         RecoveryScoreCard(plan: plan),
         const SizedBox(height: 14),
-        WaterTrackerCard(
-          intakeMl: dailyWaterMl,
-          goalMl: waterGoalMl,
-          onAdd: onAddWater,
-          onReset: onResetWater,
-        ),
-        const SizedBox(height: 10),
-        StepsCard(
-          steps: dailySteps,
-          goal: stepsGoal,
-          onAdd: onAddSteps,
-          onSet: onSetSteps,
+        DailyTrackerCard(
+          stats: stats,
           healthAuthState: healthAuthState,
           healthLastFetch: healthLastFetch,
-          healthSyncing: healthSyncing,
           onConnectHealth: onConnectHealth,
           onRefreshHealth: onRefreshHealth,
         ),
-        const SizedBox(height: 10),
-        CaffeineCard(
-          day: caffeineDay,
-          shift: selectedShift,
-          onAdd: onAddCaffeine,
-          onReset: onResetCaffeine,
-        ),
-        if (caffeineDay.entries.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          CaffeineHalfLifeCard(day: caffeineDay),
-        ],
-        const SizedBox(height: 10),
-        SleepLogCard(
-          lastEntry: lastSleep,
-          goalMinutes: sleepGoalMinutes,
-          onLog: onLogSleep,
-        ),
-        const SizedBox(height: 10),
-        MoodCard(
-          mood: mood,
-          onMoodChanged: onMoodChanged,
-          onEditNote: onEditMoodNote,
-        ),
-        const SizedBox(height: 10),
-        WeightCard(
-          log: weightLog,
-          onLog: onLogWeight,
-        ),
-        const SizedBox(height: 10),
-        HabitsCard(
-          habits: habitDefinitions,
-          state: habits,
-          onToggle: onToggleHabit,
-        ),
         const SizedBox(height: 22),
-        SectionHeader(
-          title: 'Dein Plan für heute',
-          action: planAction,
-        ),
+        SectionHeader(title: 'Dein Plan für heute', action: planAction),
         const SizedBox(height: 10),
         Builder(
           builder: (innerContext) => DailyPlanCard(
@@ -263,51 +182,16 @@ class TodayDashboard extends StatelessWidget {
         const SectionHeader(title: 'Wochenrhythmus', action: ''),
         const SizedBox(height: 10),
         const RhythmWeekCard(),
-        const SizedBox(height: 18),
-        Builder(
-          builder: (context) => SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              key: const ValueKey('share-day-button'),
-              onPressed: () => showDaySummarySheet(
-                context,
-                summary: DaySummary(
-                  dailyConsumedKcal: dailyConsumedKcal,
-                  kcalGoal: kcalGoal,
-                  dailyWaterMl: dailyWaterMl,
-                  waterGoalMl: waterGoalMl,
-                  dailySteps: dailySteps,
-                  stepsGoal: stepsGoal,
-                  caffeineDay: caffeineDay,
-                  lastSleep: lastSleep,
-                  mood: mood,
-                  shift: selectedShift,
-                  habits: habits,
-                  habitDefinitions: habitDefinitions,
-                  completedBlocks: completedCount,
-                  totalBlocks: total,
-                  workoutStreak: workoutStreak,
-                  weightLog: weightLog,
-                ),
-              ),
-              icon: const Icon(Icons.share_outlined, size: 17),
-              label: const Text(
-                'Tag zusammenfassen',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: textPrimary,
-                side: const BorderSide(color: hairline),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-        ),
       ],
     );
+  }
+
+  static String _formatSteps(int steps) {
+    if (steps >= 1000) {
+      final k = steps / 1000;
+      return '${k.toStringAsFixed(k >= 10 ? 0 : 1)}k';
+    }
+    return '$steps';
   }
 }
 
@@ -345,3 +229,4 @@ class _StreakBadge extends StatelessWidget {
     );
   }
 }
+

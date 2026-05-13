@@ -14,42 +14,27 @@ class ShiftFitHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          StatusPill(label: 'Für deinen Rhythmus', color: plan.accent),
-          const SizedBox(height: 16),
           const Text(
             'Train smart.\nRecover better.',
             style: TextStyle(
-              fontSize: 32,
-              height: 1.05,
+              fontSize: 26,
+              height: 1.1,
               fontWeight: FontWeight.w700,
-              letterSpacing: -1.2,
+              letterSpacing: -1,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           const Text(
             'Kurze Empfehlungen passend zu deiner Schicht.',
             style: TextStyle(
               color: textMuted,
-              fontSize: 14,
+              fontSize: 13,
               height: 1.4,
             ),
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              MetricChip(icon: Icons.timer_outlined, label: '${plan.totalMinutes} Min'),
-              MetricChip(icon: Icons.speed_outlined, label: plan.intensity),
-              MetricChip(
-                icon: Icons.favorite_outline,
-                label: '${plan.recoveryScore}% Readiness',
-              ),
-            ],
           ),
         ],
       ),
