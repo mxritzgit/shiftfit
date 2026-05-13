@@ -211,6 +211,7 @@ class MealResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isBarcode = result.sourceLabel == 'OpenFoodFacts';
     return AppCard(
       key: const ValueKey('analyse-result-card'),
       padding: const EdgeInsets.all(18),
@@ -219,24 +220,30 @@ class MealResultCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Expanded(
-                child: Text(
-                  'Analyse',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                ),
-              ),
               StatusPill(
                 label: result.sourceLabel,
-                color: result.sourceLabel == 'OpenFoodFacts' ? cyan : orange,
+                color: isBarcode ? cyan : orange,
               ),
               const SizedBox(width: 6),
               StatusPill(
                 label: confirmed ? 'bestätigt' : 'prüfen',
                 color: confirmed ? lime : orange,
               ),
+              const Spacer(),
+              IconButton(
+                key: const ValueKey('analyse-info-button'),
+                onPressed: () => _showInfo(context),
+                tooltip: 'Details',
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(
+                  Icons.info_outline_rounded,
+                  size: 18,
+                  color: textMuted,
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           Text(
             result.mealName,
             key: const ValueKey('analyse-meal-name'),
@@ -257,9 +264,9 @@ class MealResultCard extends StatelessWidget {
                   key: const ValueKey('analyse-kcal-range'),
                   style: const TextStyle(
                     color: orange,
-                    fontSize: 24,
+                    fontSize: 26,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: -0.4,
+                    letterSpacing: -0.6,
                   ),
                 ),
               ),
@@ -274,8 +281,8 @@ class MealResultCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          _PortionSummaryBox(result: result),
+          const SizedBox(height: 6),
+          _PortionLine(result: result),
           if (result.hasItemizedBreakdown) ...[
             const SizedBox(height: 14),
             const FieldLabel('BESTANDTEILE'),
@@ -286,11 +293,41 @@ class MealResultCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
+                child: MacroTile(
+                  label: 'Protein',
+                  value: result.protein,
+                  color: lime,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: MacroTile(
+                  label: 'Carbs',
+                  value: result.carbs,
+                  color: cyan,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: MacroTile(
+                  label: 'Fett',
+                  value: result.fat,
+                  color: pink,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
                 child: FilledButton.icon(
                   key: const ValueKey('analyse-confirm-button'),
                   onPressed: confirmed ? null : onConfirmed,
                   icon: Icon(
-                    confirmed ? Icons.check_circle_rounded : Icons.check_rounded,
+                    confirmed
+                        ? Icons.check_circle_rounded
+                        : Icons.check_rounded,
                     size: 17,
                   ),
                   label: Text(
@@ -357,51 +394,112 @@ class MealResultCard extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 14),
-          Row(
+        ],
+      ),
+    );
+  }
+
+  void _showInfo(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: surface,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: MacroTile(label: 'Protein', value: result.protein, color: lime),
+              Text(
+                result.mealName,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.4,
+                ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: MacroTile(label: 'Carbs', value: result.carbs, color: cyan),
+              const SizedBox(height: 12),
+              if (result.brand != null && result.brand!.isNotEmpty)
+                _InfoLine(label: 'Marke', value: result.brand!),
+              if (result.barcode != null && result.barcode!.isNotEmpty)
+                _InfoLine(label: 'Barcode', value: result.barcode!),
+              _InfoLine(
+                label: 'Quelle',
+                value: result.sourceLabel,
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: MacroTile(label: 'Fett', value: result.fat, color: pink),
+              _InfoLine(
+                label: 'Sicherheit',
+                value: result.confidence,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                result.portionNotes,
+                key: const ValueKey('analyse-portion-notes'),
+                style: const TextStyle(
+                  color: textPrimary,
+                  fontSize: 13,
+                  height: 1.45,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: surfaceSoft,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'Schätzungen sind Näherungen. Zutaten, Öl und Portion können abweichen.',
+                  style: TextStyle(
+                    color: textMuted,
+                    fontSize: 12,
+                    height: 1.4,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          const FieldLabel('PORTION'),
-          const SizedBox(height: 4),
-          Text(
-            result.portionNotes,
-            key: const ValueKey('analyse-portion-notes'),
-            style: const TextStyle(
-              color: textMuted,
-              fontSize: 12,
-              height: 1.45,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            key: const ValueKey('analyse-disclaimer'),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: surfaceSoft,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: orange.withValues(alpha: 0.18)),
-            ),
-            child: const Text(
-              'Bildbasierte Schätzungen sind Näherungen. Zutaten, Öl und Portion können abweichen.',
-              style: TextStyle(
+        );
+      },
+    );
+  }
+}
+
+class _InfoLine extends StatelessWidget {
+  const _InfoLine({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 86,
+            child: Text(
+              label,
+              style: const TextStyle(
                 color: textMuted,
                 fontSize: 12,
-                height: 1.4,
                 fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                height: 1.3,
               ),
             ),
           ),
@@ -411,68 +509,33 @@ class MealResultCard extends StatelessWidget {
   }
 }
 
-class _PortionSummaryBox extends StatelessWidget {
-  const _PortionSummaryBox({required this.result});
+class _PortionLine extends StatelessWidget {
+  const _PortionLine({required this.result});
 
   final MealAnalysisResult result;
 
   @override
   Widget build(BuildContext context) {
-    final title = result.hasItemizedBreakdown
-        ? result.isAdjusted
-              ? '${result.estimatedGrams} g über Einzelposten angepasst'
-              : '${result.items.length} Bestandteile erkannt'
-        : result.isAdjusted
-        ? '${result.estimatedGrams} g manuell angepasst'
-        : 'Portion: ${result.portionLabel}';
-    final subtitle = result.hasItemizedBreakdown
-        ? 'Gramm pro Bestandteil prüfen oder anpassen.'
-        : 'Bestätigen oder Gewicht anpassen.';
-
-    return Container(
+    final String label;
+    if (result.hasItemizedBreakdown) {
+      label = result.isAdjusted
+          ? '${result.estimatedGrams} g über Einzelposten angepasst'
+          : '${result.items.length} Bestandteile · ${result.estimatedGrams} g';
+    } else if (result.isAdjusted) {
+      label = '${result.estimatedGrams} g manuell angepasst';
+    } else {
+      label = 'Portion: ${result.portionLabel}';
+    }
+    return Padding(
       key: const ValueKey('analyse-portion-confirm-box'),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: surfaceSoft,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cyan.withValues(alpha: 0.18)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: cyan.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.scale_rounded, color: cyan, size: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: textMuted,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+      padding: const EdgeInsets.only(top: 2),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: textMuted,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }

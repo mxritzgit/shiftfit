@@ -67,6 +67,7 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
   bool mealConfirmed = false;
   bool addedToDailyTotal = false;
   int? addedCaloriesSnapshot;
+  MealPortionHint portionHint = MealPortionHint.normal;
   final TextEditingController searchController = TextEditingController();
   Timer? productSearchDebounce;
   int productSearchRequestId = 0;
@@ -301,7 +302,12 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
       return;
     }
 
-    await runAnalysis(selection.request, selection.previewBytes);
+    final enriched = MealAnalysisRequest(
+      imageId: selection.request.imageId,
+      imageBytes: selection.request.imageBytes,
+      portionHint: portionHint,
+    );
+    await runAnalysis(enriched, selection.previewBytes);
   }
 
   Future<void> runAnalysis(
@@ -556,6 +562,11 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
         ),
         const SizedBox(height: 14),
         buildQuickActions(),
+        const SizedBox(height: 10),
+        _PortionHintRow(
+          selected: portionHint,
+          onSelected: (hint) => setState(() => portionHint = hint),
+        ),
         const SizedBox(height: 14),
         buildProductSearchCard(),
         if (widget.favorites.isNotEmpty) ...[
@@ -794,6 +805,92 @@ class ProductSuggestionTile extends StatelessWidget {
             const SizedBox(width: 8),
             const Icon(Icons.add_circle_outline_rounded, color: lime, size: 20),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PortionHintRow extends StatelessWidget {
+  const _PortionHintRow({required this.selected, required this.onSelected});
+
+  final MealPortionHint selected;
+  final ValueChanged<MealPortionHint> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Row(
+        children: [
+          const Text(
+            'Portion',
+            style: TextStyle(
+              color: textMuted,
+              fontSize: 11,
+              letterSpacing: 0.6,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final hint in MealPortionHint.values)
+                  _PortionChip(
+                    keyValue: ValueKey('portion-hint-${hint.name}'),
+                    label: hint.label,
+                    selected: hint == selected,
+                    onTap: () => onSelected(hint),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PortionChip extends StatelessWidget {
+  const _PortionChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    required this.keyValue,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final Key keyValue;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      key: keyValue,
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? orange.withValues(alpha: 0.18) : surfaceSoft,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: selected ? orange : hairline,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? orange : textPrimary.withValues(alpha: 0.82),
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );
