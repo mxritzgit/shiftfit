@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../services/health_service.dart';
 import '../../theme/app_colors.dart';
 import '../common/basic_widgets.dart';
 
@@ -11,12 +12,27 @@ class StepsCard extends StatelessWidget {
     required this.goal,
     required this.onAdd,
     required this.onSet,
+    this.healthAuthState = HealthAuthState.unsupported,
+    this.healthLastFetch,
+    this.healthSyncing = false,
+    this.onConnectHealth,
+    this.onRefreshHealth,
   });
 
   final int steps;
   final int goal;
   final ValueChanged<int> onAdd;
   final ValueChanged<int> onSet;
+  final HealthAuthState healthAuthState;
+  final DateTime? healthLastFetch;
+  final bool healthSyncing;
+  final VoidCallback? onConnectHealth;
+  final VoidCallback? onRefreshHealth;
+
+  bool get _healthSupported =>
+      healthAuthState != HealthAuthState.unsupported &&
+      onConnectHealth != null &&
+      onRefreshHealth != null;
 
   @override
   Widget build(BuildContext context) {
@@ -72,6 +88,16 @@ class StepsCard extends StatelessWidget {
               ),
             ],
           ),
+          if (_healthSupported) ...[
+            const SizedBox(height: 8),
+            _HealthStatusBar(
+              state: healthAuthState,
+              lastFetch: healthLastFetch,
+              syncing: healthSyncing,
+              onConnect: onConnectHealth!,
+              onRefresh: onRefreshHealth!,
+            ),
+          ],
           const SizedBox(height: 12),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -285,6 +311,125 @@ class _StepsEditSheetState extends State<_StepsEditSheet> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _HealthStatusBar extends StatelessWidget {
+  const _HealthStatusBar({
+    required this.state,
+    required this.lastFetch,
+    required this.syncing,
+    required this.onConnect,
+    required this.onRefresh,
+  });
+
+  final HealthAuthState state;
+  final DateTime? lastFetch;
+  final bool syncing;
+  final VoidCallback onConnect;
+  final VoidCallback onRefresh;
+
+  String _formatTime(DateTime t) {
+    final h = t.hour.toString().padLeft(2, '0');
+    final m = t.minute.toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (state == HealthAuthState.granted) {
+      return Container(
+        key: const ValueKey('health-status-connected'),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: lime.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.favorite_rounded, color: lime, size: 12),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                lastFetch == null
+                    ? 'Apple Health verbunden'
+                    : 'Apple Health · ${_formatTime(lastFetch!)}',
+                style: const TextStyle(
+                  color: lime,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            InkWell(
+              key: const ValueKey('health-refresh-button'),
+              onTap: syncing ? null : onRefresh,
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: syncing
+                    ? const SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.5,
+                          color: lime,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.refresh_rounded,
+                        color: lime,
+                        size: 14,
+                      ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return InkWell(
+      key: const ValueKey('health-connect-button'),
+      onTap: syncing ? null : onConnect,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: surfaceSoft,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: lime.withValues(alpha: 0.30)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.favorite_outline, color: lime, size: 12),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                state == HealthAuthState.denied
+                    ? 'Health-Zugriff abgelehnt — nochmal versuchen'
+                    : 'Mit Apple Health verbinden',
+                style: const TextStyle(
+                  color: lime,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            if (syncing)
+              const SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.5,
+                  color: lime,
+                ),
+              )
+            else
+              const Icon(Icons.arrow_forward_rounded, color: lime, size: 12),
+          ],
+        ),
       ),
     );
   }

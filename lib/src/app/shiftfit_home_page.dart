@@ -10,6 +10,7 @@ import '../models/shift_fit_plan.dart';
 import '../models/sleep_entry.dart';
 import '../models/user_profile.dart';
 import '../models/weight_log.dart';
+import '../services/health_service.dart';
 import '../services/meal_analyzer.dart';
 import '../services/meal_photo_input.dart';
 import '../services/open_food_facts_product_service.dart';
@@ -31,11 +32,13 @@ class ShiftFitHomePage extends StatefulWidget {
     this.mealAnalyzer,
     this.productService,
     this.photoInput,
+    this.healthService,
   });
 
   final MealAnalyzer? mealAnalyzer;
   final ProductLookupService? productService;
   final MealPhotoInput? photoInput;
+  final HealthService? healthService;
 
   @override
   State<ShiftFitHomePage> createState() => _ShiftFitHomePageState();
@@ -59,7 +62,13 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
   DailyMood mood = DailyMood.empty;
   HabitState habits = const HabitState();
   WeightLog weightLog = const WeightLog();
+  HealthAuthState healthAuthState = HealthAuthState.unknown;
+  DateTime? healthLastFetch;
+  bool healthSyncing = false;
   static const int stepsGoal = 8000;
+
+  HealthService get _health =>
+      widget.healthService ?? const NoopHealthService();
   final List<String> weekPlan = [
     'Früh',
     'Früh',
@@ -75,6 +84,42 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
     energy: selectedEnergy,
     stress: selectedStress,
   );
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.healthService != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _connectHealth());
+    }
+  }
+
+  Future<void> _connectHealth() async {
+    if (!mounted) return;
+    setState(() => healthSyncing = true);
+    final state = await _health.requestAuthorization();
+    if (!mounted) return;
+    setState(() => healthAuthState = state);
+    if (state == HealthAuthState.granted) {
+      await _refreshHealthSteps();
+    } else {
+      setState(() => healthSyncing = false);
+    }
+  }
+
+  Future<void> _refreshHealthSteps() async {
+    if (!mounted) return;
+    setState(() => healthSyncing = true);
+    final snapshot = await _health.readSnapshot();
+    if (!mounted) return;
+    setState(() {
+      healthSyncing = false;
+      if (snapshot != null) {
+        dailySteps = snapshot.stepsToday;
+        healthLastFetch = snapshot.fetchedAt;
+        healthAuthState = HealthAuthState.granted;
+      }
+    });
+  }
 
   void _addWater(int ml) {
     setState(() => dailyWaterMl = (dailyWaterMl + ml).clamp(0, 15000));
@@ -321,6 +366,11 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         onLogWeight: _logWeight,
         dailyConsumedKcal: dailyConsumedKcal,
         kcalGoal: profile.dailyKcalGoal,
+        healthAuthState: healthAuthState,
+        healthLastFetch: healthLastFetch,
+        healthSyncing: healthSyncing,
+        onConnectHealth: _connectHealth,
+        onRefreshHealth: _refreshHealthSteps,
         onSettingsPressed: _openSettings,
       ),
     };

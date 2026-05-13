@@ -39,7 +39,7 @@ class AchievementsStrip extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           SizedBox(
-            height: 92,
+            height: 112,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: achievements.length,

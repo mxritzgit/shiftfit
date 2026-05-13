@@ -7,6 +7,7 @@ import '../models/plan_block.dart';
 import '../models/shift_fit_plan.dart';
 import '../models/sleep_entry.dart';
 import '../models/weight_log.dart';
+import '../services/health_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/common/basic_widgets.dart';
 import '../widgets/shared/shiftfit_top_bar.dart';
@@ -61,6 +62,11 @@ class TodayDashboard extends StatelessWidget {
     required this.onLogWeight,
     required this.dailyConsumedKcal,
     required this.kcalGoal,
+    required this.healthAuthState,
+    required this.healthLastFetch,
+    required this.healthSyncing,
+    required this.onConnectHealth,
+    required this.onRefreshHealth,
     required this.onSettingsPressed,
   });
 
@@ -98,6 +104,11 @@ class TodayDashboard extends StatelessWidget {
   final ValueChanged<double> onLogWeight;
   final int dailyConsumedKcal;
   final int kcalGoal;
+  final HealthAuthState healthAuthState;
+  final DateTime? healthLastFetch;
+  final bool healthSyncing;
+  final VoidCallback onConnectHealth;
+  final VoidCallback onRefreshHealth;
   final VoidCallback onSettingsPressed;
 
   @override
@@ -172,6 +183,11 @@ class TodayDashboard extends StatelessWidget {
           goal: stepsGoal,
           onAdd: onAddSteps,
           onSet: onSetSteps,
+          healthAuthState: healthAuthState,
+          healthLastFetch: healthLastFetch,
+          healthSyncing: healthSyncing,
+          onConnectHealth: onConnectHealth,
+          onRefreshHealth: onRefreshHealth,
         ),
         const SizedBox(height: 10),
         CaffeineCard(

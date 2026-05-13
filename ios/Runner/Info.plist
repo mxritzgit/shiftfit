@@ -30,6 +30,10 @@
 	<string>ShiftFit braucht Kamerazugriff, damit du Mahlzeiten fotografieren und analysieren kannst.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>ShiftFit braucht Zugriff auf deine Fotobibliothek, damit du Mahlzeiten aus der Galerie analysieren kannst.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>ShiftFit liest deine Schrittzahl aus Apple Health, damit dein Tagesziel automatisch aktualisiert wird.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>ShiftFit kann optional Schrittdaten in Apple Health zurückschreiben.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
