@@ -65,7 +65,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
   HealthAuthState healthAuthState = HealthAuthState.unknown;
   DateTime? healthLastFetch;
   bool healthSyncing = false;
-  static const int stepsGoal = 8000;
+  int get stepsGoal => profile.dailyStepsGoal;
 
   HealthService get _health =>
       widget.healthService ?? const NoopHealthService();
