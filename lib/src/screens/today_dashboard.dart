@@ -11,11 +11,14 @@ import '../theme/app_colors.dart';
 import '../widgets/common/basic_widgets.dart';
 import '../widgets/shared/shiftfit_top_bar.dart';
 import '../widgets/today/caffeine_card.dart';
+import '../widgets/today/caffeine_half_life_card.dart';
 import '../widgets/today/day_overview_card.dart';
+import '../widgets/today/day_summary_sheet.dart';
 import '../widgets/today/habits_card.dart';
 import '../widgets/today/mood_card.dart';
 import '../widgets/today/steps_card.dart';
 import '../widgets/today/smart_reminders_card.dart';
+import '../widgets/today/tip_of_day_card.dart';
 import '../widgets/today/today_widgets.dart';
 import '../widgets/today/weight_card.dart';
 import '../widgets/today/wellness_widgets.dart';
@@ -56,6 +59,8 @@ class TodayDashboard extends StatelessWidget {
     required this.onToggleHabit,
     required this.weightLog,
     required this.onLogWeight,
+    required this.dailyConsumedKcal,
+    required this.kcalGoal,
     required this.onSettingsPressed,
   });
 
@@ -91,6 +96,8 @@ class TodayDashboard extends StatelessWidget {
   final ValueChanged<String> onToggleHabit;
   final WeightLog weightLog;
   final ValueChanged<double> onLogWeight;
+  final int dailyConsumedKcal;
+  final int kcalGoal;
   final VoidCallback onSettingsPressed;
 
   @override
@@ -138,6 +145,8 @@ class TodayDashboard extends StatelessWidget {
           lastBedtimeMinutes: lastSleep?.bedtimeMinutes,
           sleepGoalMinutes: sleepGoalMinutes,
         ),
+        const SizedBox(height: 10),
+        TipOfDayCard(shift: selectedShift),
         const SizedBox(height: 14),
         QuickCheckInCard(
           selectedShift: selectedShift,
@@ -171,6 +180,10 @@ class TodayDashboard extends StatelessWidget {
           onAdd: onAddCaffeine,
           onReset: onResetCaffeine,
         ),
+        if (caffeineDay.entries.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          CaffeineHalfLifeCard(day: caffeineDay),
+        ],
         const SizedBox(height: 10),
         SleepLogCard(
           lastEntry: lastSleep,
@@ -234,6 +247,49 @@ class TodayDashboard extends StatelessWidget {
         const SectionHeader(title: 'Wochenrhythmus', action: ''),
         const SizedBox(height: 10),
         const RhythmWeekCard(),
+        const SizedBox(height: 18),
+        Builder(
+          builder: (context) => SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              key: const ValueKey('share-day-button'),
+              onPressed: () => showDaySummarySheet(
+                context,
+                summary: DaySummary(
+                  dailyConsumedKcal: dailyConsumedKcal,
+                  kcalGoal: kcalGoal,
+                  dailyWaterMl: dailyWaterMl,
+                  waterGoalMl: waterGoalMl,
+                  dailySteps: dailySteps,
+                  stepsGoal: stepsGoal,
+                  caffeineDay: caffeineDay,
+                  lastSleep: lastSleep,
+                  mood: mood,
+                  shift: selectedShift,
+                  habits: habits,
+                  habitDefinitions: habitDefinitions,
+                  completedBlocks: completedCount,
+                  totalBlocks: total,
+                  workoutStreak: workoutStreak,
+                  weightLog: weightLog,
+                ),
+              ),
+              icon: const Icon(Icons.share_outlined, size: 17),
+              label: const Text(
+                'Tag zusammenfassen',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: textPrimary,
+                side: const BorderSide(color: hairline),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }

@@ -319,6 +319,8 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         onToggleHabit: _toggleHabit,
         weightLog: weightLog,
         onLogWeight: _logWeight,
+        dailyConsumedKcal: dailyConsumedKcal,
+        kcalGoal: profile.dailyKcalGoal,
         onSettingsPressed: _openSettings,
       ),
     };
