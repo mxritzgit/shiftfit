@@ -5,14 +5,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../models/favorite_meal.dart';
+import '../models/macro_progress.dart';
 import '../models/meal_component.dart';
 import '../models/meal_analysis_request.dart';
 import '../models/meal_analysis_result.dart';
+import '../models/user_profile.dart';
 import '../services/meal_analyzer.dart';
 import '../services/meal_photo_input.dart';
 import '../services/open_food_facts_product_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/common/basic_widgets.dart';
+import '../widgets/kcal/favorites_card.dart';
+import '../widgets/kcal/macro_targets_card.dart';
 import '../widgets/meal/meal_widgets.dart';
 import 'barcode_scanner_screen.dart';
 
@@ -23,16 +28,33 @@ class MealAnalysisScreen extends StatefulWidget {
     ProductLookupService? productService,
     MealPhotoInput? photoInput,
     required this.dailyConsumedKcal,
-    required this.onAddToDailyTotal,
+    this.macroProgress = MacroProgress.empty,
+    this.profile = const UserProfile(),
+    this.favorites = const <FavoriteMeal>[],
+    ValueChanged<MealAnalysisResult>? onAddResultToDailyTotal,
+    ValueChanged<int>? onAdjustDailyKcal,
+    ValueChanged<String>? onRemoveFavorite,
   }) : analyzer = analyzer ?? const EdgeFunctionMealAnalyzer(),
        productService = productService ?? const OpenFoodFactsProductService(),
-       photoInput = photoInput ?? DeviceMealPhotoInput();
+       photoInput = photoInput ?? DeviceMealPhotoInput(),
+       onAddResultToDailyTotal = onAddResultToDailyTotal ?? _noopResult,
+       onAdjustDailyKcal = onAdjustDailyKcal ?? _noopInt,
+       onRemoveFavorite = onRemoveFavorite ?? _noopString;
+
+  static void _noopResult(MealAnalysisResult _) {}
+  static void _noopInt(int _) {}
+  static void _noopString(String _) {}
 
   final MealAnalyzer analyzer;
   final ProductLookupService productService;
   final MealPhotoInput photoInput;
   final int dailyConsumedKcal;
-  final ValueChanged<int> onAddToDailyTotal;
+  final MacroProgress macroProgress;
+  final UserProfile profile;
+  final List<FavoriteMeal> favorites;
+  final ValueChanged<MealAnalysisResult> onAddResultToDailyTotal;
+  final ValueChanged<int> onAdjustDailyKcal;
+  final ValueChanged<String> onRemoveFavorite;
 
   @override
   State<MealAnalysisScreen> createState() => _MealAnalysisScreenState();
@@ -336,7 +358,7 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
       return;
     }
 
-    widget.onAddToDailyTotal(currentResult.caloriesKcal);
+    widget.onAddResultToDailyTotal(currentResult);
     setState(() {
       addedToDailyTotal = true;
       addedCaloriesSnapshot = currentResult.caloriesKcal;
@@ -345,6 +367,19 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
       SnackBar(
         content: Text('${currentResult.caloriesKcal} kcal zu heute hinzugefügt.'),
       ),
+    );
+  }
+
+  void pickFavorite(MealAnalysisResult favorite) {
+    setState(() {
+      selectedImageBytes = null;
+      result = favorite;
+      mealConfirmed = false;
+      addedToDailyTotal = false;
+      addedCaloriesSnapshot = null;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${favorite.mealName} geladen.')),
     );
   }
 
@@ -389,7 +424,7 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
     if (wasAdded && previousAddedCalories != null) {
       final delta = updatedResult.caloriesKcal - previousAddedCalories;
       if (delta != 0) {
-        widget.onAddToDailyTotal(delta);
+        widget.onAdjustDailyKcal(delta);
       }
     }
 
@@ -515,9 +550,22 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
       children: [
         KcalSummaryHeader(dailyConsumedKcal: widget.dailyConsumedKcal),
         const SizedBox(height: 14),
+        MacroTargetsCard(
+          progress: widget.macroProgress,
+          profile: widget.profile,
+        ),
+        const SizedBox(height: 14),
         buildQuickActions(),
         const SizedBox(height: 14),
         buildProductSearchCard(),
+        if (widget.favorites.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          FavoritesCard(
+            favorites: widget.favorites,
+            onPick: pickFavorite,
+            onRemove: widget.onRemoveFavorite,
+          ),
+        ],
         const SizedBox(height: 14),
         if (selectedImageBytes != null) ...[
           MealPreviewCard(imageBytes: selectedImageBytes),

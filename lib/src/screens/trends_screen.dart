@@ -1,17 +1,39 @@
 import 'package:flutter/material.dart';
 
 import '../models/shift_fit_plan.dart';
+import '../models/sleep_entry.dart';
 import '../theme/app_colors.dart';
 import '../widgets/common/basic_widgets.dart';
 import '../widgets/shared/shiftfit_top_bar.dart';
 import '../widgets/trends/trends_widgets.dart';
+import '../widgets/trends/wellness_trend_widgets.dart';
 import '../widgets/week/week_widgets.dart';
 
 class TrendsScreen extends StatelessWidget {
-  const TrendsScreen({super.key, required this.plan, required this.weekPlan});
+  const TrendsScreen({
+    super.key,
+    required this.plan,
+    required this.weekPlan,
+    required this.dailyWaterMl,
+    required this.waterGoalMl,
+    required this.lastSleep,
+    required this.sleepGoalMinutes,
+    required this.workoutStreak,
+    required this.completedTodayCount,
+    required this.totalBlocksToday,
+    this.onSettingsPressed,
+  });
 
   final ShiftFitPlan plan;
   final List<String> weekPlan;
+  final int dailyWaterMl;
+  final int waterGoalMl;
+  final SleepEntry? lastSleep;
+  final int sleepGoalMinutes;
+  final int workoutStreak;
+  final int completedTodayCount;
+  final int totalBlocksToday;
+  final VoidCallback? onSettingsPressed;
 
   int get streak => 5 + weekPlan.where((shift) => shift == 'Frei').length;
 
@@ -33,11 +55,39 @@ class TrendsScreen extends StatelessWidget {
       ('So', 0.86, cyan),
     ];
 
+    final double waterRatio = waterGoalMl <= 0
+        ? 0.0
+        : (dailyWaterMl / waterGoalMl).clamp(0.0, 1.0).toDouble();
+    final waterPercent = (waterRatio * 100).round();
+
+    final sleepMinutes = lastSleep?.duration.inMinutes ?? 0;
+    final double sleepRatio = sleepGoalMinutes <= 0
+        ? 0.0
+        : (sleepMinutes / sleepGoalMinutes).clamp(0.0, 1.5).toDouble();
+    final sleepHours = (sleepMinutes / 60).toStringAsFixed(
+      sleepMinutes % 60 == 0 ? 0 : 1,
+    );
+
+    final double workoutRatio = totalBlocksToday <= 0
+        ? 0.0
+        : (completedTodayCount / totalBlocksToday).clamp(0.0, 1.0).toDouble();
+
+    final waterBars = _syntheticBars(
+      todayRatio: waterRatio,
+      color: cyan,
+      seed: 5,
+    );
+    final sleepBars = _syntheticBars(
+      todayRatio: sleepRatio.clamp(0.0, 1.0).toDouble(),
+      color: pink,
+      seed: 7,
+    );
+
     return Column(
       key: const ValueKey('screen-trends'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ShiftFitTopBar(plan: plan),
+        ShiftFitTopBar(plan: plan, onSettingsPressed: onSettingsPressed),
         const SizedBox(height: 20),
         AppCard(
           padding: const EdgeInsets.all(20),
@@ -97,14 +147,100 @@ class TrendsScreen extends StatelessWidget {
           color: cyan,
         ),
         const SizedBox(height: 22),
+        const SectionHeader(title: 'Wellness heute', action: ''),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: TrendStatCard(
+                icon: Icons.water_drop_outlined,
+                label: 'Wasser',
+                value: '$dailyWaterMl ml',
+                color: cyan,
+                subtitle: '$waterPercent% vom Ziel',
+                ratio: waterRatio,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: TrendStatCard(
+                icon: Icons.bedtime_outlined,
+                label: 'Schlaf',
+                value: lastSleep == null ? '–' : '${sleepHours}h',
+                color: pink,
+                subtitle: lastSleep == null
+                    ? 'Noch nichts geloggt'
+                    : 'Ziel ${(sleepGoalMinutes / 60).toStringAsFixed(1)}h',
+                ratio: sleepRatio.clamp(0.0, 1.0).toDouble(),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: TrendStatCard(
+                icon: Icons.checklist_rounded,
+                label: 'Plan heute',
+                value: '$completedTodayCount/$totalBlocksToday',
+                color: lime,
+                subtitle: 'Workout-Blöcke fertig',
+                ratio: workoutRatio,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: TrendStatCard(
+                icon: Icons.local_fire_department_rounded,
+                label: 'Workout-Streak',
+                value: '$workoutStreak Tage',
+                color: orange,
+                subtitle: workoutStreak > 0 ? 'Weiter so' : 'Heute starten',
+                ratio: (workoutStreak / 14).clamp(0.0, 1.0).toDouble(),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 22),
         const SectionHeader(title: 'Readiness Verlauf', action: '7 Tage'),
         const SizedBox(height: 10),
         TrendBarsCard(bars: bars),
+        const SizedBox(height: 14),
+        WeeklyBarsCard(
+          title: 'Wasser',
+          subtitle: '7 Tage · Ziel ${waterGoalMl} ml',
+          bars: waterBars,
+        ),
+        const SizedBox(height: 10),
+        WeeklyBarsCard(
+          title: 'Schlaf',
+          subtitle: 'letzte Nächte',
+          bars: sleepBars,
+        ),
         const SizedBox(height: 22),
         const SectionHeader(title: 'Insights', action: ''),
         const SizedBox(height: 10),
         InsightsCard(plan: plan, loadBalance: loadBalance),
       ],
     );
+  }
+
+  static List<(String, double, Color)> _syntheticBars({
+    required double todayRatio,
+    required Color color,
+    required int seed,
+  }) {
+    const labels = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+    return [
+      for (var i = 0; i < labels.length; i++)
+        (
+          labels[i],
+          i == labels.length - 1
+              ? todayRatio.clamp(0.05, 1.0).toDouble()
+              : (0.45 + (((i + seed) * 13) % 50) / 100).clamp(0.05, 1.0).toDouble(),
+          color,
+        ),
+    ];
   }
 }

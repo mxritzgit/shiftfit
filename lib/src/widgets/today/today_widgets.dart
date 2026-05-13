@@ -237,9 +237,16 @@ class RecoveryScoreCard extends StatelessWidget {
 }
 
 class DailyPlanCard extends StatelessWidget {
-  const DailyPlanCard({super.key, required this.plan});
+  const DailyPlanCard({
+    super.key,
+    required this.plan,
+    this.completed = const <String>{},
+    this.onToggleBlock,
+  });
 
   final ShiftFitPlan plan;
+  final Set<String> completed;
+  final ValueChanged<String>? onToggleBlock;
 
   @override
   Widget build(BuildContext context) {
@@ -252,11 +259,17 @@ class DailyPlanCard extends StatelessWidget {
               block: plan.blocks[i],
               accent: plan.accent,
               index: i + 1,
+              done: completed.contains(_idFor(plan.blocks[i], i)),
+              onToggle: onToggleBlock == null
+                  ? null
+                  : () => onToggleBlock!(_idFor(plan.blocks[i], i)),
             ),
         ],
       ),
     );
   }
+
+  static String _idFor(PlanBlock block, int index) => '$index:${block.title}';
 }
 
 class PlanBlockTile extends StatelessWidget {
@@ -265,53 +278,84 @@ class PlanBlockTile extends StatelessWidget {
     required this.block,
     required this.accent,
     required this.index,
+    this.done = false,
+    this.onToggle,
   });
 
   final PlanBlock block;
   final Color accent;
   final int index;
+  final bool done;
+  final VoidCallback? onToggle;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(8),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
+    return InkWell(
+      onTap: onToggle,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: done ? 0.22 : 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(block.icon, color: accent, size: 18),
             ),
-            child: Icon(block.icon, color: accent, size: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '$index. ${block.title}',
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$index. ${block.title}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      decoration: done ? TextDecoration.lineThrough : null,
+                      color: done ? textMuted : textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    block.description,
+                    style: const TextStyle(color: textMuted, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              block.duration,
+              style: TextStyle(
+                color: done ? textMuted : textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (onToggle != null) ...[
+              const SizedBox(width: 8),
+              Container(
+                key: ValueKey('plan-block-toggle-$index'),
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: done ? accent : Colors.transparent,
+                  borderRadius: BorderRadius.circular(7),
+                  border: Border.all(
+                    color: done ? accent : textMuted.withValues(alpha: 0.45),
+                  ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  block.description,
-                  style: const TextStyle(color: textMuted, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            block.duration,
-            style: const TextStyle(
-              color: textPrimary,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
+                child: done
+                    ? Icon(Icons.check_rounded, color: bg, size: 16)
+                    : null,
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

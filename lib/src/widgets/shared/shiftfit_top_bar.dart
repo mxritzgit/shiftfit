@@ -4,9 +4,10 @@ import '../../models/shift_fit_plan.dart';
 import '../../theme/app_colors.dart';
 
 class ShiftFitTopBar extends StatelessWidget {
-  const ShiftFitTopBar({super.key, required this.plan});
+  const ShiftFitTopBar({super.key, required this.plan, this.onSettingsPressed});
 
   final ShiftFitPlan plan;
+  final VoidCallback? onSettingsPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +39,14 @@ class ShiftFitTopBar extends StatelessWidget {
             ],
           ),
         ),
+        if (onSettingsPressed != null)
+          IconButton(
+            key: const ValueKey('topbar-settings'),
+            onPressed: onSettingsPressed,
+            tooltip: 'Einstellungen',
+            icon: const Icon(Icons.tune_rounded, size: 20, color: textMuted),
+            visualDensity: VisualDensity.compact,
+          ),
         Container(
           width: 36,
           height: 36,
