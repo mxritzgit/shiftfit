@@ -7,6 +7,7 @@ import '../theme/app_colors.dart';
 import '../widgets/common/basic_widgets.dart';
 import '../widgets/shared/shiftfit_top_bar.dart';
 import '../widgets/trends/achievements_strip.dart';
+import '../widgets/trends/streak_calendar.dart';
 import '../widgets/trends/trends_widgets.dart';
 import '../widgets/trends/wellness_trend_widgets.dart';
 import '../widgets/week/week_widgets.dart';
@@ -240,6 +241,14 @@ class TrendsScreen extends StatelessWidget {
           color: lime,
           subtitle: 'Workout-Blöcke fertig',
           ratio: workoutRatio,
+        ),
+        const SizedBox(height: 22),
+        const SectionHeader(title: '4-Wochen-Streak', action: ''),
+        const SizedBox(height: 10),
+        StreakCalendar(
+          workoutStreak: workoutStreak,
+          completedToday: totalBlocksToday > 0 &&
+              completedTodayCount >= totalBlocksToday,
         ),
         const SizedBox(height: 22),
         const SectionHeader(title: 'Achievements', action: ''),

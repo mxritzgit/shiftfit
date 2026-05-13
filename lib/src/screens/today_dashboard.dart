@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/caffeine_entry.dart';
 import '../models/daily_mood.dart';
+import '../models/plan_block.dart';
 import '../models/shift_fit_plan.dart';
 import '../models/sleep_entry.dart';
 import '../theme/app_colors.dart';
@@ -11,8 +12,10 @@ import '../widgets/today/caffeine_card.dart';
 import '../widgets/today/day_overview_card.dart';
 import '../widgets/today/mood_card.dart';
 import '../widgets/today/steps_card.dart';
+import '../widgets/today/smart_reminders_card.dart';
 import '../widgets/today/today_widgets.dart';
 import '../widgets/today/wellness_widgets.dart';
+import '../widgets/today/workout_timer_sheet.dart';
 
 class TodayDashboard extends StatelessWidget {
   const TodayDashboard({
@@ -113,6 +116,15 @@ class TodayDashboard extends StatelessWidget {
           stepsRatio: stepsRatio,
         ),
         const SizedBox(height: 14),
+        SmartRemindersCard(
+          shift: selectedShift,
+          dailyWaterMl: dailyWaterMl,
+          waterGoalMl: waterGoalMl,
+          caffeineDay: caffeineDay,
+          lastBedtimeMinutes: lastSleep?.bedtimeMinutes,
+          sleepGoalMinutes: sleepGoalMinutes,
+        ),
+        const SizedBox(height: 14),
         QuickCheckInCard(
           selectedShift: selectedShift,
           selectedEnergy: selectedEnergy,
@@ -163,10 +175,23 @@ class TodayDashboard extends StatelessWidget {
           action: planAction,
         ),
         const SizedBox(height: 10),
-        DailyPlanCard(
-          plan: plan,
-          completed: completedBlockIds,
-          onToggleBlock: onToggleBlock,
+        Builder(
+          builder: (innerContext) => DailyPlanCard(
+            plan: plan,
+            completed: completedBlockIds,
+            onToggleBlock: onToggleBlock,
+            onStartTimer: (block) async {
+              final markDone = await showWorkoutTimerSheet(
+                innerContext,
+                block: block,
+                accent: plan.accent,
+              );
+              if (markDone == true) {
+                final index = plan.blocks.indexOf(block) + 1;
+                onToggleBlock('$index:${block.title}');
+              }
+            },
+          ),
         ),
         if (workoutStreak > 0) ...[
           const SizedBox(height: 10),

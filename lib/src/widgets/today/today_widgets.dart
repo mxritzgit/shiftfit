@@ -242,11 +242,13 @@ class DailyPlanCard extends StatelessWidget {
     required this.plan,
     this.completed = const <String>{},
     this.onToggleBlock,
+    this.onStartTimer,
   });
 
   final ShiftFitPlan plan;
   final Set<String> completed;
   final ValueChanged<String>? onToggleBlock;
+  final ValueChanged<PlanBlock>? onStartTimer;
 
   @override
   Widget build(BuildContext context) {
@@ -263,6 +265,9 @@ class DailyPlanCard extends StatelessWidget {
               onToggle: onToggleBlock == null
                   ? null
                   : () => onToggleBlock!(_idFor(plan.blocks[i], i)),
+              onStartTimer: onStartTimer == null
+                  ? null
+                  : () => onStartTimer!(plan.blocks[i]),
             ),
         ],
       ),
@@ -280,6 +285,7 @@ class PlanBlockTile extends StatelessWidget {
     required this.index,
     this.done = false,
     this.onToggle,
+    this.onStartTimer,
   });
 
   final PlanBlock block;
@@ -287,11 +293,12 @@ class PlanBlockTile extends StatelessWidget {
   final int index;
   final bool done;
   final VoidCallback? onToggle;
+  final VoidCallback? onStartTimer;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: onToggle,
+      onTap: onStartTimer ?? onToggle,
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.all(8),
@@ -338,20 +345,24 @@ class PlanBlockTile extends StatelessWidget {
             ),
             if (onToggle != null) ...[
               const SizedBox(width: 8),
-              Container(
-                key: ValueKey('plan-block-toggle-$index'),
-                width: 22,
-                height: 22,
-                decoration: BoxDecoration(
-                  color: done ? accent : Colors.transparent,
-                  borderRadius: BorderRadius.circular(7),
-                  border: Border.all(
-                    color: done ? accent : textMuted.withValues(alpha: 0.45),
+              GestureDetector(
+                onTap: onToggle,
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  key: ValueKey('plan-block-toggle-$index'),
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: done ? accent : Colors.transparent,
+                    borderRadius: BorderRadius.circular(7),
+                    border: Border.all(
+                      color: done ? accent : textMuted.withValues(alpha: 0.45),
+                    ),
                   ),
+                  child: done
+                      ? Icon(Icons.check_rounded, color: bg, size: 16)
+                      : null,
                 ),
-                child: done
-                    ? Icon(Icons.check_rounded, color: bg, size: 16)
-                    : null,
               ),
             ],
           ],
