@@ -26,8 +26,37 @@ STRENGE ITEMIZATION — ABSOLUT PFLICHT:
 - Wenn mehrere Stücke desselben Lebensmittels sichtbar sind (z. B. 3 Kartoffeln),
   fasse sie in EINEM Item mit Gesamtgramm zusammen ("Kartoffeln", grams = Summe).
 - Brot/Burger-Brötchen + Belag/Patty = jeweils eigene items.
-- "mealName" ist der Sammelname (z. B. "Teller mit Steak, Kartoffeln, Brokkoli");
+- items[] hat NIEMALS nur einen Eintrag, wenn mehr als ein Lebensmittel sichtbar
+  ist. Bei Zweifel: lieber trennen.
+- "mealName" ist der Sammelname (z. B. "Steak mit Ofenkartoffeln");
   "items[]" ist die strikte Einzelauflistung.
+
+BEISPIEL — itemization richtig vs. falsch:
+Foto zeigt: ein Steak, mehrere Ofenkartoffeln, eine halbe Tomate.
+
+FALSCH (eine zusammengefasste Mahlzeit):
+{
+  "mealName": "Steak mit Ofenkartoffeln und Tomate",
+  "items": [
+    { "name": "Steak mit Ofenkartoffeln und Tomate", "grams": 550, "caloriesKcal": 820 }
+  ]
+}
+
+FALSCH (gar keine items):
+{
+  "mealName": "Steak mit Ofenkartoffeln und Tomate",
+  "items": []
+}
+
+RICHTIG (drei einzelne Bestandteile):
+{
+  "mealName": "Steak mit Ofenkartoffeln und Tomate",
+  "items": [
+    { "name": "Steak",          "grams": 220, "kcalPer100G": 220, "caloriesKcal": 484 },
+    { "name": "Ofenkartoffeln", "grams": 260, "kcalPer100G": 95,  "caloriesKcal": 247 },
+    { "name": "Tomate",         "grams": 70,  "kcalPer100G": 18,  "caloriesKcal": 13 }
+  ]
+}
 
 GRÖSSEN-LOGIK:
 - Schätze pro Item das tatsächliche GEWICHT in Gramm anhand visueller Anhaltspunkte:

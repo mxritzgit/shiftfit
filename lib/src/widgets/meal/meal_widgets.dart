@@ -832,9 +832,7 @@ Future<Object?> showWeightAdjustmentSheet(
     backgroundColor: surface,
     showDragHandle: true,
     isScrollControlled: true,
-    builder: (context) => result.hasItemizedBreakdown
-        ? _MealItemAdjustmentSheet(result: result)
-        : _MealWeightAdjustmentSheet(result: result),
+    builder: (context) => _MealItemAdjustmentSheet(result: result),
   );
 }
 
@@ -979,7 +977,22 @@ class _MealItemAdjustmentSheetState extends State<_MealItemAdjustmentSheet> {
   @override
   void initState() {
     super.initState();
-    _items = [...widget.result.items];
+    // Fall back to a single synthesized item when the AI didn't return any
+    // itemized breakdown (or for OpenFoodFacts barcode lookups). The user can
+    // then still edit the weight, remove it, or split it into multiple items
+    // via "Bestandteil hinzufügen".
+    if (widget.result.items.isNotEmpty) {
+      _items = [...widget.result.items];
+    } else {
+      _items = [
+        MealComponent(
+          name: widget.result.mealName,
+          grams: widget.result.estimatedGrams,
+          caloriesKcal: widget.result.caloriesKcal,
+          kcalPer100G: widget.result.kcalPer100G,
+        ),
+      ];
+    }
     _grams = _items.map((item) => item.grams).toList(growable: true);
     _controllers = _grams
         .map((grams) => TextEditingController(text: grams.toString()))
