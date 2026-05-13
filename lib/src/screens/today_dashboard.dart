@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 
+import '../models/caffeine_entry.dart';
+import '../models/daily_mood.dart';
 import '../models/shift_fit_plan.dart';
 import '../models/sleep_entry.dart';
 import '../theme/app_colors.dart';
 import '../widgets/common/basic_widgets.dart';
 import '../widgets/shared/shiftfit_top_bar.dart';
+import '../widgets/today/caffeine_card.dart';
+import '../widgets/today/day_overview_card.dart';
+import '../widgets/today/mood_card.dart';
+import '../widgets/today/steps_card.dart';
 import '../widgets/today/today_widgets.dart';
 import '../widgets/today/wellness_widgets.dart';
 
@@ -28,6 +34,16 @@ class TodayDashboard extends StatelessWidget {
     required this.completedBlockIds,
     required this.onToggleBlock,
     required this.workoutStreak,
+    required this.caffeineDay,
+    required this.onAddCaffeine,
+    required this.onResetCaffeine,
+    required this.dailySteps,
+    required this.stepsGoal,
+    required this.onAddSteps,
+    required this.onSetSteps,
+    required this.mood,
+    required this.onMoodChanged,
+    required this.onEditMoodNote,
     required this.onSettingsPressed,
   });
 
@@ -48,6 +64,16 @@ class TodayDashboard extends StatelessWidget {
   final Set<String> completedBlockIds;
   final ValueChanged<String> onToggleBlock;
   final int workoutStreak;
+  final CaffeineDay caffeineDay;
+  final ValueChanged<int> onAddCaffeine;
+  final VoidCallback onResetCaffeine;
+  final int dailySteps;
+  final int stepsGoal;
+  final ValueChanged<int> onAddSteps;
+  final ValueChanged<int> onSetSteps;
+  final DailyMood mood;
+  final ValueChanged<int> onMoodChanged;
+  final VoidCallback onEditMoodNote;
   final VoidCallback onSettingsPressed;
 
   @override
@@ -58,6 +84,20 @@ class TodayDashboard extends StatelessWidget {
         ? '${plan.totalMinutes} Min'
         : '$completedCount/$total · ${plan.totalMinutes} Min';
 
+    final double waterRatio = waterGoalMl <= 0
+        ? 0.0
+        : (dailyWaterMl / waterGoalMl).clamp(0.0, 1.0).toDouble();
+    final sleepMinutes = lastSleep?.duration.inMinutes ?? 0;
+    final double sleepRatio = sleepGoalMinutes <= 0
+        ? 0.0
+        : (sleepMinutes / sleepGoalMinutes).clamp(0.0, 1.0).toDouble();
+    final double workoutRatio = total <= 0
+        ? 0.0
+        : (completedCount / total).clamp(0.0, 1.0).toDouble();
+    final double stepsRatio = stepsGoal <= 0
+        ? 0.0
+        : (dailySteps / stepsGoal).clamp(0.0, 1.0).toDouble();
+
     return Column(
       key: const ValueKey('screen-today'),
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -65,7 +105,14 @@ class TodayDashboard extends StatelessWidget {
         ShiftFitTopBar(plan: plan, onSettingsPressed: onSettingsPressed),
         const SizedBox(height: 20),
         ShiftFitHero(plan: plan),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
+        DayOverviewCard(
+          waterRatio: waterRatio,
+          sleepRatio: sleepRatio,
+          workoutRatio: workoutRatio,
+          stepsRatio: stepsRatio,
+        ),
+        const SizedBox(height: 14),
         QuickCheckInCard(
           selectedShift: selectedShift,
           selectedEnergy: selectedEnergy,
@@ -85,10 +132,30 @@ class TodayDashboard extends StatelessWidget {
           onReset: onResetWater,
         ),
         const SizedBox(height: 10),
+        StepsCard(
+          steps: dailySteps,
+          goal: stepsGoal,
+          onAdd: onAddSteps,
+          onSet: onSetSteps,
+        ),
+        const SizedBox(height: 10),
+        CaffeineCard(
+          day: caffeineDay,
+          shift: selectedShift,
+          onAdd: onAddCaffeine,
+          onReset: onResetCaffeine,
+        ),
+        const SizedBox(height: 10),
         SleepLogCard(
           lastEntry: lastSleep,
           goalMinutes: sleepGoalMinutes,
           onLog: onLogSleep,
+        ),
+        const SizedBox(height: 10),
+        MoodCard(
+          mood: mood,
+          onMoodChanged: onMoodChanged,
+          onEditNote: onEditMoodNote,
         ),
         const SizedBox(height: 22),
         SectionHeader(

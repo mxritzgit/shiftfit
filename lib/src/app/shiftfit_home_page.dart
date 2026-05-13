@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../models/caffeine_entry.dart';
+import '../models/daily_mood.dart';
 import '../models/favorite_meal.dart';
 import '../models/macro_progress.dart';
 import '../models/meal_analysis_result.dart';
@@ -16,6 +18,7 @@ import '../screens/week_planner_screen.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_shell/shiftfit_bottom_nav.dart';
 import '../widgets/shared/settings_sheet.dart';
+import '../widgets/today/mood_card.dart';
 import '../widgets/today/wellness_widgets.dart';
 
 class ShiftFitHomePage extends StatefulWidget {
@@ -41,12 +44,16 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
   int selectedTab = 0;
   int dailyConsumedKcal = 0;
   int dailyWaterMl = 0;
+  int dailySteps = 0;
   UserProfile profile = const UserProfile();
   MacroProgress macroProgress = MacroProgress.empty;
   SleepEntry? lastSleep;
   Set<String> completedBlockIds = <String>{};
   int workoutStreak = 0;
   List<FavoriteMeal> favorites = <FavoriteMeal>[];
+  CaffeineDay caffeineDay = const CaffeineDay();
+  DailyMood mood = DailyMood.empty;
+  static const int stepsGoal = 8000;
   final List<String> weekPlan = [
     'Früh',
     'Früh',
@@ -69,6 +76,33 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
 
   void _resetWater() {
     setState(() => dailyWaterMl = 0);
+  }
+
+  void _addCaffeine(int mg) {
+    setState(() => caffeineDay = caffeineDay.add(mg));
+  }
+
+  void _resetCaffeine() {
+    setState(() => caffeineDay = caffeineDay.reset());
+  }
+
+  void _addSteps(int amount) {
+    setState(() => dailySteps = (dailySteps + amount).clamp(0, 100000));
+  }
+
+  void _setSteps(int amount) {
+    setState(() => dailySteps = amount.clamp(0, 100000));
+  }
+
+  void _setMoodScore(int score) {
+    setState(() => mood = DailyMood(score: score, note: mood.note));
+  }
+
+  Future<void> _editMoodNote() async {
+    final result = await showMoodNoteSheet(context, initial: mood.note);
+    if (result != null && mounted) {
+      setState(() => mood = DailyMood(score: mood.score, note: result));
+    }
   }
 
   Future<void> _logSleep() async {
@@ -140,8 +174,11 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
       if (result.resetDay) {
         dailyConsumedKcal = 0;
         dailyWaterMl = 0;
+        dailySteps = 0;
         macroProgress = MacroProgress.empty;
         completedBlockIds = <String>{};
+        caffeineDay = const CaffeineDay();
+        mood = DailyMood.empty;
       }
     });
     if (result.resetDay) {
@@ -189,6 +226,10 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         workoutStreak: workoutStreak,
         completedTodayCount: completedBlockIds.length,
         totalBlocksToday: plan.blocks.length,
+        dailySteps: dailySteps,
+        stepsGoal: stepsGoal,
+        dailyConsumedKcal: dailyConsumedKcal,
+        kcalGoal: profile.dailyKcalGoal,
         onSettingsPressed: _openSettings,
       ),
       3 => MealAnalysisScreen(
@@ -221,6 +262,16 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         completedBlockIds: completedBlockIds,
         onToggleBlock: _toggleBlock,
         workoutStreak: workoutStreak,
+        caffeineDay: caffeineDay,
+        onAddCaffeine: _addCaffeine,
+        onResetCaffeine: _resetCaffeine,
+        dailySteps: dailySteps,
+        stepsGoal: stepsGoal,
+        onAddSteps: _addSteps,
+        onSetSteps: _setSteps,
+        mood: mood,
+        onMoodChanged: _setMoodScore,
+        onEditMoodNote: _editMoodNote,
         onSettingsPressed: _openSettings,
       ),
     };
