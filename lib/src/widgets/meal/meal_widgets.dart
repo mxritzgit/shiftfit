@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -170,9 +169,14 @@ class MealLoadingCard extends StatefulWidget {
 
 class _MealLoadingCardState extends State<MealLoadingCard>
     with SingleTickerProviderStateMixin {
-  Timer? _stepTimer;
-  late final AnimationController _pulse;
+  late final AnimationController _progress;
   int _stepIndex = 0;
+
+  /// Roughly how long a vision-model analysis takes in practice. The progress
+  /// bar fills linearly over this duration once and then stops — if the
+  /// network call is still pending after that we just stay on the last stage
+  /// (no looping back to 1/4).
+  static const Duration _estimatedDuration = Duration(seconds: 7);
 
   static const List<(IconData, String)> _stages = [
     (Icons.image_search_rounded, 'Erkenne Lebensmittel...'),
@@ -184,26 +188,35 @@ class _MealLoadingCardState extends State<MealLoadingCard>
   @override
   void initState() {
     super.initState();
-    _pulse = AnimationController(
+    _progress = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..repeat(reverse: true);
-    _stepTimer = Timer.periodic(const Duration(milliseconds: 1200), (_) {
-      if (!mounted) return;
-      setState(() => _stepIndex = (_stepIndex + 1) % _stages.length);
-    });
+      duration: _estimatedDuration,
+    )
+      ..addListener(_handleTick)
+      ..forward();
+  }
+
+  void _handleTick() {
+    if (!mounted) return;
+    final raw = (_progress.value * _stages.length).floor();
+    final clamped = raw.clamp(0, _stages.length - 1);
+    if (clamped != _stepIndex) {
+      setState(() => _stepIndex = clamped);
+    }
   }
 
   @override
   void dispose() {
-    _stepTimer?.cancel();
-    _pulse.dispose();
+    _progress
+      ..removeListener(_handleTick)
+      ..dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final stage = _stages[_stepIndex];
+    final atFinalStage = _stepIndex == _stages.length - 1;
     return AppCard(
       key: const ValueKey('analyse-loading'),
       padding: const EdgeInsets.all(16),
@@ -212,17 +225,14 @@ class _MealLoadingCardState extends State<MealLoadingCard>
         children: [
           Row(
             children: [
-              FadeTransition(
-                opacity: Tween<double>(begin: 0.5, end: 1.0).animate(_pulse),
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: orange.withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(stage.$1, color: orange, size: 18),
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: orange.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(10),
                 ),
+                child: Icon(stage.$1, color: orange, size: 18),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -252,7 +262,9 @@ class _MealLoadingCardState extends State<MealLoadingCard>
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Schritt ${_stepIndex + 1} von ${_stages.length}',
+                        atFinalStage
+                            ? 'Gleich fertig...'
+                            : 'Schritt ${_stepIndex + 1} von ${_stages.length}',
                         style: const TextStyle(
                           color: textMuted,
                           fontSize: 11,
@@ -268,11 +280,17 @@ class _MealLoadingCardState extends State<MealLoadingCard>
           const SizedBox(height: 12),
           ClipRRect(
             borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: (_stepIndex + 1) / _stages.length,
-              minHeight: 3,
-              backgroundColor: hairline,
-              color: orange,
+            child: AnimatedBuilder(
+              animation: _progress,
+              builder: (context, _) => LinearProgressIndicator(
+                // Cap the visible progress at 95 % so a long-running call
+                // doesn't sit at "100 %" and feel stuck. Once it actually
+                // finishes the parent removes the card.
+                value: (_progress.value * 0.95).clamp(0.0, 0.95),
+                minHeight: 3,
+                backgroundColor: hairline,
+                color: orange,
+              ),
             ),
           ),
         ],
