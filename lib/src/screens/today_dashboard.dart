@@ -2,18 +2,22 @@ import 'package:flutter/material.dart';
 
 import '../models/caffeine_entry.dart';
 import '../models/daily_mood.dart';
+import '../models/habit.dart';
 import '../models/plan_block.dart';
 import '../models/shift_fit_plan.dart';
 import '../models/sleep_entry.dart';
+import '../models/weight_log.dart';
 import '../theme/app_colors.dart';
 import '../widgets/common/basic_widgets.dart';
 import '../widgets/shared/shiftfit_top_bar.dart';
 import '../widgets/today/caffeine_card.dart';
 import '../widgets/today/day_overview_card.dart';
+import '../widgets/today/habits_card.dart';
 import '../widgets/today/mood_card.dart';
 import '../widgets/today/steps_card.dart';
 import '../widgets/today/smart_reminders_card.dart';
 import '../widgets/today/today_widgets.dart';
+import '../widgets/today/weight_card.dart';
 import '../widgets/today/wellness_widgets.dart';
 import '../widgets/today/workout_timer_sheet.dart';
 
@@ -47,6 +51,11 @@ class TodayDashboard extends StatelessWidget {
     required this.mood,
     required this.onMoodChanged,
     required this.onEditMoodNote,
+    required this.habits,
+    required this.habitDefinitions,
+    required this.onToggleHabit,
+    required this.weightLog,
+    required this.onLogWeight,
     required this.onSettingsPressed,
   });
 
@@ -77,6 +86,11 @@ class TodayDashboard extends StatelessWidget {
   final DailyMood mood;
   final ValueChanged<int> onMoodChanged;
   final VoidCallback onEditMoodNote;
+  final HabitState habits;
+  final List<Habit> habitDefinitions;
+  final ValueChanged<String> onToggleHabit;
+  final WeightLog weightLog;
+  final ValueChanged<double> onLogWeight;
   final VoidCallback onSettingsPressed;
 
   @override
@@ -168,6 +182,17 @@ class TodayDashboard extends StatelessWidget {
           mood: mood,
           onMoodChanged: onMoodChanged,
           onEditNote: onEditMoodNote,
+        ),
+        const SizedBox(height: 10),
+        WeightCard(
+          log: weightLog,
+          onLog: onLogWeight,
+        ),
+        const SizedBox(height: 10),
+        HabitsCard(
+          habits: habitDefinitions,
+          state: habits,
+          onToggle: onToggleHabit,
         ),
         const SizedBox(height: 22),
         SectionHeader(

@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import '../models/caffeine_entry.dart';
 import '../models/daily_mood.dart';
 import '../models/favorite_meal.dart';
+import '../models/habit.dart';
 import '../models/macro_progress.dart';
 import '../models/meal_analysis_result.dart';
 import '../models/shift_fit_plan.dart';
 import '../models/sleep_entry.dart';
 import '../models/user_profile.dart';
+import '../models/weight_log.dart';
 import '../services/meal_analyzer.dart';
 import '../services/meal_photo_input.dart';
 import '../services/open_food_facts_product_service.dart';
@@ -17,7 +19,9 @@ import '../screens/trends_screen.dart';
 import '../screens/week_planner_screen.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_shell/shiftfit_bottom_nav.dart';
+import '../widgets/shared/quick_add_sheet.dart';
 import '../widgets/shared/settings_sheet.dart';
+import '../widgets/today/habits_card.dart';
 import '../widgets/today/mood_card.dart';
 import '../widgets/today/wellness_widgets.dart';
 
@@ -53,6 +57,8 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
   List<FavoriteMeal> favorites = <FavoriteMeal>[];
   CaffeineDay caffeineDay = const CaffeineDay();
   DailyMood mood = DailyMood.empty;
+  HabitState habits = const HabitState();
+  WeightLog weightLog = const WeightLog();
   static const int stepsGoal = 8000;
   final List<String> weekPlan = [
     'Früh',
@@ -72,6 +78,33 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
 
   void _addWater(int ml) {
     setState(() => dailyWaterMl = (dailyWaterMl + ml).clamp(0, 15000));
+  }
+
+  void _toggleHabit(String id) {
+    setState(() => habits = habits.toggle(id));
+  }
+
+  void _logWeight(double kg) {
+    setState(() => weightLog = weightLog.add(kg));
+  }
+
+  Future<void> _openQuickAdd() async {
+    final result = await showQuickAddSheet(context);
+    if (result == null || !mounted) return;
+    switch (result.kind) {
+      case QuickAddKind.water:
+        if (result.amount != null) _addWater(result.amount!);
+        break;
+      case QuickAddKind.caffeine:
+        if (result.amount != null) _addCaffeine(result.amount!);
+        break;
+      case QuickAddKind.steps:
+        if (result.amount != null) _addSteps(result.amount!);
+        break;
+      case QuickAddKind.sleep:
+        _logSleep();
+        break;
+    }
   }
 
   void _resetWater() {
@@ -179,6 +212,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         completedBlockIds = <String>{};
         caffeineDay = const CaffeineDay();
         mood = DailyMood.empty;
+        habits = const HabitState();
       }
     });
     if (result.resetDay) {
@@ -195,6 +229,14 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
       bottomNavigationBar: ShiftFitBottomNav(
         selectedIndex: selectedTab,
         onSelected: (index) => setState(() => selectedTab = index),
+      ),
+      floatingActionButton: FloatingActionButton(
+        key: const ValueKey('quick-add-fab'),
+        onPressed: _openQuickAdd,
+        backgroundColor: lime,
+        foregroundColor: bg,
+        tooltip: 'Schnell loggen',
+        child: const Icon(Icons.bolt_rounded),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -272,6 +314,11 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         mood: mood,
         onMoodChanged: _setMoodScore,
         onEditMoodNote: _editMoodNote,
+        habits: habits,
+        habitDefinitions: defaultHabits,
+        onToggleHabit: _toggleHabit,
+        weightLog: weightLog,
+        onLogWeight: _logWeight,
         onSettingsPressed: _openSettings,
       ),
     };
