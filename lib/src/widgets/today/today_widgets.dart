@@ -14,39 +14,41 @@ class ShiftFitHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           StatusPill(label: 'Für deinen Rhythmus', color: plan.accent),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
           const Text(
             'Train smart.\nRecover better.',
             style: TextStyle(
-              fontSize: 46,
-              height: 0.98,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -2.2,
+              fontSize: 32,
+              height: 1.05,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -1.2,
             ),
           ),
-          const SizedBox(height: 14),
-          Text(
+          const SizedBox(height: 10),
+          const Text(
             'Kurze Empfehlungen passend zu deiner Schicht.',
             style: TextStyle(
-              fontSize: 17,
-              height: 1.35,
-              color: Colors.white.withValues(alpha: 0.64),
-              fontWeight: FontWeight.w600,
+              color: textMuted,
+              fontSize: 14,
+              height: 1.4,
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
           Wrap(
-            spacing: 10,
-            runSpacing: 10,
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              MetricChip(icon: Icons.timer, label: '${plan.totalMinutes} Min'),
-              MetricChip(icon: Icons.speed, label: plan.intensity),
-              MetricChip(icon: Icons.favorite, label: '${plan.recoveryScore}% Readiness'),
+              MetricChip(icon: Icons.timer_outlined, label: '${plan.totalMinutes} Min'),
+              MetricChip(icon: Icons.speed_outlined, label: plan.intensity),
+              MetricChip(
+                icon: Icons.favorite_outline,
+                label: '${plan.recoveryScore}% Readiness',
+              ),
             ],
           ),
         ],
@@ -88,14 +90,14 @@ class QuickCheckInCard extends StatelessWidget {
               const Expanded(
                 child: Text(
                   'Heute',
-                  style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900),
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
                 ),
               ),
               StatusPill(label: 'Check-in', color: plan.accent),
             ],
           ),
           const SizedBox(height: 16),
-          const FieldLabel('Schicht'),
+          const FieldLabel('SCHICHT'),
           const SizedBox(height: 8),
           SegmentedOptions(
             options: const ['Früh', 'Spät', 'Nacht', 'Frei'],
@@ -103,7 +105,7 @@ class QuickCheckInCard extends StatelessWidget {
             onSelected: onShiftSelected,
           ),
           const SizedBox(height: 14),
-          const FieldLabel('Energie'),
+          const FieldLabel('ENERGIE'),
           const SizedBox(height: 8),
           SegmentedOptions(
             options: const ['Müde', 'Normal', 'Stark'],
@@ -111,7 +113,7 @@ class QuickCheckInCard extends StatelessWidget {
             onSelected: onEnergySelected,
           ),
           const SizedBox(height: 14),
-          const FieldLabel('Stress'),
+          const FieldLabel('STRESS'),
           const SizedBox(height: 8),
           SegmentedOptions(
             options: const ['Niedrig', 'Mittel', 'Hoch'],
@@ -120,11 +122,11 @@ class QuickCheckInCard extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: plan.accent.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: plan.accent.withValues(alpha: 0.22)),
+              color: surfaceSoft,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: plan.accent.withValues(alpha: 0.18)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,17 +134,18 @@ class QuickCheckInCard extends StatelessWidget {
                 Text(
                   plan.recommendation,
                   style: const TextStyle(
-                    fontSize: 27,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -1,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.4,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Text(
                   plan.focus,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.72),
-                    fontWeight: FontWeight.w700,
+                  style: const TextStyle(
+                    color: textMuted,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -153,16 +156,16 @@ class QuickCheckInCard extends StatelessWidget {
                     style: FilledButton.styleFrom(
                       backgroundColor: plan.accent,
                       foregroundColor: bg,
-                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                     onPressed: () => showPlanSheet(context, plan),
-                    icon: const Icon(Icons.play_arrow_rounded),
+                    icon: const Icon(Icons.play_arrow_rounded, size: 18),
                     label: const Text(
                       'Plan öffnen',
-                      style: TextStyle(fontWeight: FontWeight.w900),
+                      style: TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ),
                 ),
@@ -187,41 +190,41 @@ class RecoveryScoreCard extends StatelessWidget {
       child: Row(
         children: [
           SizedBox(
-            width: 86,
-            height: 86,
+            width: 64,
+            height: 64,
             child: Stack(
               alignment: Alignment.center,
               children: [
                 CircularProgressIndicator(
                   value: plan.recoveryScore / 100,
-                  strokeWidth: 9,
-                  backgroundColor: Colors.white.withValues(alpha: 0.08),
+                  strokeWidth: 5,
+                  backgroundColor: hairline,
                   color: plan.accent,
                   strokeCap: StrokeCap.round,
                 ),
                 Text(
                   '${plan.recoveryScore}',
-                  style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w900),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
                   'Recovery Score',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Text(
                   plan.tagline,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.64),
-                    height: 1.35,
-                    fontWeight: FontWeight.w600,
+                  style: const TextStyle(
+                    color: textMuted,
+                    fontSize: 13,
+                    height: 1.4,
                   ),
                 ),
               ],
@@ -241,13 +244,15 @@ class DailyPlanCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(8),
       child: Column(
         children: [
-          for (var i = 0; i < plan.blocks.length; i++) ...[
-            PlanBlockTile(block: plan.blocks[i], accent: plan.accent, index: i + 1),
-            if (i != plan.blocks.length - 1) const SizedBox(height: 12),
-          ],
+          for (var i = 0; i < plan.blocks.length; i++)
+            PlanBlockTile(
+              block: plan.blocks[i],
+              accent: plan.accent,
+              index: i + 1,
+            ),
         ],
       ),
     );
@@ -268,39 +273,43 @@ class PlanBlockTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(22),
-      ),
+    return Padding(
+      padding: const EdgeInsets.all(8),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 23,
-            backgroundColor: accent.withValues(alpha: 0.16),
-            child: Icon(block.icon, color: accent, size: 22),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(block.icon, color: accent, size: 18),
           ),
-          const SizedBox(width: 13),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   '$index. ${block.title}',
-                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 2),
                 Text(
                   block.description,
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.58)),
+                  style: const TextStyle(color: textMuted, fontSize: 12),
                 ),
               ],
             ),
           ),
           Text(
             block.duration,
-            style: TextStyle(color: accent, fontWeight: FontWeight.w900),
+            style: const TextStyle(
+              color: textPrimary,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -331,52 +340,41 @@ class ShiftTimeline extends StatelessWidget {
     final events = _events;
     return AppCard(
       padding: const EdgeInsets.all(16),
-      child: Column(
+      child: Row(
         children: [
-          Row(
-            children: [
-              for (var i = 0; i < events.length; i++) ...[
-                Expanded(
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 18,
-                        height: 18,
-                        decoration: BoxDecoration(
-                          color: i == 2 ? lime : Colors.white.withValues(alpha: 0.18),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        events[i],
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: i == 2 ? 0.95 : 0.58),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (i != events.length - 1)
-                  Expanded(
-                    child: Container(
-                      height: 2,
-                      margin: const EdgeInsets.only(bottom: 27),
-                      color: Colors.white.withValues(alpha: 0.10),
+          for (var i = 0; i < events.length; i++) ...[
+            Expanded(
+              child: Column(
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: i == 2 ? lime : hairline,
+                      shape: BoxShape.circle,
                     ),
                   ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Der Kompass zeigt dir, wann Training, Licht und Schlaf am wenigsten mit deiner Schicht kollidieren.',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.58), height: 1.35),
-          ),
+                  const SizedBox(height: 8),
+                  Text(
+                    events[i],
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: i == 2 ? textPrimary : textMuted,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (i != events.length - 1)
+              Container(
+                width: 16,
+                height: 1,
+                margin: const EdgeInsets.only(bottom: 20),
+                color: hairline,
+              ),
+          ],
         ],
       ),
     );
@@ -393,19 +391,19 @@ class RecoveryToolsGrid extends StatelessWidget {
     return Column(
       children: [
         RecoveryToolCard(
-          icon: Icons.bedtime,
+          icon: Icons.bedtime_outlined,
           title: 'Sleep Anchor',
           body: plan.sleepHint,
           color: pink,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         RecoveryToolCard(
-          icon: Icons.restaurant,
+          icon: Icons.restaurant_outlined,
           title: 'Fuel Reminder',
           body: plan.fuelHint,
           color: orange,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         RecoveryToolCard(
           icon: Icons.air,
           title: 'Breath Reset',
@@ -434,24 +432,39 @@ class RecoveryToolCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: color.withValues(alpha: 0.14),
-            child: Icon(icon, color: color),
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 18),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-                const SizedBox(height: 4),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 2),
                 Text(
                   body,
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.62), height: 1.32),
+                  style: const TextStyle(
+                    color: textMuted,
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
                 ),
               ],
             ),
@@ -468,58 +481,51 @@ class RhythmWeekCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const days = [
-      ('Mo', 'Früh', lime),
-      ('Di', 'Früh', lime),
-      ('Mi', 'Spät', orange),
-      ('Do', 'Spät', orange),
-      ('Fr', 'Nacht', pink),
-      ('Sa', 'Nacht', pink),
-      ('So', 'Frei', cyan),
+      ('Mo', 'F', lime),
+      ('Di', 'F', lime),
+      ('Mi', 'S', orange),
+      ('Do', 'S', orange),
+      ('Fr', 'N', pink),
+      ('Sa', 'N', pink),
+      ('So', '·', cyan),
     ];
 
     return AppCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.all(14),
+      child: Row(
         children: [
-          Row(
-            children: [
-              for (final day in days)
-                Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    decoration: BoxDecoration(
-                      color: day.$3.withValues(alpha: 0.13),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: day.$3.withValues(alpha: 0.18)),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(day.$1, style: const TextStyle(fontWeight: FontWeight.w900)),
-                        const SizedBox(height: 6),
-                        RotatedBox(
-                          quarterTurns: 3,
-                          child: Text(
-                            day.$2,
-                            style: TextStyle(
-                              color: day.$3,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+          for (final day in days)
+            Expanded(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: day.$3.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text(
-            'Als nächstes: echte Wochenplanung, gespeicherte Check-ins und adaptive Empfehlungen.',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.58), height: 1.35),
-          ),
+                child: Column(
+                  children: [
+                    Text(
+                      day.$1,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: textMuted,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      day.$2,
+                      style: TextStyle(
+                        color: day.$3,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -533,47 +539,79 @@ void showPlanSheet(BuildContext context, ShiftFitPlan plan) {
     showDragHandle: true,
     builder: (context) {
       return Padding(
-        padding: const EdgeInsets.fromLTRB(22, 6, 22, 28),
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               plan.recommendation,
-              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900),
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.4,
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
               plan.tagline,
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.65), height: 1.35),
+              style: const TextStyle(
+                color: textMuted,
+                fontSize: 13,
+                height: 1.4,
+              ),
             ),
             const SizedBox(height: 16),
             for (final block in plan.blocks) ...[
-              Row(
-                children: [
-                  Icon(block.icon, color: plan.accent),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      '${block.title} · ${block.duration}',
-                      style: const TextStyle(fontWeight: FontWeight.w900),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  children: [
+                    Icon(block.icon, color: plan.accent, size: 18),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        block.title,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                    Text(
+                      block.duration,
+                      style: const TextStyle(
+                        color: textMuted,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 10),
             ],
             const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
               child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: plan.accent,
+                  foregroundColor: bg,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
                 onPressed: () {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('${plan.recommendation} ist vorgemerkt.')),
                   );
                 },
-                child: const Text('Für heute vormerken'),
+                child: const Text(
+                  'Für heute vormerken',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
               ),
             ),
           ],

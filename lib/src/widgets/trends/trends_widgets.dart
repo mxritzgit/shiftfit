@@ -14,7 +14,7 @@ class TrendBarsCard extends StatelessWidget {
     return AppCard(
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
       child: SizedBox(
-        height: 150,
+        height: 140,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
@@ -29,10 +29,10 @@ class TrendBarsCard extends StatelessWidget {
                         child: FractionallySizedBox(
                           heightFactor: bar.$2,
                           child: Container(
-                            width: 18,
+                            width: 10,
                             decoration: BoxDecoration(
-                              color: bar.$3,
-                              borderRadius: BorderRadius.circular(999),
+                              color: bar.$3.withValues(alpha: 0.85),
+                              borderRadius: BorderRadius.circular(6),
                             ),
                           ),
                         ),
@@ -41,9 +41,10 @@ class TrendBarsCard extends StatelessWidget {
                     const SizedBox(height: 10),
                     Text(
                       bar.$1,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.62),
-                        fontWeight: FontWeight.w900,
+                      style: const TextStyle(
+                        color: textMuted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
@@ -66,12 +67,12 @@ class InsightsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final insights = [
       plan.recoveryScore >= 80
-          ? 'Heute ist genug Reserve für Kraft oder intensivere Intervalle da.'
-          : 'Heute lohnt sich ein ruhiger Reset mehr als zusätzlicher Druck.',
+          ? 'Genug Reserve für Kraft oder intensivere Intervalle.'
+          : 'Heute ruhiger Reset statt zusätzlicher Druck.',
       loadBalance >= 75
-          ? 'Die Woche ist ausgewogen. Halte den Schlafanker stabil.'
-          : 'Mehr Puffer einplanen: Mobility und kurze Spaziergänge statt Volumen.',
-      'Koffein-Stopp und Lichtfenster bleiben deine stärksten Hebel.',
+          ? 'Woche ist ausgewogen. Schlafanker stabil halten.'
+          : 'Mehr Puffer einplanen: Mobility statt Volumen.',
+      'Koffein-Stopp und Lichtfenster bleiben die stärksten Hebel.',
     ];
 
     return AppCard(
@@ -80,16 +81,22 @@ class InsightsCard extends StatelessWidget {
         children: [
           for (var i = 0; i < insights.length; i++) ...[
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(i == 0 ? Icons.bolt : Icons.check_circle, color: i == 0 ? lime : cyan),
+                Icon(
+                  i == 0 ? Icons.bolt : Icons.check_circle_outline,
+                  color: i == 0 ? lime : cyan,
+                  size: 18,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     insights[i],
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.68),
-                      height: 1.35,
-                      fontWeight: FontWeight.w600,
+                    style: const TextStyle(
+                      color: textPrimary,
+                      fontSize: 13,
+                      height: 1.45,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),

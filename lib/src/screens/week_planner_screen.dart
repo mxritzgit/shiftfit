@@ -33,36 +33,36 @@ class WeekPlannerScreen extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ShiftFitTopBar(plan: plan),
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
         AppCard(
-          padding: const EdgeInsets.all(22),
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const StatusPill(label: 'Woche planen', color: cyan),
-              const SizedBox(height: 18),
+              const SizedBox(height: 16),
               const Text(
                 '7 Tage,\nsauber getaktet.',
                 style: TextStyle(
-                  fontSize: 40,
-                  height: 1,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -1.6,
+                  fontSize: 28,
+                  height: 1.1,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -1,
                 ),
               ),
-              const SizedBox(height: 12),
-              Text(
-                'Wähle deine Schichten und halte Training, Licht und Schlaf realistisch.',
+              const SizedBox(height: 8),
+              const Text(
+                'Schichten festlegen, Training und Schlaf realistisch halten.',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.64),
-                  height: 1.35,
-                  fontWeight: FontWeight.w600,
+                  color: textMuted,
+                  fontSize: 13,
+                  height: 1.4,
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 14),
         Row(
           children: [
             Expanded(
@@ -73,7 +73,7 @@ class WeekPlannerScreen extends StatelessWidget {
                 color: lime,
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
               child: SummaryCard(
                 icon: Icons.nightlight_round,
@@ -84,9 +84,9 @@ class WeekPlannerScreen extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 22),
         const SectionHeader(title: 'Schichtplan', action: 'Antippen'),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         for (var dayIndex = 0; dayIndex < days.length; dayIndex++) ...[
           WeekDayPlannerRow(
             day: days[dayIndex],
@@ -94,11 +94,11 @@ class WeekPlannerScreen extends StatelessWidget {
             shifts: shifts,
             onShiftChanged: (shift) => onShiftChanged(dayIndex, shift),
           ),
-          if (dayIndex != days.length - 1) const SizedBox(height: 10),
+          if (dayIndex != days.length - 1) const SizedBox(height: 8),
         ],
-        const SizedBox(height: 18),
-        const SectionHeader(title: 'Planungstipps', action: '3 Hinweise'),
-        const SizedBox(height: 12),
+        const SizedBox(height: 22),
+        const SectionHeader(title: 'Planungstipps', action: ''),
+        const SizedBox(height: 10),
         PlanningTipsCard(weekPlan: weekPlan),
       ],
     );

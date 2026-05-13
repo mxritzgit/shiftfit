@@ -44,8 +44,12 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
       backgroundColor: bg,
       appBar: AppBar(
         backgroundColor: bg,
-        foregroundColor: Colors.white,
-        title: const Text('Barcode scannen'),
+        foregroundColor: textPrimary,
+        elevation: 0,
+        title: const Text(
+          'Barcode scannen',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
       ),
       body: Stack(
         children: [
@@ -54,27 +58,31 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
             alignment: Alignment.topCenter,
             child: Container(
               key: const ValueKey('barcode-scanner-hint'),
-              margin: const EdgeInsets.all(18),
-              padding: const EdgeInsets.all(14),
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: surface.withValues(alpha: 0.90),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: cyan.withValues(alpha: 0.35)),
+                color: surface.withValues(alpha: 0.92),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: hairline),
               ),
               child: const Text(
-                'Barcode auf der Packung in den Rahmen halten. ShiftFit lädt dann die Nährwerte aus OpenFoodFacts.',
+                'Barcode in den Rahmen halten.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontWeight: FontWeight.w800, height: 1.3),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  height: 1.4,
+                ),
               ),
             ),
           ),
           Center(
             child: Container(
-              width: 260,
-              height: 160,
+              width: 240,
+              height: 150,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: cyan, width: 3),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: cyan, width: 2),
               ),
             ),
           ),
@@ -85,12 +93,18 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
               child: FilledButton.icon(
                 key: const ValueKey('barcode-close-button'),
                 onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.close_rounded),
-                label: const Text('Abbrechen'),
+                icon: const Icon(Icons.close_rounded, size: 17),
+                label: const Text(
+                  'Abbrechen',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
                 style: FilledButton.styleFrom(
                   backgroundColor: surfaceSoft,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                  foregroundColor: textPrimary,
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ),

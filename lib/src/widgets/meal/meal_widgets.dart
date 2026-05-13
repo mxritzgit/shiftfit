@@ -16,37 +16,37 @@ class MealPreviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SectionHeader(title: 'Foto', action: 'Preview'),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Container(
             key: const ValueKey('analyse-image-preview'),
-            height: 190,
+            height: 170,
             width: double.infinity,
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.22),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+              color: surfaceSoft,
+              borderRadius: BorderRadius.circular(14),
             ),
             child: imageBytes == null
                 ? Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        Icons.restaurant_menu_rounded,
-                        color: Colors.white.withValues(alpha: 0.42),
-                        size: 42,
+                        Icons.restaurant_menu_outlined,
+                        color: textMuted,
+                        size: 32,
                       ),
-                      const SizedBox(height: 10),
-                      Text(
+                      const SizedBox(height: 8),
+                      const Text(
                         'Noch kein Bild ausgewählt',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.58),
-                          fontWeight: FontWeight.w800,
+                          color: textMuted,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
@@ -75,34 +75,44 @@ class MealDailyTotalCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppCard(
       key: const ValueKey('analyse-daily-kcal-card'),
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: lime.withValues(alpha: 0.14),
-            child: const Icon(Icons.local_fire_department_rounded, color: lime),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: lime.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.local_fire_department_outlined,
+              color: lime,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'Heute konsumiert',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.58),
-                    fontWeight: FontWeight.w800,
+                    color: textMuted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   '$dailyConsumedKcal kcal',
                   key: const ValueKey('analyse-daily-kcal-total'),
                   style: const TextStyle(
-                    color: lime,
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
+                    color: textPrimary,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.4,
                   ),
                 ),
               ],
@@ -120,22 +130,27 @@ class MealEmptyCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: cyan.withValues(alpha: 0.14),
-            child: const Icon(Icons.info_outline_rounded, color: cyan),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: cyan.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.info_outline_rounded, color: cyan, size: 18),
           ),
           const SizedBox(width: 14),
-          Expanded(
+          const Expanded(
             child: Text(
-              'Suche ein Produkt, scanne einen Barcode oder starte die Foto-KI. Danach Gewicht prüfen und zur Tagesbilanz hinzufügen.',
+              'Produkt suchen, Barcode scannen oder Foto aufnehmen — dann zur Tagesbilanz hinzufügen.',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.68),
-                height: 1.35,
-                fontWeight: FontWeight.w600,
+                color: textPrimary,
+                fontSize: 13,
+                height: 1.45,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
@@ -152,19 +167,22 @@ class MealLoadingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return const AppCard(
       key: ValueKey('analyse-loading'),
-      padding: EdgeInsets.all(18),
+      padding: EdgeInsets.all(16),
       child: Row(
         children: [
           SizedBox(
-            width: 28,
-            height: 28,
-            child: CircularProgressIndicator(strokeWidth: 3, color: orange),
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2.4, color: orange),
           ),
           SizedBox(width: 14),
           Expanded(
             child: Text(
-              'KI Kalorienanalyse läuft...',
-              style: TextStyle(fontWeight: FontWeight.w900),
+              'Analyse läuft...',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -203,33 +221,33 @@ class MealResultCard extends StatelessWidget {
             children: [
               const Expanded(
                 child: Text(
-                  'Analyse-Ergebnis',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                  'Analyse',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                 ),
               ),
               StatusPill(
                 label: result.sourceLabel,
                 color: result.sourceLabel == 'OpenFoodFacts' ? cyan : orange,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               StatusPill(
                 label: confirmed ? 'bestätigt' : 'prüfen',
                 color: confirmed ? lime : orange,
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           Text(
             result.mealName,
             key: const ValueKey('analyse-meal-name'),
             style: const TextStyle(
-              fontSize: 28,
-              height: 1.05,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -0.8,
+              fontSize: 20,
+              height: 1.15,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.4,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -239,17 +257,19 @@ class MealResultCard extends StatelessWidget {
                   key: const ValueKey('analyse-kcal-range'),
                   style: const TextStyle(
                     color: orange,
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.4,
                   ),
                 ),
               ),
               Text(
                 result.kcalPer100Label,
                 key: const ValueKey('analyse-kcal-per-100'),
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.58),
-                  fontWeight: FontWeight.w800,
+                style: const TextStyle(
+                  color: textMuted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
@@ -257,9 +277,9 @@ class MealResultCard extends StatelessWidget {
           const SizedBox(height: 14),
           _PortionSummaryBox(result: result),
           if (result.hasItemizedBreakdown) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             const FieldLabel('BESTANDTEILE'),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             _ItemBreakdownList(items: result.items),
           ],
           const SizedBox(height: 14),
@@ -271,40 +291,45 @@ class MealResultCard extends StatelessWidget {
                   onPressed: confirmed ? null : onConfirmed,
                   icon: Icon(
                     confirmed ? Icons.check_circle_rounded : Icons.check_rounded,
+                    size: 17,
                   ),
-                  label: Text(confirmed ? 'Bestätigt' : 'Bestätigen'),
+                  label: Text(
+                    confirmed ? 'Bestätigt' : 'Bestätigen',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
                   style: FilledButton.styleFrom(
                     backgroundColor: lime,
                     foregroundColor: bg,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton.icon(
                   key: const ValueKey('analyse-adjust-button'),
                   onPressed: onAdjustRequested,
-                  icon: const Icon(Icons.tune_rounded),
+                  icon: const Icon(Icons.tune_rounded, size: 17),
                   label: Text(
                     result.hasItemizedBreakdown ? 'Bestandteile' : 'Anpassen',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: BorderSide(color: orange.withValues(alpha: 0.45)),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    foregroundColor: textPrimary,
+                    side: const BorderSide(color: hairline),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
@@ -314,62 +339,70 @@ class MealResultCard extends StatelessWidget {
                 addedToDailyTotal
                     ? Icons.check_circle_rounded
                     : Icons.add_circle_outline_rounded,
+                size: 17,
               ),
               label: Text(
                 addedToDailyTotal
                     ? 'Zu heute hinzugefügt'
                     : 'Zu heute hinzufügen',
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
               style: FilledButton.styleFrom(
                 backgroundColor: cyan,
                 foregroundColor: bg,
-                padding: const EdgeInsets.symmetric(vertical: 14),
+                padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
                 child: MacroTile(label: 'Protein', value: result.protein, color: lime),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: MacroTile(label: 'Carbs', value: result.carbs, color: cyan),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: MacroTile(label: 'Fett', value: result.fat, color: pink),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           const FieldLabel('PORTION'),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             result.portionNotes,
             key: const ValueKey('analyse-portion-notes'),
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.68),
-              height: 1.35,
-              fontWeight: FontWeight.w600,
+            style: const TextStyle(
+              color: textMuted,
+              fontSize: 12,
+              height: 1.45,
+              fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Container(
             key: const ValueKey('analyse-disclaimer'),
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: orange.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: orange.withValues(alpha: 0.24)),
+              color: surfaceSoft,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: orange.withValues(alpha: 0.18)),
             ),
             child: const Text(
-              'Disclaimer: Bildbasierte Kalorien- und Makro-Schätzungen sind nur Näherungen. Zutaten, Öl, Saucen und Portionsgröße können deutlich abweichen.',
-              style: TextStyle(height: 1.35, fontWeight: FontWeight.w700),
+              'Bildbasierte Schätzungen sind Näherungen. Zutaten, Öl und Portion können abweichen.',
+              style: TextStyle(
+                color: textMuted,
+                fontSize: 12,
+                height: 1.4,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ],
@@ -393,37 +426,47 @@ class _PortionSummaryBox extends StatelessWidget {
         ? '${result.estimatedGrams} g manuell angepasst'
         : 'Portion: ${result.portionLabel}';
     final subtitle = result.hasItemizedBreakdown
-        ? 'Bestätige oder passe Gramm pro Bestandteil an. ShiftFit summiert die kcal neu.'
-        : 'Bestätigen oder Gewicht anpassen. ShiftFit rechnet die kcal neu.';
+        ? 'Gramm pro Bestandteil prüfen oder anpassen.'
+        : 'Bestätigen oder Gewicht anpassen.';
 
     return Container(
       key: const ValueKey('analyse-portion-confirm-box'),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: cyan.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: cyan.withValues(alpha: 0.22)),
+        color: surfaceSoft,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cyan.withValues(alpha: 0.18)),
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: cyan.withValues(alpha: 0.14),
-            child: const Icon(Icons.scale_rounded, color: cyan),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: cyan.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.scale_rounded, color: cyan, size: 18),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
-                const SizedBox(height: 3),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.62),
-                    height: 1.25,
-                    fontWeight: FontWeight.w600,
+                  style: const TextStyle(
+                    color: textMuted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -445,19 +488,15 @@ class _ItemBreakdownList extends StatelessWidget {
     return Container(
       key: const ValueKey('analyse-item-breakdown'),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        color: surfaceSoft,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         children: [
           for (var index = 0; index < items.length; index++) ...[
             _ItemBreakdownRow(item: items[index], index: index),
             if (index < items.length - 1)
-              Divider(
-                height: 1,
-                color: Colors.white.withValues(alpha: 0.08),
-              ),
+              const Divider(height: 1, color: hairline),
           ],
         ],
       ),
@@ -466,10 +505,7 @@ class _ItemBreakdownList extends StatelessWidget {
 }
 
 class _ItemBreakdownRow extends StatelessWidget {
-  const _ItemBreakdownRow({
-    required this.item,
-    required this.index,
-  });
+  const _ItemBreakdownRow({required this.item, required this.index});
 
   final MealComponent item;
   final int index;
@@ -484,14 +520,18 @@ class _ItemBreakdownRow extends StatelessWidget {
           Expanded(
             child: Text(
               item.name,
-              style: const TextStyle(fontWeight: FontWeight.w800),
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           Text(
             item.gramsLabel,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.72),
-              fontWeight: FontWeight.w700,
+            style: const TextStyle(
+              color: textMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(width: 12),
@@ -499,7 +539,8 @@ class _ItemBreakdownRow extends StatelessWidget {
             item.caloriesLabel,
             style: const TextStyle(
               color: orange,
-              fontWeight: FontWeight.w900,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -523,27 +564,31 @@ class MacroTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.18)),
+        color: surfaceSoft,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.58),
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
+            style: const TextStyle(
+              color: textMuted,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 0.4,
             ),
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 4),
           Text(
             value,
-            style: TextStyle(color: color, fontWeight: FontWeight.w900),
+            style: TextStyle(
+              color: color,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),
@@ -600,10 +645,10 @@ class _MealWeightAdjustmentSheetState extends State<_MealWeightAdjustmentSheet> 
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
-        22,
-        6,
-        22,
-        28 + MediaQuery.viewInsetsOf(context).bottom,
+        20,
+        4,
+        20,
+        24 + MediaQuery.viewInsetsOf(context).bottom,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -611,15 +656,19 @@ class _MealWeightAdjustmentSheetState extends State<_MealWeightAdjustmentSheet> 
         children: [
           const Text(
             'Portion anpassen',
-            style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${result.mealName}: Foto-Schätzung ${result.estimatedGrams} g, Basis ${result.kcalPer100Label}.',
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.66),
-              height: 1.35,
-              fontWeight: FontWeight.w600,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.4,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${result.mealName} · ${result.kcalPer100Label}',
+            style: const TextStyle(
+              color: textMuted,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: 18),
@@ -629,14 +678,9 @@ class _MealWeightAdjustmentSheetState extends State<_MealWeightAdjustmentSheet> 
             autofocus: true,
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               labelText: 'Gewicht in Gramm',
               suffixText: 'g',
-              filled: true,
-              fillColor: Colors.black.withValues(alpha: 0.22),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
-              ),
             ),
             onChanged: (value) {
               setState(() {
@@ -648,35 +692,38 @@ class _MealWeightAdjustmentSheetState extends State<_MealWeightAdjustmentSheet> 
           Container(
             key: const ValueKey('analyse-adjusted-kcal-preview'),
             width: double.infinity,
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: orange.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: orange.withValues(alpha: 0.24)),
+              color: surfaceSoft,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: orange.withValues(alpha: 0.18)),
             ),
             child: Text(
               '$_grams g ≈ $kcal kcal',
               style: const TextStyle(
                 color: orange,
-                fontSize: 24,
-                fontWeight: FontWeight.w900,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
               key: const ValueKey('analyse-save-weight-button'),
               onPressed: _grams <= 0 ? null : () => Navigator.pop(context, _grams),
-              icon: const Icon(Icons.check_rounded),
-              label: const Text('Übernehmen'),
+              icon: const Icon(Icons.check_rounded, size: 17),
+              label: const Text(
+                'Übernehmen',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
               style: FilledButton.styleFrom(
                 backgroundColor: orange,
                 foregroundColor: bg,
-                padding: const EdgeInsets.symmetric(vertical: 15),
+                padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
             ),
@@ -731,10 +778,10 @@ class _MealItemAdjustmentSheetState extends State<_MealItemAdjustmentSheet> {
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
-        22,
-        6,
-        22,
-        28 + MediaQuery.viewInsetsOf(context).bottom,
+        20,
+        4,
+        20,
+        24 + MediaQuery.viewInsetsOf(context).bottom,
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -743,24 +790,31 @@ class _MealItemAdjustmentSheetState extends State<_MealItemAdjustmentSheet> {
           children: [
             const Text(
               'Bestandteile anpassen',
-              style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Passe Gramm pro erkanntem Lebensmittel an. ShiftFit summiert daraus die Tagesportion neu.',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.66),
-                height: 1.35,
-                fontWeight: FontWeight.w600,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.4,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Gramm pro Lebensmittel anpassen.',
+              style: TextStyle(
+                color: textMuted,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(height: 18),
             for (var index = 0; index < widget.result.items.length; index++) ...[
               Text(
                 widget.result.items[index].name,
-                style: const TextStyle(fontWeight: FontWeight.w900),
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               TextField(
                 key: ValueKey('analyse-item-weight-input-$index'),
                 controller: _controllers[index],
@@ -771,11 +825,6 @@ class _MealItemAdjustmentSheetState extends State<_MealItemAdjustmentSheet> {
                   suffixText: 'g',
                   helperText:
                       '${widget.result.items[index].caloriesKcal} kcal bei ${widget.result.items[index].grams} g',
-                  filled: true,
-                  fillColor: Colors.black.withValues(alpha: 0.22),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(18),
-                  ),
                 ),
                 onChanged: (value) {
                   setState(() {
@@ -783,27 +832,27 @@ class _MealItemAdjustmentSheetState extends State<_MealItemAdjustmentSheet> {
                   });
                 },
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
             ],
             Container(
               key: const ValueKey('analyse-adjusted-kcal-preview'),
               width: double.infinity,
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: orange.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: orange.withValues(alpha: 0.24)),
+                color: surfaceSoft,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: orange.withValues(alpha: 0.18)),
               ),
               child: Text(
                 '$totalGrams g ≈ $totalKcal kcal',
                 style: const TextStyle(
                   color: orange,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
@@ -811,14 +860,17 @@ class _MealItemAdjustmentSheetState extends State<_MealItemAdjustmentSheet> {
                 onPressed: _grams.any((grams) => grams <= 0)
                     ? null
                     : () => Navigator.pop(context, adjustedItems),
-                icon: const Icon(Icons.check_rounded),
-                label: const Text('Übernehmen'),
+                icon: const Icon(Icons.check_rounded, size: 17),
+                label: const Text(
+                  'Übernehmen',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
                 style: FilledButton.styleFrom(
                   backgroundColor: orange,
                   foregroundColor: bg,
-                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),

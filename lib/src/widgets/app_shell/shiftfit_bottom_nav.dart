@@ -12,42 +12,76 @@ class ShiftFitBottomNav extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onSelected;
 
+  static const _items = [
+    (Icons.home_rounded, 'Heute'),
+    (Icons.calendar_month_rounded, 'Woche'),
+    (Icons.insights_rounded, 'Trends'),
+    (Icons.local_fire_department_rounded, 'Kcal'),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final items = [
-      (Icons.home_rounded, 'Heute'),
-      (Icons.calendar_month_rounded, 'Woche'),
-      (Icons.insights_rounded, 'Trends'),
-      (Icons.local_fire_department_rounded, 'Kcal'),
-    ];
-
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
-      decoration: BoxDecoration(
-        color: bg.withValues(alpha: 0.96),
-        border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.08))),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+      decoration: const BoxDecoration(
+        color: bg,
+        border: Border(top: BorderSide(color: hairline)),
       ),
       child: Row(
         children: [
-          for (var i = 0; i < items.length; i++)
+          for (var i = 0; i < _items.length; i++)
             Expanded(
-              child: TextButton.icon(
-                key: ValueKey('nav-${items[i].$2}'),
-                onPressed: () => onSelected(i),
-                icon: Icon(items[i].$1, size: 20),
-                label: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(items[i].$2),
-                ),
-                style: TextButton.styleFrom(
-                  foregroundColor: i == selectedIndex ? lime : Colors.white54,
-                  minimumSize: const Size(0, 44),
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  textStyle: const TextStyle(fontWeight: FontWeight.w900),
-                ),
+              child: _NavItem(
+                key: ValueKey('nav-${_items[i].$2}'),
+                icon: _items[i].$1,
+                label: _items[i].$2,
+                selected: i == selectedIndex,
+                onTap: () => onSelected(i),
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  const _NavItem({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? textPrimary : textMuted;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 22, color: color),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/shift_fit_plan.dart';
+import '../../theme/app_colors.dart';
 
 class ShiftFitTopBar extends StatelessWidget {
   const ShiftFitTopBar({super.key, required this.plan});
@@ -11,36 +12,40 @@ class ShiftFitTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'ShiftFit',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.8,
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'ShiftFit',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.4,
+                ),
               ),
-            ),
-            SizedBox(height: 3),
-            Text(
-              'Schichtarbeit. Training. Recovery.',
-              style: TextStyle(color: Colors.white54, fontWeight: FontWeight.w600),
-            ),
-          ],
+              SizedBox(height: 2),
+              Text(
+                'Schichtarbeit. Training. Recovery.',
+                style: TextStyle(
+                  color: textMuted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
         ),
         Container(
-          padding: const EdgeInsets.all(3),
+          width: 36,
+          height: 36,
           decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: plan.accent.withValues(alpha: 0.45)),
+            color: plan.accent.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(10),
           ),
-          child: CircleAvatar(
-            radius: 22,
-            backgroundColor: plan.accent.withValues(alpha: 0.16),
-            child: Icon(Icons.nightlight_round, color: plan.accent, size: 22),
-          ),
+          child: Icon(Icons.nightlight_round, color: plan.accent, size: 18),
         ),
       ],
     );

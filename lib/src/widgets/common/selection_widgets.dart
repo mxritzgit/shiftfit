@@ -17,10 +17,10 @@ class SegmentedOptions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(5),
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.20),
-        borderRadius: BorderRadius.circular(22),
+        color: surfaceSoft,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
@@ -57,19 +57,19 @@ class OptionPill extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(vertical: 9),
         decoration: BoxDecoration(
-          color: selected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(17),
+          color: selected ? bg : Colors.transparent,
+          borderRadius: BorderRadius.circular(9),
         ),
         child: Text(
           label,
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: selected ? bg : Colors.white70,
-            fontSize: 14,
-            fontWeight: FontWeight.w900,
+            color: selected ? textPrimary : textMuted,
+            fontSize: 13,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
           ),
         ),
       ),
@@ -97,18 +97,21 @@ class ShiftChoiceChip extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          color: selected ? color : Colors.black.withValues(alpha: 0.22),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: color.withValues(alpha: selected ? 0.70 : 0.28)),
+          color: selected ? color.withValues(alpha: 0.18) : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: selected ? color.withValues(alpha: 0.55) : hairline,
+          ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? bg : Colors.white.withValues(alpha: 0.78),
-            fontWeight: FontWeight.w900,
+            color: selected ? color : textPrimary.withValues(alpha: 0.78),
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),

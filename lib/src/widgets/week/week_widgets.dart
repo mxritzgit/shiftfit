@@ -25,11 +25,33 @@ class SummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color),
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: color, size: 16),
+          ),
           const SizedBox(height: 12),
-          Text(title, style: TextStyle(color: Colors.white.withValues(alpha: 0.58))),
+          Text(
+            title,
+            style: const TextStyle(
+              color: textMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
           const SizedBox(height: 4),
-          Text(value, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w900)),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.3,
+            ),
+          ),
         ],
       ),
     );
@@ -53,18 +75,25 @@ class WeekDayPlannerRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       child: Row(
         children: [
           SizedBox(
-            width: 34,
-            child: Text(day, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+            width: 28,
+            child: Text(
+              day,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: textMuted,
+              ),
+            ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           Expanded(
             child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: 6,
+              runSpacing: 6,
               children: [
                 for (final shift in shifts)
                   ShiftChoiceChip(
@@ -94,12 +123,12 @@ class PlanningTipsCard extends StatelessWidget {
     final freeDays = weekPlan.where((shift) => shift == 'Frei').length;
     final tips = [
       nights > 0
-          ? 'Nach Nachtschichten: Sonnenbrille heimwärts, Schlafraum kühl und dunkel.'
-          : 'Ohne Nachtschicht: Schlafanker möglichst konstant halten.',
+          ? 'Nach Nachtschichten: Sonnenbrille heim, Zimmer kühl und dunkel.'
+          : 'Ohne Nachtschicht: Schlafanker konstant halten.',
       freeDays > 1
-          ? 'Freie Tage eignen sich für Krafttraining und Meal Prep.'
-          : 'Bei wenig frei: kurze Recovery-Sessions höher priorisieren.',
-      'Härtere Einheiten auf Früh- oder freie Tage legen, Spätdienste eher mobilisieren.',
+          ? 'Freie Tage für Krafttraining und Meal Prep nutzen.'
+          : 'Bei wenig frei: kurze Recovery-Sessions priorisieren.',
+      'Harte Einheiten auf freie oder Frühtage legen, Spät eher mobilisieren.',
     ];
 
     return AppCard(
@@ -110,22 +139,32 @@ class PlanningTipsCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CircleAvatar(
-                  radius: 14,
-                  backgroundColor: cyan.withValues(alpha: 0.16),
+                Container(
+                  width: 22,
+                  height: 22,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: cyan.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(7),
+                  ),
                   child: Text(
                     '${i + 1}',
-                    style: const TextStyle(color: cyan, fontWeight: FontWeight.w900),
+                    style: const TextStyle(
+                      color: cyan,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     tips[i],
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.68),
-                      height: 1.35,
-                      fontWeight: FontWeight.w600,
+                    style: const TextStyle(
+                      color: textPrimary,
+                      fontSize: 13,
+                      height: 1.45,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),

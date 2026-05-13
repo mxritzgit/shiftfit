@@ -52,25 +52,16 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: bg,
       bottomNavigationBar: ShiftFitBottomNav(
         selectedIndex: selectedTab,
         onSelected: (index) => setState(() => selectedTab = index),
       ),
-      body: Container(
-        width: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF111927), bg],
-          ),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            key: ValueKey('tab-scroll-$selectedTab'),
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-            child: buildSelectedScreen(),
-          ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          key: ValueKey('tab-scroll-$selectedTab'),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          child: buildSelectedScreen(),
         ),
       ),
     );

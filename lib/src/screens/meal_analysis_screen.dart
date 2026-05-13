@@ -249,7 +249,8 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
       mealConfirmed = false;
       addedToDailyTotal = false;
       addedCaloriesSnapshot = null;
-      productSearchMessage = '${product.title} ausgewählt. Prüfe die Gramm und füge es dann zu heute hinzu.';
+      productSearchMessage =
+          '${product.title} ausgewählt. Gramm prüfen und zu heute hinzufügen.';
     });
   }
 
@@ -410,32 +411,32 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
   Widget buildProductSearchCard() {
     return AppCard(
       key: const ValueKey('kcal-product-search-card'),
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SectionHeader(title: 'Produktsuche', action: 'OpenFoodFacts'),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           TextField(
             key: const ValueKey('kcal-product-search-input'),
             controller: searchController,
             textInputAction: TextInputAction.search,
             onChanged: scheduleProductSearch,
             onSubmitted: (_) => searchProducts(),
-            style: const TextStyle(fontWeight: FontWeight.w800),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
             decoration: InputDecoration(
               hintText: 'z.B. Dr Oetker Salami',
-              prefixIcon: const Icon(Icons.search_rounded),
+              prefixIcon: const Icon(Icons.search_rounded, size: 18, color: textMuted),
               suffixIcon: IconButton(
                 key: const ValueKey('kcal-product-search-button'),
                 onPressed: isSearchingProducts ? null : searchProducts,
                 icon: isSearchingProducts
                     ? const SizedBox(
-                        height: 18,
-                        width: 18,
+                        height: 16,
+                        width: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.arrow_forward_rounded),
+                    : const Icon(Icons.arrow_forward_rounded, size: 18),
               ),
             ),
           ),
@@ -444,22 +445,24 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
             Text(
               productSearchMessage!,
               key: const ValueKey('kcal-product-search-message'),
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.64),
-                fontWeight: FontWeight.w700,
-                height: 1.3,
+              style: const TextStyle(
+                color: textMuted,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                height: 1.4,
               ),
             ),
           ],
           if (productSuggestions.isNotEmpty) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             for (var index = 0; index < productSuggestions.length; index++) ...[
               ProductSuggestionTile(
                 key: ValueKey('kcal-product-suggestion-$index'),
                 product: productSuggestions[index],
                 onTap: () => selectProduct(productSuggestions[index]),
               ),
-              if (index != productSuggestions.length - 1) const SizedBox(height: 10),
+              if (index != productSuggestions.length - 1)
+                const SizedBox(height: 8),
             ],
           ],
         ],
@@ -480,17 +483,17 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
             onPressed: isLoading ? null : () => pickAndAnalyze(ImageSource.camera),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 8),
         Expanded(
           child: KcalActionButton(
             key: const ValueKey('analyse-gallery-button'),
-            icon: Icons.photo_library_rounded,
+            icon: Icons.photo_library_outlined,
             label: 'Galerie',
             color: pink,
             onPressed: isLoading ? null : () => pickAndAnalyze(ImageSource.gallery),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 8),
         Expanded(
           child: KcalActionButton(
             key: const ValueKey('analyse-barcode-button'),
@@ -515,10 +518,10 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
         buildQuickActions(),
         const SizedBox(height: 14),
         buildProductSearchCard(),
-        const SizedBox(height: 18),
+        const SizedBox(height: 14),
         if (selectedImageBytes != null) ...[
           MealPreviewCard(imageBytes: selectedImageBytes),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
         ],
         if (isLoading)
           const MealLoadingCard()
@@ -551,26 +554,11 @@ class KcalSummaryHeader extends StatelessWidget {
     return Container(
       key: const ValueKey('analyse-daily-kcal-card'),
       width: double.infinity,
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(32),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            lime.withValues(alpha: 0.92),
-            cyan.withValues(alpha: 0.72),
-            Colors.white.withValues(alpha: 0.10),
-          ],
-        ),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-        boxShadow: [
-          BoxShadow(
-            color: lime.withValues(alpha: 0.18),
-            blurRadius: 34,
-            offset: const Offset(0, 18),
-          ),
-        ],
+        color: surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: hairline),
       ),
       child: Row(
         children: [
@@ -578,54 +566,43 @@ class KcalSummaryHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: bg.withValues(alpha: 0.22),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: const Text(
-                    'HEUTE',
-                    style: TextStyle(
-                      color: bg,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                ),
+                const StatusPill(label: 'Heute', color: lime),
                 const SizedBox(height: 14),
                 Text(
                   '$dailyConsumedKcal kcal',
                   key: const ValueKey('analyse-daily-kcal-total'),
                   style: const TextStyle(
-                    color: bg,
-                    fontSize: 46,
-                    height: 0.92,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -2.0,
+                    color: textPrimary,
+                    fontSize: 34,
+                    height: 1,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -1.2,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
+                const SizedBox(height: 6),
+                const Text(
                   'getrackt',
                   style: TextStyle(
-                    color: bg.withValues(alpha: 0.72),
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
+                    color: textMuted,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
             ),
           ),
           Container(
-            width: 70,
-            height: 70,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
-              color: bg.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(24),
+              color: lime.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.local_fire_department_rounded, color: bg, size: 40),
+            child: const Icon(
+              Icons.local_fire_department_rounded,
+              color: lime,
+              size: 22,
+            ),
           ),
         ],
       ),
@@ -651,33 +628,35 @@ class KcalActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final foreground = filled ? bg : Colors.white;
+    final foreground = filled ? bg : color;
     return Opacity(
-      opacity: onPressed == null ? 0.46 : 1,
+      opacity: onPressed == null ? 0.5 : 1,
       child: InkWell(
         onTap: onPressed,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(14),
         child: Container(
-          height: 86,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+          height: 64,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
           decoration: BoxDecoration(
-            color: filled ? color : color.withValues(alpha: 0.14),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: color.withValues(alpha: filled ? 0.72 : 0.34)),
+            color: filled ? color : surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: filled ? color : color.withValues(alpha: 0.25),
+            ),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: foreground, size: 28),
-              const SizedBox(height: 8),
+              Icon(icon, color: foreground, size: 20),
+              const SizedBox(height: 4),
               Text(
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: foreground,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
                 ),
               ),
             ],
@@ -702,35 +681,36 @@ class ProductSuggestionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          color: surfaceSoft,
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           children: [
             Container(
-              width: 56,
-              height: 56,
+              width: 44,
+              height: 44,
               clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.22),
-                borderRadius: BorderRadius.circular(16),
+                color: bg,
+                borderRadius: BorderRadius.circular(10),
               ),
               child: product.imageUrl == null
-                  ? Icon(
-                      Icons.fastfood_rounded,
-                      color: Colors.white.withValues(alpha: 0.38),
+                  ? const Icon(
+                      Icons.fastfood_outlined,
+                      color: textMuted,
+                      size: 20,
                     )
                   : Image.network(
                       product.imageUrl!,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Icon(
-                        Icons.fastfood_rounded,
-                        color: Colors.white.withValues(alpha: 0.38),
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.fastfood_outlined,
+                        color: textMuted,
+                        size: 20,
                       ),
                     ),
             ),
@@ -743,24 +723,28 @@ class ProductSuggestionTile extends StatelessWidget {
                     product.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w900),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     product.subtitle,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.58),
-                      fontWeight: FontWeight.w700,
-                      height: 1.2,
+                    style: const TextStyle(
+                      color: textMuted,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      height: 1.3,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 10),
-            const Icon(Icons.add_circle_rounded, color: lime),
+            const SizedBox(width: 8),
+            const Icon(Icons.add_circle_outline_rounded, color: lime, size: 20),
           ],
         ),
       ),
