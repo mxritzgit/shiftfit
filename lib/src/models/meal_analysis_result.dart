@@ -1,3 +1,4 @@
+import '../services/food_kcal_db.dart';
 import 'meal_component.dart';
 
 class MealAnalysisResult {
@@ -132,8 +133,24 @@ class MealAnalysisResult {
     final resolvedCalories =
         calories > 0 ? calories : (kcalPer100G * estimatedGrams / 100).round();
     final resolvedGrams = estimatedGrams > 0 ? estimatedGrams : itemGrams;
-    final normalizedItems =
+    var normalizedItems =
         itemGrams > 0 || itemCalories > 0 ? items : const <MealComponent>[];
+
+    // If the upstream model returned the meal as a single (or empty) entry
+    // but the meal name describes multiple foods, expand it client-side
+    // using the local kcal database.
+    var autoSplit = false;
+    if (normalizedItems.length < 2) {
+      final split = autoSplitItems(
+        mealName: mealName,
+        totalGrams: resolvedGrams,
+        totalKcal: resolvedCalories,
+      );
+      if (split.length >= 2) {
+        normalizedItems = split;
+        autoSplit = true;
+      }
+    }
 
     return MealAnalysisResult(
       mealName: mealName,
@@ -145,9 +162,11 @@ class MealAnalysisResult {
       fat: fat == null ? '-' : '$fat g',
       confidence: _formatConfidence(confidence),
       portionNotes: json['explanation']?.toString() ??
-          (normalizedItems.isNotEmpty
-              ? 'KI-Schätzung aus dem Foto mit Einzelposten. Bitte Bestandteile und Gramm prüfen.'
-              : 'KI-Schätzung aus dem Foto. Die Größe wurde nicht exakt vermessen; bitte Portion bestätigen oder Gewicht anpassen.'),
+          (autoSplit
+              ? 'KI hat als Gesamtgericht erkannt — Bestandteile lokal aufgesplittet. Gramm und Kalorien pro Posten prüfen.'
+              : normalizedItems.isNotEmpty
+                  ? 'KI-Schätzung aus dem Foto mit Einzelposten. Bitte Bestandteile und Gramm prüfen.'
+                  : 'KI-Schätzung aus dem Foto. Die Größe wurde nicht exakt vermessen; bitte Portion bestätigen oder Gewicht anpassen.'),
       items: normalizedItems,
       sourceLabel: 'Foto-KI',
     );
