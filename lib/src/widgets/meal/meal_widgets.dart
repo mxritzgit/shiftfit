@@ -314,7 +314,7 @@ class MealResultCard extends StatefulWidget {
   final bool confirmed;
   final bool addedToDailyTotal;
   final VoidCallback onConfirmed;
-  final ValueChanged<Set<int>> onAdjustRequested;
+  final VoidCallback onAdjustRequested;
   final VoidCallback onAddToDailyRequested;
 
   @override
@@ -322,47 +322,20 @@ class MealResultCard extends StatefulWidget {
 }
 
 class _MealResultCardState extends State<MealResultCard> {
-  Set<int> _selected = const <int>{};
   int _previousKcal = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _previousKcal = 0;
-  }
 
   @override
   void didUpdateWidget(covariant MealResultCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.result != widget.result) {
+    if (oldWidget.result.caloriesKcal != widget.result.caloriesKcal) {
       _previousKcal = oldWidget.result.caloriesKcal;
-      // Clear selection when the result swaps for a different meal.
-      if (oldWidget.result.mealName != widget.result.mealName) {
-        _selected = const <int>{};
-      }
     }
-  }
-
-  void _toggle(int index) {
-    setState(() {
-      final next = {..._selected};
-      if (next.contains(index)) {
-        next.remove(index);
-      } else {
-        next.add(index);
-      }
-      _selected = next;
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     final result = widget.result;
     final isBarcode = result.sourceLabel == 'OpenFoodFacts';
-    final selectionCount = _selected.length;
-    final adjustLabel = selectionCount == 0
-        ? (result.hasItemizedBreakdown ? 'Anpassen' : 'Anpassen')
-        : '$selectionCount anpassen';
 
     return AppCard(
       key: const ValueKey('analyse-result-card'),
@@ -433,35 +406,24 @@ class _MealResultCardState extends State<MealResultCard> {
             const SizedBox(height: 14),
             Row(
               children: [
-                const Expanded(child: FieldLabel('BESTANDTEILE')),
-                if (selectionCount > 0)
-                  Text(
-                    '$selectionCount ausgewählt',
-                    style: const TextStyle(
-                      color: orange,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.4,
-                    ),
-                  )
-                else
-                  const Text(
-                    'tippen zum auswählen',
-                    style: TextStyle(
-                      color: textMuted,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 0.4,
-                    ),
+                Expanded(
+                  child: FieldLabel(
+                    'BESTANDTEILE · ${result.items.length}',
                   ),
+                ),
+                const Text(
+                  'einzeln anpassen über "Anpassen"',
+                  style: TextStyle(
+                    color: textMuted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.3,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 6),
-            _ItemBreakdownList(
-              items: result.items,
-              selected: _selected,
-              onToggle: _toggle,
-            ),
+            _ItemBreakdownList(items: result.items),
           ],
           const SizedBox(height: 14),
           Row(
@@ -522,19 +484,15 @@ class _MealResultCardState extends State<MealResultCard> {
               Expanded(
                 child: OutlinedButton.icon(
                   key: const ValueKey('analyse-adjust-button'),
-                  onPressed: () => widget.onAdjustRequested(_selected),
+                  onPressed: widget.onAdjustRequested,
                   icon: const Icon(Icons.tune_rounded, size: 17),
                   label: Text(
-                    adjustLabel,
+                    result.hasItemizedBreakdown ? 'Bestandteile' : 'Anpassen',
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: selectionCount > 0 ? orange : textPrimary,
-                    side: BorderSide(
-                      color: selectionCount > 0
-                          ? orange.withValues(alpha: 0.45)
-                          : hairline,
-                    ),
+                    foregroundColor: textPrimary,
+                    side: const BorderSide(color: hairline),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -751,15 +709,9 @@ class _AnimatedKcal extends StatelessWidget {
 }
 
 class _ItemBreakdownList extends StatelessWidget {
-  const _ItemBreakdownList({
-    required this.items,
-    required this.selected,
-    required this.onToggle,
-  });
+  const _ItemBreakdownList({required this.items});
 
   final List<MealComponent> items;
-  final Set<int> selected;
-  final ValueChanged<int> onToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -767,12 +719,7 @@ class _ItemBreakdownList extends StatelessWidget {
       key: const ValueKey('analyse-item-breakdown'),
       children: [
         for (var index = 0; index < items.length; index++) ...[
-          _ItemBreakdownRow(
-            item: items[index],
-            index: index,
-            selected: selected.contains(index),
-            onTap: () => onToggle(index),
-          ),
+          _ItemBreakdownRow(item: items[index], index: index),
           if (index < items.length - 1) const SizedBox(height: 6),
         ],
       ],
@@ -781,77 +728,49 @@ class _ItemBreakdownList extends StatelessWidget {
 }
 
 class _ItemBreakdownRow extends StatelessWidget {
-  const _ItemBreakdownRow({
-    required this.item,
-    required this.index,
-    required this.selected,
-    required this.onTap,
-  });
+  const _ItemBreakdownRow({required this.item, required this.index});
 
   final MealComponent item;
   final int index;
-  final bool selected;
-  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return Container(
       key: ValueKey('analyse-item-row-$index'),
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.fromLTRB(14, 11, 12, 11),
-        decoration: BoxDecoration(
-          color: selected ? orange.withValues(alpha: 0.10) : surfaceSoft,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: selected ? orange.withValues(alpha: 0.45) : hairline,
+      padding: const EdgeInsets.fromLTRB(14, 11, 12, 11),
+      decoration: BoxDecoration(
+        color: surfaceSoft,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              item.name,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.name,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${item.gramsLabel} · ${item.caloriesLabel}',
-                    style: const TextStyle(
-                      color: textMuted,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
+          Text(
+            item.gramsLabel,
+            style: const TextStyle(
+              color: textMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
             ),
-            const SizedBox(width: 10),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              width: 22,
-              height: 22,
-              decoration: BoxDecoration(
-                color: selected ? orange : Colors.transparent,
-                borderRadius: BorderRadius.circular(7),
-                border: Border.all(
-                  color: selected ? orange : textMuted.withValues(alpha: 0.45),
-                ),
-              ),
-              child: selected
-                  ? Icon(Icons.check_rounded, color: bg, size: 14)
-                  : null,
+          ),
+          const SizedBox(width: 10),
+          Text(
+            item.caloriesLabel,
+            style: const TextStyle(
+              color: orange,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -906,19 +825,15 @@ class MacroTile extends StatelessWidget {
 
 Future<Object?> showWeightAdjustmentSheet(
   BuildContext context,
-  MealAnalysisResult result, {
-  Set<int> editableIndices = const <int>{},
-}) {
+  MealAnalysisResult result,
+) {
   return showModalBottomSheet<Object>(
     context: context,
     backgroundColor: surface,
     showDragHandle: true,
     isScrollControlled: true,
     builder: (context) => result.hasItemizedBreakdown
-        ? _MealItemAdjustmentSheet(
-            result: result,
-            editableIndices: editableIndices,
-          )
+        ? _MealItemAdjustmentSheet(result: result)
         : _MealWeightAdjustmentSheet(result: result),
   );
 }
@@ -1047,16 +962,9 @@ class _MealWeightAdjustmentSheetState extends State<_MealWeightAdjustmentSheet> 
 }
 
 class _MealItemAdjustmentSheet extends StatefulWidget {
-  const _MealItemAdjustmentSheet({
-    required this.result,
-    this.editableIndices = const <int>{},
-  });
+  const _MealItemAdjustmentSheet({required this.result});
 
   final MealAnalysisResult result;
-
-  /// Indices of items the user can edit in this sheet. Empty means all items
-  /// are editable (the "no selection → adjust everything" default).
-  final Set<int> editableIndices;
 
   @override
   State<_MealItemAdjustmentSheet> createState() => _MealItemAdjustmentSheetState();
@@ -1065,7 +973,7 @@ class _MealItemAdjustmentSheet extends StatefulWidget {
 class _MealItemAdjustmentSheetState extends State<_MealItemAdjustmentSheet> {
   late final List<TextEditingController> _controllers;
   late List<int> _grams;
-  late final Set<int> _editable;
+  Set<int> _removed = const <int>{};
 
   @override
   void initState() {
@@ -1074,9 +982,6 @@ class _MealItemAdjustmentSheetState extends State<_MealItemAdjustmentSheet> {
     _controllers = _grams
         .map((grams) => TextEditingController(text: grams.toString()))
         .toList(growable: false);
-    _editable = widget.editableIndices.isEmpty
-        ? {for (var i = 0; i < widget.result.items.length; i++) i}
-        : widget.editableIndices;
   }
 
   @override
@@ -1087,23 +992,47 @@ class _MealItemAdjustmentSheetState extends State<_MealItemAdjustmentSheet> {
     super.dispose();
   }
 
+  void _remove(int index) {
+    setState(() => _removed = {..._removed, index});
+  }
+
+  void _undoRemove(int index) {
+    setState(() => _removed = {..._removed}..remove(index));
+  }
+
+  int _itemKcalFor(int index) {
+    final item = widget.result.items[index];
+    final grams = _grams[index];
+    final per100 = item.kcalPer100G;
+    if (per100 != null && per100 > 0) {
+      return (per100 * grams / 100).round();
+    }
+    if (item.grams > 0) {
+      return (item.caloriesKcal * grams / item.grams).round();
+    }
+    return item.caloriesKcal;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final adjustedItems = [
+    final adjustedItems = <MealComponent>[
       for (var index = 0; index < widget.result.items.length; index++)
-        widget.result.items[index].adjustedToGrams(_grams[index]),
+        if (!_removed.contains(index))
+          widget.result.items[index].adjustedToGrams(_grams[index]),
     ];
-    final totalGrams = adjustedItems.fold<int>(0, (sum, item) => sum + item.grams);
+    final totalGrams = adjustedItems.fold<int>(
+      0,
+      (sum, item) => sum + item.grams,
+    );
     final totalKcal = adjustedItems.fold<int>(
       0,
       (sum, item) => sum + item.caloriesKcal,
     );
-
-    final editableList = <int>[
-      for (var i = 0; i < widget.result.items.length; i++)
-        if (_editable.contains(i)) i,
+    final invalidGrams = [
+      for (var index = 0; index < widget.result.items.length; index++)
+        if (!_removed.contains(index) && _grams[index] <= 0) index,
     ];
-    final unchangedCount = widget.result.items.length - editableList.length;
+    final canSave = adjustedItems.isNotEmpty && invalidGrams.isEmpty;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -1127,43 +1056,37 @@ class _MealItemAdjustmentSheetState extends State<_MealItemAdjustmentSheet> {
             ),
             const SizedBox(height: 6),
             Text(
-              unchangedCount > 0
-                  ? '${editableList.length} ausgewählt · $unchangedCount unverändert.'
-                  : 'Gramm pro Lebensmittel anpassen.',
+              _removed.isEmpty
+                  ? 'Pro Lebensmittel das Gewicht anpassen oder mit X komplett entfernen.'
+                  : '${_removed.length} entfernt — Tap auf "Wiederherstellen" um zurückzuholen.',
               style: const TextStyle(
                 color: textMuted,
                 fontSize: 13,
+                height: 1.4,
                 fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(height: 18),
-            for (final index in editableList) ...[
-              Text(
-                widget.result.items[index].name,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
+            for (var index = 0;
+                index < widget.result.items.length;
+                index++) ...[
+              if (_removed.contains(index))
+                _RemovedItemCard(
+                  name: widget.result.items[index].name,
+                  onUndo: () => _undoRemove(index),
+                )
+              else
+                _ItemEditCard(
+                  index: index,
+                  item: widget.result.items[index],
+                  controller: _controllers[index],
+                  liveKcal: _itemKcalFor(index),
+                  liveGrams: _grams[index],
+                  onGramsChanged: (g) =>
+                      setState(() => _grams[index] = g),
+                  onRemove: () => _remove(index),
                 ),
-              ),
-              const SizedBox(height: 6),
-              TextField(
-                key: ValueKey('analyse-item-weight-input-$index'),
-                controller: _controllers[index],
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: InputDecoration(
-                  labelText: 'Gewicht in Gramm',
-                  suffixText: 'g',
-                  helperText:
-                      '${widget.result.items[index].caloriesKcal} kcal bei ${widget.result.items[index].grams} g',
-                ),
-                onChanged: (value) {
-                  setState(() {
-                    _grams[index] = int.tryParse(value) ?? widget.result.items[index].grams;
-                  });
-                },
-              ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
             ],
             Container(
               key: const ValueKey('analyse-adjusted-kcal-preview'),
@@ -1174,23 +1097,55 @@ class _MealItemAdjustmentSheetState extends State<_MealItemAdjustmentSheet> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: orange.withValues(alpha: 0.18)),
               ),
-              child: Text(
-                '$totalGrams g ≈ $totalKcal kcal',
-                style: const TextStyle(
-                  color: orange,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.calculate_outlined,
+                    color: orange,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      '$totalGrams g ≈ $totalKcal kcal',
+                      style: const TextStyle(
+                        color: orange,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  if (adjustedItems.isNotEmpty)
+                    Text(
+                      '${adjustedItems.length} Posten',
+                      style: const TextStyle(
+                        color: textMuted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                ],
               ),
             ),
+            if (adjustedItems.isEmpty) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'Mindestens ein Bestandteil muss übrig bleiben.',
+                style: TextStyle(
+                  color: pink,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
             const SizedBox(height: 14),
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
                 key: const ValueKey('analyse-save-weight-button'),
-                onPressed: _grams.any((grams) => grams <= 0)
-                    ? null
-                    : () => Navigator.pop(context, adjustedItems),
+                onPressed: canSave
+                    ? () => Navigator.pop(context, adjustedItems)
+                    : null,
                 icon: const Icon(Icons.check_rounded, size: 17),
                 label: const Text(
                   'Übernehmen',
@@ -1208,6 +1163,177 @@ class _MealItemAdjustmentSheetState extends State<_MealItemAdjustmentSheet> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ItemEditCard extends StatelessWidget {
+  const _ItemEditCard({
+    required this.index,
+    required this.item,
+    required this.controller,
+    required this.liveKcal,
+    required this.liveGrams,
+    required this.onGramsChanged,
+    required this.onRemove,
+  });
+
+  final int index;
+  final MealComponent item;
+  final TextEditingController controller;
+  final int liveKcal;
+  final int liveGrams;
+  final ValueChanged<int> onGramsChanged;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: ValueKey('analyse-item-card-$index'),
+      padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+      decoration: BoxDecoration(
+        color: surfaceSoft,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: hairline),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  item.name,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ),
+              IconButton(
+                key: ValueKey('analyse-item-remove-$index'),
+                onPressed: onRemove,
+                tooltip: 'Entfernen',
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(
+                  Icons.close_rounded,
+                  size: 18,
+                  color: textMuted,
+                ),
+              ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: TextField(
+              key: ValueKey('analyse-item-weight-input-$index'),
+              controller: controller,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: InputDecoration(
+                labelText: 'Gewicht',
+                suffixText: 'g',
+                helperText:
+                    'Ursprünglich ${item.gramsLabel} · ${item.caloriesLabel}',
+                helperStyle: const TextStyle(
+                  color: textMuted,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              onChanged: (value) {
+                final parsed = int.tryParse(value) ?? 0;
+                onGramsChanged(parsed);
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.local_fire_department_outlined,
+                  size: 14,
+                  color: orange,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '$liveGrams g · $liveKcal kcal',
+                  style: const TextStyle(
+                    color: orange,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (item.kcalPer100G != null) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    '· ${item.kcalPer100G!.round()} kcal/100g',
+                    style: const TextStyle(
+                      color: textMuted,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RemovedItemCard extends StatelessWidget {
+  const _RemovedItemCard({required this.name, required this.onUndo});
+
+  final String name;
+  final VoidCallback onUndo;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+      decoration: BoxDecoration(
+        color: surfaceSoft.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: hairline),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              name,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: textMuted,
+                decoration: TextDecoration.lineThrough,
+              ),
+            ),
+          ),
+          TextButton.icon(
+            onPressed: onUndo,
+            style: TextButton.styleFrom(
+              foregroundColor: cyan,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 4,
+              ),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            icon: const Icon(Icons.undo_rounded, size: 14),
+            label: const Text(
+              'Wiederherstellen',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
       ),
     );
   }

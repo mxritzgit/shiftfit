@@ -389,17 +389,13 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
     );
   }
 
-  Future<void> adjustMealPortion(Set<int> editableIndices) async {
+  Future<void> adjustMealPortion() async {
     final currentResult = result;
     if (currentResult == null) {
       return;
     }
 
-    final adjustment = await showWeightAdjustmentSheet(
-      context,
-      currentResult,
-      editableIndices: editableIndices,
-    );
+    final adjustment = await showWeightAdjustmentSheet(context, currentResult);
     if (!mounted || adjustment == null) {
       return;
     }
