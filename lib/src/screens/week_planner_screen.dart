@@ -13,6 +13,8 @@ class WeekPlannerScreen extends StatelessWidget {
     required this.weekPlan,
     required this.onShiftChanged,
     this.onSettingsPressed,
+    this.onProfilePressed,
+    this.profileInitial,
   });
 
   static const days = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
@@ -22,6 +24,8 @@ class WeekPlannerScreen extends StatelessWidget {
   final List<String> weekPlan;
   final void Function(int dayIndex, String shift) onShiftChanged;
   final VoidCallback? onSettingsPressed;
+  final VoidCallback? onProfilePressed;
+  final String? profileInitial;
 
   int get trainingDays =>
       weekPlan.where((shift) => shift == 'Frei' || shift == 'Früh').length;
@@ -34,7 +38,12 @@ class WeekPlannerScreen extends StatelessWidget {
       key: const ValueKey('screen-week'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ShiftFitTopBar(plan: plan, onSettingsPressed: onSettingsPressed),
+        ShiftFitTopBar(
+          plan: plan,
+          onSettingsPressed: onSettingsPressed,
+          onProfilePressed: onProfilePressed,
+          profileInitial: profileInitial,
+        ),
         const SizedBox(height: 20),
         AppCard(
           padding: const EdgeInsets.all(20),

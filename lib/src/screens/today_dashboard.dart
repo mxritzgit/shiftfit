@@ -37,6 +37,8 @@ class TodayDashboard extends StatelessWidget {
     required this.onConnectHealth,
     required this.onRefreshHealth,
     required this.onSettingsPressed,
+    this.onProfilePressed,
+    this.profileInitial,
   });
 
   final String selectedShift;
@@ -62,6 +64,8 @@ class TodayDashboard extends StatelessWidget {
   final VoidCallback onConnectHealth;
   final VoidCallback onRefreshHealth;
   final VoidCallback onSettingsPressed;
+  final VoidCallback? onProfilePressed;
+  final String? profileInitial;
 
   @override
   Widget build(BuildContext context) {
@@ -122,7 +126,12 @@ class TodayDashboard extends StatelessWidget {
       key: const ValueKey('screen-today'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ShiftFitTopBar(plan: plan, onSettingsPressed: onSettingsPressed),
+        ShiftFitTopBar(
+          plan: plan,
+          onSettingsPressed: onSettingsPressed,
+          onProfilePressed: onProfilePressed,
+          profileInitial: profileInitial,
+        ),
         const SizedBox(height: 20),
         ShiftFitHero(plan: plan),
         const SizedBox(height: 14),

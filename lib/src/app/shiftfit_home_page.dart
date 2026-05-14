@@ -4,6 +4,7 @@ import '../models/caffeine_entry.dart';
 import '../models/daily_mood.dart';
 import '../models/favorite_meal.dart';
 import '../models/habit.dart';
+import '../models/lifetime_stats.dart';
 import '../models/macro_progress.dart';
 import '../models/meal_analysis_result.dart';
 import '../models/shift_fit_plan.dart';
@@ -15,6 +16,7 @@ import '../services/meal_analyzer.dart';
 import '../services/meal_photo_input.dart';
 import '../services/open_food_facts_product_service.dart';
 import '../screens/meal_analysis_screen.dart';
+import '../screens/profile_screen.dart';
 import '../screens/today_dashboard.dart';
 import '../screens/trends_screen.dart';
 import '../screens/week_planner_screen.dart';
@@ -65,7 +67,23 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
   HealthAuthState healthAuthState = HealthAuthState.unknown;
   DateTime? healthLastFetch;
   bool healthSyncing = false;
+  LifetimeStats lifetimeStats = LifetimeStats();
+  String userName = 'Moritz';
+  final ValueNotifier<int> _profileRefresh = ValueNotifier<int>(0);
+
   int get stepsGoal => profile.dailyStepsGoal;
+
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    _profileRefresh.value++;
+  }
+
+  @override
+  void dispose() {
+    _profileRefresh.dispose();
+    super.dispose();
+  }
 
   HealthService get _health =>
       widget.healthService ?? const NoopHealthService();
@@ -122,7 +140,10 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
   }
 
   void _addWater(int ml) {
-    setState(() => dailyWaterMl = (dailyWaterMl + ml).clamp(0, 15000));
+    setState(() {
+      dailyWaterMl = (dailyWaterMl + ml).clamp(0, 15000);
+      if (ml > 0) lifetimeStats = lifetimeStats.addWater(ml);
+    });
   }
 
   void _toggleHabit(String id) {
@@ -130,7 +151,10 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
   }
 
   void _logWeight(double kg) {
-    setState(() => weightLog = weightLog.add(kg));
+    setState(() {
+      weightLog = weightLog.add(kg);
+      lifetimeStats = lifetimeStats.incrementWeightLogs();
+    });
   }
 
   Future<void> _openQuickAdd() async {
@@ -165,7 +189,10 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
   }
 
   void _addSteps(int amount) {
-    setState(() => dailySteps = (dailySteps + amount).clamp(0, 100000));
+    setState(() {
+      dailySteps = (dailySteps + amount).clamp(0, 100000);
+      if (amount > 0) lifetimeStats = lifetimeStats.addSteps(amount);
+    });
   }
 
   void _setSteps(int amount) {
@@ -206,6 +233,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
       if (allDone) {
         workoutStreak += 1;
         completedBlockIds = <String>{};
+        lifetimeStats = lifetimeStats.incrementWorkouts();
       } else {
         completedBlockIds = next;
       }
@@ -222,6 +250,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
     setState(() {
       dailyConsumedKcal += result.caloriesKcal;
       macroProgress = macroProgress.add(result);
+      lifetimeStats = lifetimeStats.incrementMeals();
       _rememberFavorite(result);
     });
   }
@@ -267,6 +296,53 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
     }
   }
 
+  void _resetTodayData() {
+    setState(() {
+      dailyConsumedKcal = 0;
+      dailyWaterMl = 0;
+      dailySteps = 0;
+      macroProgress = MacroProgress.empty;
+      completedBlockIds = <String>{};
+      caffeineDay = const CaffeineDay();
+      mood = DailyMood.empty;
+      habits = const HabitState();
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Tagesdaten zurückgesetzt.')),
+    );
+  }
+
+  Future<void> _openProfile() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => AnimatedBuilder(
+          animation: _profileRefresh,
+          builder: (_, __) => ProfileScreen(
+            name: userName,
+            profile: profile,
+            weightLog: weightLog,
+            stats: lifetimeStats,
+            plan: plan,
+            weekPlan: weekPlan,
+            workoutStreak: workoutStreak,
+            dailyConsumedKcal: dailyConsumedKcal,
+            dailyWaterMl: dailyWaterMl,
+            dailySteps: dailySteps,
+            lastSleep: lastSleep,
+            healthAuthState: healthAuthState,
+            healthLastFetch: healthLastFetch,
+            favoritesCount: favorites.length,
+            onLogWeight: _logWeight,
+            onEditProfile: _openSettings,
+            onResetDay: _resetTodayData,
+            onConnectHealth: _connectHealth,
+            onRefreshHealth: _refreshHealthSteps,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -302,6 +378,8 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
           setState(() => weekPlan[dayIndex] = shift);
         },
         onSettingsPressed: _openSettings,
+        onProfilePressed: _openProfile,
+        profileInitial: _profileInitial,
       ),
       2 => TrendsScreen(
         plan: plan,
@@ -318,6 +396,8 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         dailyConsumedKcal: dailyConsumedKcal,
         kcalGoal: profile.dailyKcalGoal,
         onSettingsPressed: _openSettings,
+        onProfilePressed: _openProfile,
+        profileInitial: _profileInitial,
       ),
       3 => MealAnalysisScreen(
         analyzer: widget.mealAnalyzer,
@@ -355,7 +435,15 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         onConnectHealth: _connectHealth,
         onRefreshHealth: _refreshHealthSteps,
         onSettingsPressed: _openSettings,
+        onProfilePressed: _openProfile,
+        profileInitial: _profileInitial,
       ),
     };
+  }
+
+  String get _profileInitial {
+    final parts = userName.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts.first.isEmpty) return 'S';
+    return parts.first.substring(0, 1).toUpperCase();
   }
 }

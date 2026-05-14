@@ -26,6 +26,8 @@ class TrendsScreen extends StatelessWidget {
     required this.dailyConsumedKcal,
     required this.kcalGoal,
     this.onSettingsPressed,
+    this.onProfilePressed,
+    this.profileInitial,
   });
 
   final ShiftFitPlan plan;
@@ -42,6 +44,8 @@ class TrendsScreen extends StatelessWidget {
   final int dailyConsumedKcal;
   final int kcalGoal;
   final VoidCallback? onSettingsPressed;
+  final VoidCallback? onProfilePressed;
+  final String? profileInitial;
 
   int get loadBalance {
     final nights = weekPlan.where((shift) => shift == 'Nacht').length;
@@ -108,7 +112,12 @@ class TrendsScreen extends StatelessWidget {
       key: const ValueKey('screen-trends'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ShiftFitTopBar(plan: plan, onSettingsPressed: onSettingsPressed),
+        ShiftFitTopBar(
+          plan: plan,
+          onSettingsPressed: onSettingsPressed,
+          onProfilePressed: onProfilePressed,
+          profileInitial: profileInitial,
+        ),
         const SizedBox(height: 20),
         AppCard(
           padding: const EdgeInsets.all(20),
