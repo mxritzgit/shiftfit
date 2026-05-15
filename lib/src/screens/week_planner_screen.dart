@@ -18,7 +18,7 @@ class WeekPlannerScreen extends StatelessWidget {
   });
 
   static const days = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-  static const shifts = ['Früh', 'Spät', 'Nacht', 'Frei'];
+  static const shifts = ['Kraft', 'Muskelaufbau', 'Ausdauer', 'Mobility', 'Recovery', 'Frei'];
 
   final ShiftFitPlan plan;
   final List<String> weekPlan;
@@ -27,10 +27,11 @@ class WeekPlannerScreen extends StatelessWidget {
   final VoidCallback? onProfilePressed;
   final String? profileInitial;
 
-  int get trainingDays =>
-      weekPlan.where((shift) => shift == 'Frei' || shift == 'Früh').length;
+  int get strengthDays =>
+      weekPlan.where((shift) => shift == 'Kraft' || shift == 'Muskelaufbau').length;
 
-  int get nightBlocks => weekPlan.where((shift) => shift == 'Nacht').length;
+  int get recoveryDays =>
+      weekPlan.where((shift) => shift == 'Mobility' || shift == 'Recovery' || shift == 'Frei').length;
 
   @override
   Widget build(BuildContext context) {
@@ -50,10 +51,10 @@ class WeekPlannerScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const StatusPill(label: 'Woche planen', color: cyan),
+              const StatusPill(label: 'FitnessPlan', color: cyan),
               const SizedBox(height: 16),
               const Text(
-                '7 Tage,\nsauber getaktet.',
+                'Trainingswoche,\nsmart geplant.',
                 style: TextStyle(
                   fontSize: 28,
                   height: 1.1,
@@ -63,7 +64,7 @@ class WeekPlannerScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Schichten festlegen, Training und Schlaf realistisch halten.',
+                'Kraft, Ausdauer und Recovery so verteilen, dass Fortschritt planbar bleibt.',
                 style: TextStyle(
                   color: textMuted,
                   fontSize: 13,
@@ -79,24 +80,24 @@ class WeekPlannerScreen extends StatelessWidget {
             Expanded(
               child: SummaryCard(
                 icon: Icons.fitness_center,
-                title: 'Training',
-                value: '$trainingDays Tage',
+                title: 'Kraft & Aufbau',
+                value: '$strengthDays Krafttage',
                 color: lime,
               ),
             ),
             const SizedBox(width: 10),
             Expanded(
               child: SummaryCard(
-                icon: Icons.nightlight_round,
-                title: 'Nächte',
-                value: '$nightBlocks geplant',
+                icon: Icons.spa_rounded,
+                title: 'Regeneration',
+                value: '$recoveryDays Recovery',
                 color: pink,
               ),
             ),
           ],
         ),
         const SizedBox(height: 22),
-        const SectionHeader(title: 'Schichtplan', action: 'Antippen'),
+        const SectionHeader(title: 'Trainingssplit', action: 'Antippen'),
         const SizedBox(height: 10),
         for (var dayIndex = 0; dayIndex < days.length; dayIndex++) ...[
           WeekDayPlannerRow(

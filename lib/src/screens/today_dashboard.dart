@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../models/plan_block.dart';
 import '../models/shift_fit_plan.dart';
 import '../models/sleep_entry.dart';
 import '../services/health_service.dart';
@@ -155,7 +154,7 @@ class TodayDashboard extends StatelessWidget {
           onRefreshHealth: onRefreshHealth,
         ),
         const SizedBox(height: 22),
-        SectionHeader(title: 'Dein Plan für heute', action: planAction),
+        SectionHeader(title: 'FitnessPlan', action: planAction),
         const SizedBox(height: 10),
         Builder(
           builder: (innerContext) => DailyPlanCard(
@@ -180,15 +179,15 @@ class TodayDashboard extends StatelessWidget {
           _StreakBadge(streak: workoutStreak),
         ],
         const SizedBox(height: 22),
-        SectionHeader(title: 'Schicht-Kompass', action: selectedShift),
+        SectionHeader(title: 'Trainingsfokus', action: selectedShift),
         const SizedBox(height: 10),
         ShiftTimeline(shift: selectedShift),
         const SizedBox(height: 22),
-        const SectionHeader(title: 'Recovery Tools', action: ''),
+        const SectionHeader(title: 'Coach Tools', action: ''),
         const SizedBox(height: 10),
         RecoveryToolsGrid(plan: plan),
         const SizedBox(height: 22),
-        const SectionHeader(title: 'Wochenrhythmus', action: ''),
+        const SectionHeader(title: 'Wochen Split', action: ''),
         const SizedBox(height: 10),
         const RhythmWeekCard(),
       ],

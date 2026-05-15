@@ -11,32 +11,32 @@ import 'package:shiftfit/src/services/meal_photo_input.dart';
 import 'package:shiftfit/src/services/open_food_facts_product_service.dart';
 
 void main() {
-  testWidgets('ShiftFit dashboard shows the expanded start experience', (
+  testWidgets('FitPilot dashboard shows the reworked fitness start experience', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ShiftFitApp());
 
-    expect(find.text('ShiftFit'), findsOneWidget);
-    expect(find.text('Train smart.\nRecover better.'), findsOneWidget);
+    expect(find.text('FitPilot'), findsOneWidget);
+    expect(find.text('Dein FitnessPlan\nfür heute.'), findsOneWidget);
     expect(
-      find.text('Kurze Empfehlungen passend zu deiner Schicht.'),
+      find.text('Kraft, Ausdauer und Recovery in einem klaren Tagesplan.'),
       findsOneWidget,
     );
     expect(find.text('Heute'), findsWidgets);
-    expect(find.text('20 Min Training'), findsOneWidget);
+    expect(find.text('Hypertrophy Plan'), findsOneWidget);
     expect(find.text('Plan öffnen'), findsOneWidget);
-    expect(find.text('Recovery Score'), findsOneWidget);
-    expect(find.text('Dein Plan für heute'), findsOneWidget);
-    expect(find.text('Schicht-Kompass'), findsOneWidget);
-    expect(find.text('Recovery Tools'), findsOneWidget);
-    expect(find.text('Wochenrhythmus'), findsOneWidget);
-    expect(find.text('Sleep Anchor'), findsOneWidget);
-    expect(find.text('Fuel Reminder'), findsOneWidget);
+    expect(find.text('Readiness Score'), findsOneWidget);
+    expect(find.text('FitnessPlan'), findsOneWidget);
+    expect(find.text('Trainingsfokus'), findsOneWidget);
+    expect(find.text('Coach Tools'), findsOneWidget);
+    expect(find.text('Wochen Split'), findsOneWidget);
+    expect(find.text('Sleep Coach'), findsOneWidget);
+    expect(find.text('Fuel Strategy'), findsOneWidget);
     expect(find.text('Breath Reset'), findsOneWidget);
-    expect(find.text('Schichtarbeit. Training. Recovery.'), findsOneWidget);
+    expect(find.text('FitnessPlan. Training. Recovery.'), findsOneWidget);
   });
 
-  testWidgets('Check-in updates recommendation for fatigue, night and strong energy', (
+  testWidgets('Check-in updates recommendation for fatigue, endurance and strong strength', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ShiftFitApp());
@@ -44,20 +44,22 @@ void main() {
     await tester.ensureVisible(find.byKey(const ValueKey('option-Müde')));
     await tester.tap(find.byKey(const ValueKey('option-Müde')));
     await tester.pumpAndSettle();
-    expect(find.text('Recovery Flow'), findsOneWidget);
-    expect(find.text('Runterfahren statt durchbeißen'), findsOneWidget);
+    expect(find.text('Recovery & Mobility'), findsOneWidget);
+    expect(find.text('Deload statt durchziehen'), findsOneWidget);
 
     await tester.ensureVisible(find.byKey(const ValueKey('option-Normal')));
     await tester.tap(find.byKey(const ValueKey('option-Normal')));
-    await tester.ensureVisible(find.byKey(const ValueKey('option-Nacht')));
-    await tester.tap(find.byKey(const ValueKey('option-Nacht')));
+    await tester.ensureVisible(find.byKey(const ValueKey('option-Ausdauer')));
+    await tester.tap(find.byKey(const ValueKey('option-Ausdauer')));
     await tester.pumpAndSettle();
-    expect(find.text('Mobility Reset'), findsOneWidget);
+    expect(find.text('Cardio Engine'), findsOneWidget);
 
+    await tester.ensureVisible(find.byKey(const ValueKey('option-Kraft')));
+    await tester.tap(find.byKey(const ValueKey('option-Kraft')));
     await tester.ensureVisible(find.byKey(const ValueKey('option-Stark')));
     await tester.tap(find.byKey(const ValueKey('option-Stark')));
     await tester.pumpAndSettle();
-    expect(find.text('Kraft Session'), findsOneWidget);
+    expect(find.text('Strength Builder'), findsOneWidget);
   });
 
   testWidgets('Plan sheet can be opened from today card', (WidgetTester tester) async {
@@ -67,28 +69,28 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('today-open-plan')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Für heute vormerken'), findsOneWidget);
+    expect(find.text('Für heute starten'), findsOneWidget);
     expect(find.textContaining('Warm-up'), findsWidgets);
   });
 
-  testWidgets('Bottom navigation switches between Heute, Woche, Trends and Kcal', (
+  testWidgets('Bottom navigation switches between Heute, Plan, Trends and Kcal', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ShiftFitApp());
 
-    expect(find.text('Train smart.\nRecover better.'), findsOneWidget);
+    expect(find.text('Dein FitnessPlan\nfür heute.'), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('nav-Woche')));
+    await tester.tap(find.byKey(const ValueKey('nav-Plan')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('screen-week')), findsOneWidget);
-    expect(find.text('7 Tage,\nsauber getaktet.'), findsOneWidget);
-    expect(find.text('Schichtplan'), findsOneWidget);
+    expect(find.text('Trainingswoche,\nsmart geplant.'), findsOneWidget);
+    expect(find.text('Trainingssplit'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('nav-Trends')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('screen-trends')), findsOneWidget);
-    expect(find.text('Readiness bleibt\nsteuerbar.'), findsOneWidget);
-    expect(find.text('Readiness Verlauf'), findsOneWidget);
+    expect(find.text('Fortschritt bleibt\nsichtbar.'), findsOneWidget);
+    expect(find.text('Progress Verlauf'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('nav-Kcal')));
     await tester.pumpAndSettle();
@@ -106,7 +108,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('nav-Heute')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('screen-today')), findsOneWidget);
-    expect(find.text('Train smart.\nRecover better.'), findsOneWidget);
+    expect(find.text('Dein FitnessPlan\nfür heute.'), findsOneWidget);
   });
 
   testWidgets('Kcal tab supports deterministic itemized photo results and daily kcal adding', (
@@ -295,22 +297,22 @@ void main() {
     );
   });
 
-  testWidgets('Week planner updates a day shift and summaries', (
+  testWidgets('Plan tab updates weekly split and summaries', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ShiftFitApp());
 
-    await tester.tap(find.byKey(const ValueKey('nav-Woche')));
+    await tester.tap(find.byKey(const ValueKey('nav-Plan')));
     await tester.pumpAndSettle();
 
-    expect(find.text('1 geplant'), findsOneWidget);
-    expect(find.text('4 Tage'), findsOneWidget);
+    expect(find.text('3 Krafttage'), findsOneWidget);
+    expect(find.text('3 Recovery'), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('week-Mo-Nacht')));
+    await tester.tap(find.byKey(const ValueKey('week-Mo-Mobility')));
     await tester.pumpAndSettle();
 
-    expect(find.text('2 geplant'), findsOneWidget);
-    expect(find.text('3 Tage'), findsOneWidget);
+    expect(find.text('2 Krafttage'), findsOneWidget);
+    expect(find.text('4 Recovery'), findsOneWidget);
   });
 }
 

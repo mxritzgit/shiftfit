@@ -25,7 +25,7 @@ class ShiftFitApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'ShiftFit',
+      title: 'FitPilot',
       theme: buildShiftFitTheme(),
       home: ShiftFitHomePage(
         mealAnalyzer: mealAnalyzer,

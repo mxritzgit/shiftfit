@@ -50,8 +50,8 @@ class DaySummary {
     final date =
         '${now.day.toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}.${now.year}';
     final lines = <String>[
-      'ShiftFit · $date',
-      'Schicht: $shift',
+      'FitPilot · $date',
+      'Fokus: $shift',
       '',
       'Kcal:    $dailyConsumedKcal / $kcalGoal',
       'Wasser:  $dailyWaterMl / $waterGoalMl ml',

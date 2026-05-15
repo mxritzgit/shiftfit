@@ -344,7 +344,7 @@ class _AboutSheet extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'ShiftFit',
+                    'FitPilot',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
@@ -353,7 +353,7 @@ class _AboutSheet extends StatelessWidget {
                   ),
                   SizedBox(height: 2),
                   Text(
-                    'Schichtarbeit. Training. Recovery.',
+                    'FitnessPlan. Training. Recovery.',
                     style: TextStyle(
                       color: textMuted,
                       fontSize: 12,
@@ -366,8 +366,8 @@ class _AboutSheet extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           const Text(
-            'Für Menschen mit wechselnden Schichten — kurze, smarte Routinen '
-            'statt Trainings-Pflichtprogramm.',
+            'Ein moderner Fitness-Coach für klare Pläne, bessere Recovery '
+            'und nachhaltigen Fortschritt.',
             style: TextStyle(
               color: textMuted,
               fontSize: 13,
@@ -379,7 +379,7 @@ class _AboutSheet extends StatelessWidget {
           const SizedBox(height: 6),
           const _AboutRow(label: 'Build', value: '1'),
           const SizedBox(height: 6),
-          const _AboutRow(label: 'Quellen', value: 'OpenFoodFacts · HealthKit'),
+          const _AboutRow(label: 'Quellen', value: 'OpenFoodFacts · HealthKit · wger'),
         ],
       ),
     );
@@ -425,7 +425,7 @@ class _FooterCredit extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Text(
-        'ShiftFit · v1.0.0',
+        'FitPilot · v1.0.0',
         style: TextStyle(
           color: textMuted.withValues(alpha: 0.6),
           fontSize: 11,

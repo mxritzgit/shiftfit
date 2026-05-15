@@ -19,7 +19,7 @@ class ShiftFitHero extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Train smart.\nRecover better.',
+            'Dein FitnessPlan\nfür heute.',
             style: TextStyle(
               fontSize: 26,
               height: 1.1,
@@ -29,7 +29,7 @@ class ShiftFitHero extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Kurze Empfehlungen passend zu deiner Schicht.',
+            'Kraft, Ausdauer und Recovery in einem klaren Tagesplan.',
             style: TextStyle(
               color: textMuted,
               fontSize: 13,
@@ -82,10 +82,10 @@ class QuickCheckInCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          const FieldLabel('SCHICHT'),
+          const FieldLabel('ZIEL'),
           const SizedBox(height: 8),
           SegmentedOptions(
-            options: const ['Früh', 'Spät', 'Nacht', 'Frei'],
+            options: const ['Kraft', 'Muskelaufbau', 'Ausdauer', 'Recovery'],
             selectedValue: selectedShift,
             onSelected: onShiftSelected,
           ),
@@ -98,7 +98,7 @@ class QuickCheckInCard extends StatelessWidget {
             onSelected: onEnergySelected,
           ),
           const SizedBox(height: 14),
-          const FieldLabel('STRESS'),
+          const FieldLabel('BELASTUNG'),
           const SizedBox(height: 8),
           SegmentedOptions(
             options: const ['Niedrig', 'Mittel', 'Hoch'],
@@ -200,7 +200,7 @@ class RecoveryScoreCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Recovery Score',
+                  'Readiness Score',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
@@ -364,14 +364,14 @@ class ShiftTimeline extends StatelessWidget {
 
   List<String> get _events {
     switch (shift) {
-      case 'Spät':
-        return ['Licht', 'Training', 'Meal Prep', 'Schicht', 'Runterfahren'];
-      case 'Nacht':
-        return ['Nap', 'Aktivieren', 'Schicht', 'Sonnenbrille', 'Schlaf'];
-      case 'Frei':
-        return ['Schlafanker', 'Training', 'Einkauf', 'Recovery', 'Planung'];
+      case 'Kraft':
+        return ['Warm-up', 'Heavy Lift', 'Push/Pull', 'Core', 'Cooldown'];
+      case 'Ausdauer':
+        return ['Warm-up', 'Zone 2', 'Strides', 'Cooldown', 'Fuel'];
+      case 'Recovery':
+        return ['Mobility', 'Walk', 'Breath', 'Protein', 'Sleep'];
       default:
-        return ['Wach', 'Licht', 'Schicht', 'Training', 'Schlafanker'];
+        return ['Warm-up', 'Compound', 'Accessory', 'Core', 'Recovery'];
     }
   }
 
@@ -432,14 +432,14 @@ class RecoveryToolsGrid extends StatelessWidget {
       children: [
         RecoveryToolCard(
           icon: Icons.bedtime_outlined,
-          title: 'Sleep Anchor',
+          title: 'Sleep Coach',
           body: plan.sleepHint,
           color: pink,
         ),
         const SizedBox(height: 10),
         RecoveryToolCard(
           icon: Icons.restaurant_outlined,
-          title: 'Fuel Reminder',
+          title: 'Fuel Strategy',
           body: plan.fuelHint,
           color: orange,
         ),
@@ -521,12 +521,12 @@ class RhythmWeekCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const days = [
-      ('Mo', 'F', lime),
-      ('Di', 'F', lime),
-      ('Mi', 'S', orange),
-      ('Do', 'S', orange),
-      ('Fr', 'N', pink),
-      ('Sa', 'N', pink),
+      ('Mo', 'K', lime),
+      ('Di', 'H', lime),
+      ('Mi', 'A', orange),
+      ('Do', 'M', cyan),
+      ('Fr', 'K', lime),
+      ('Sa', 'R', pink),
       ('So', '·', cyan),
     ];
 
@@ -649,7 +649,7 @@ void showPlanSheet(BuildContext context, ShiftFitPlan plan) {
                   );
                 },
                 child: const Text(
-                  'Für heute vormerken',
+                  'Für heute starten',
                   style: TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),

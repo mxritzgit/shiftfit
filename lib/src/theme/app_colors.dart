@@ -15,9 +15,11 @@ const Color hairline = Color(0x1AFFFFFF);
 
 Color shiftColor(String shift) {
   return switch (shift) {
-    'Früh' => lime,
-    'Spät' => orange,
-    'Nacht' => pink,
+    'Kraft' => lime,
+    'Muskelaufbau' => lime,
+    'Ausdauer' => orange,
+    'Mobility' => cyan,
+    'Recovery' => cyan,
     'Frei' => cyan,
     _ => textPrimary,
   };

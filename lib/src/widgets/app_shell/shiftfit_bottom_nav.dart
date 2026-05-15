@@ -14,7 +14,7 @@ class ShiftFitBottomNav extends StatelessWidget {
 
   static const _items = [
     (Icons.home_rounded, 'Heute'),
-    (Icons.calendar_month_rounded, 'Woche'),
+    (Icons.calendar_month_rounded, 'Plan'),
     (Icons.insights_rounded, 'Trends'),
     (Icons.local_fire_department_rounded, 'Kcal'),
   ];

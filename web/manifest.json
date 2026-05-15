@@ -1,6 +1,6 @@
 {
-    "name": "shiftfit",
-    "short_name": "shiftfit",
+    "name": "FitPilot",
+    "short_name": "FitPilot",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

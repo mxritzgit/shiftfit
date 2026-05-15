@@ -31,7 +31,7 @@ class ProfileHero extends StatelessWidget {
         .toUpperCase();
   }
 
-  String get _shiftPattern {
+  String get _trainingPattern {
     final unique = <String>{};
     final order = <String>[];
     for (final s in weekPlan) {
@@ -90,9 +90,9 @@ class ProfileHero extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _shiftPattern.isEmpty
-                          ? 'Schichtmuster anlegen'
-                          : _shiftPattern,
+                      _trainingPattern.isEmpty
+                          ? 'Trainingssplit anlegen'
+                          : _trainingPattern,
                       style: const TextStyle(
                         color: textMuted,
                         fontSize: 12,
@@ -384,7 +384,7 @@ class _BmiInfoSheet extends StatelessWidget {
           const SizedBox(height: 6),
           const Text(
             'Body Mass Index ist eine grobe Heuristik. Für Athleten und '
-            'shiftarbeitende Körper ist die Tendenz interessanter als der '
+            'athletische Körper ist die Tendenz interessanter als der '
             'absolute Wert.',
             style: TextStyle(color: textMuted, fontSize: 13, height: 1.45),
           ),
@@ -875,7 +875,14 @@ class ShiftDistributionCard extends StatelessWidget {
   final List<String> weekPlan;
 
   Map<String, int> get _counts {
-    final map = {'Früh': 0, 'Spät': 0, 'Nacht': 0, 'Frei': 0};
+    final map = {
+      'Kraft': 0,
+      'Muskelaufbau': 0,
+      'Ausdauer': 0,
+      'Recovery': 0,
+      'Mobility': 0,
+      'Frei': 0,
+    };
     for (final s in weekPlan) {
       if (map.containsKey(s)) map[s] = (map[s] ?? 0) + 1;
     }
@@ -886,7 +893,8 @@ class ShiftDistributionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final counts = _counts;
     final total = counts.values.fold<int>(0, (a, b) => a + b);
-    final balance = (counts['Frei']! * 4 - counts['Nacht']! * 3 + 7)
+    final balance = ((counts['Recovery']! + counts['Mobility']! + counts['Frei']!) * 3 -
+            (counts['Kraft']! + counts['Muskelaufbau']!) + 7)
         .clamp(0, 14)
         .toInt();
     return AppCard(
@@ -895,7 +903,7 @@ class ShiftDistributionCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Schicht-Mix',
+            'Trainings-Mix',
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 16),
@@ -941,13 +949,13 @@ class ShiftDistributionCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _ShiftLegendRow(label: 'Früh', value: counts['Früh']!, color: lime),
+                    _ShiftLegendRow(label: 'Kraft', value: counts['Kraft']!, color: lime),
                     const SizedBox(height: 8),
-                    _ShiftLegendRow(label: 'Spät', value: counts['Spät']!, color: orange),
+                    _ShiftLegendRow(label: 'Muskel', value: counts['Muskelaufbau']!, color: lime),
                     const SizedBox(height: 8),
-                    _ShiftLegendRow(label: 'Nacht', value: counts['Nacht']!, color: pink),
+                    _ShiftLegendRow(label: 'Ausdauer', value: counts['Ausdauer']!, color: orange),
                     const SizedBox(height: 8),
-                    _ShiftLegendRow(label: 'Frei', value: counts['Frei']!, color: cyan),
+                    _ShiftLegendRow(label: 'Recovery', value: counts['Recovery']! + counts['Mobility']! + counts['Frei']!, color: cyan),
                   ],
                 ),
               ),
@@ -966,9 +974,9 @@ class ShiftDistributionCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    counts['Nacht']! > 2
-                        ? 'Nachtlastige Woche — plane einen Recovery-Tag früh ein.'
-                        : counts['Frei']! >= 2
+                    counts['Kraft']! + counts['Muskelaufbau']! > 3
+                        ? 'Starke Woche: Recovery zwischen harte Reize legen.'
+                        : counts['Recovery']! + counts['Mobility']! + counts['Frei']! >= 3
                             ? 'Genug Erholungsraum eingebaut.'
                             : 'Solide Mischung.',
                     style: const TextStyle(
@@ -1581,7 +1589,7 @@ class ProfileActionsCard extends StatelessWidget {
           _ActionRow(
             icon: Icons.info_outline_rounded,
             color: textMuted,
-            title: 'Über ShiftFit',
+            title: 'Über FitPilot',
             subtitle: 'Version & Mitwirkende',
             onTap: onAbout,
             keyValue: const ValueKey('profile-action-about'),

@@ -288,10 +288,12 @@ class ShiftDonutPainter extends CustomPainter {
   final double gap;
 
   static const Map<String, Color> _colors = {
-    'Früh': lime,
-    'Spät': orange,
-    'Nacht': pink,
-    'Frei': cyan,
+    'Kraft': lime,
+    'Muskelaufbau': lime,
+    'Ausdauer': orange,
+    'Recovery': cyan,
+    'Mobility': cyan,
+    'Frei': pink,
   };
 
   @override

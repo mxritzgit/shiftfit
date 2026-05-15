@@ -35,101 +35,107 @@ class ShiftFitPlan {
     required String energy,
     required String stress,
   }) {
-    if (energy == 'Müde' || stress == 'Hoch') {
-      return const ShiftFitPlan(
-        recommendation: 'Recovery Flow',
-        focus: 'Runterfahren statt durchbeißen',
-        tagline: 'Sanfte Bewegung, Atmung und frühes Licht für dein Nervensystem.',
-        totalMinutes: 18,
-        intensity: 'Leicht',
-        recoveryScore: 62,
-        accent: cyan,
-        sleepHint: '90 Min vor Schlaf: Licht dimmen, Handy weg, Dusche warm.',
-        fuelHint: 'Protein + warme Carbs. Koffein heute nur früh im Wachfenster.',
-        breathHint: '4-7-8 Atmung: 4 Runden vor dem Hinlegen.',
-        blocks: [
-          PlanBlock('Mobility', '6 Min', Icons.self_improvement, 'Nacken, Hüfte, Rücken öffnen'),
-          PlanBlock('Zone 1 Walk', '8 Min', Icons.directions_walk, 'Locker gehen, kein Pulsdruck'),
-          PlanBlock('Breath Down', '4 Min', Icons.air, 'Lange Ausatmung, Schultern sinken lassen'),
-        ],
-      );
-    }
+    final goal = shift;
 
-    if (energy == 'Stark' && stress != 'Hoch') {
+    if (energy == 'Müde' || stress == 'Hoch' || goal == 'Recovery') {
       return const ShiftFitPlan(
-        recommendation: 'Kraft Session',
-        focus: 'Kurz, schwer, sauber',
-        tagline: 'Nutze das Energie-Fenster ohne dich für die nächste Schicht zu zerstören.',
-        totalMinutes: 32,
-        intensity: 'Stark',
-        recoveryScore: 86,
-        accent: lime,
-        sleepHint: 'Nach Training 10 Min Cooldown, später keine hellen Screens.',
-        fuelHint: 'Vorher Snack, danach Protein + Elektrolyte.',
-        breathHint: '2 Min Nasenatmung zwischen Arbeitssätzen.',
-        blocks: [
-          PlanBlock('Primer', '5 Min', Icons.flash_on, 'Gelenke wach, Core aktivieren'),
-          PlanBlock('Strength', '22 Min', Icons.fitness_center, '3 Runden Kniebeuge, Push, Pull'),
-          PlanBlock('Cooldown', '5 Min', Icons.spa, 'Puls runter, Hüfte öffnen'),
-        ],
-      );
-    }
-
-    if (shift == 'Nacht') {
-      return const ShiftFitPlan(
-        recommendation: 'Mobility Reset',
-        focus: 'Wach bleiben ohne Overload',
-        tagline: 'Beweglichkeit, kurze Aktivierung und klare Schlaf-Brücke nach der Nacht.',
+        recommendation: 'Recovery & Mobility',
+        focus: 'Deload statt durchziehen',
+        tagline: 'Gelenke pflegen, Puls niedrig halten und morgen wieder stärker sein.',
         totalMinutes: 22,
-        intensity: 'Moderat',
-        recoveryScore: 74,
-        accent: pink,
-        sleepHint: 'Nach Schicht Sonnenbrille, Zimmer kühl und dunkel.',
-        fuelHint: 'Leicht essen: Joghurt, Banane, Nüsse oder Suppe.',
-        breathHint: 'Box Breathing in der Pause: 4-4-4-4.',
+        intensity: 'Leicht',
+        recoveryScore: 68,
+        accent: cyan,
+        sleepHint: 'Heute 30 Min früher runterfahren: Licht dimmen, Atemroutine, kein Scrollen im Bett.',
+        fuelHint: 'Protein halten: 1.6-2.2 g/kg, dazu leicht verdauliche Carbs und genug Salz.',
+        breathHint: '4-7-8 Atmung: 4 Runden nach dem Mobility-Block.',
         blocks: [
-          PlanBlock('Reset', '7 Min', Icons.accessibility_new, 'Wirbelsäule und Hüfte mobilisieren'),
-          PlanBlock('Carry', '10 Min', Icons.shopping_bag, 'Leichte Carries oder Treppe'),
-          PlanBlock('Sleep Bridge', '5 Min', Icons.bedtime, 'Atmung + Licht aus Routine'),
+          PlanBlock('Mobility Reset', '8 Min', Icons.self_improvement, 'Hüfte, T-Spine und Sprunggelenke öffnen'),
+          PlanBlock('Zone 2 Walk', '10 Min', Icons.directions_walk, 'Locker gehen, Nasenatmung, kein Pulsdruck'),
+          PlanBlock('Breath Reset', '4 Min', Icons.air, 'Lange Ausatmung, Schultern sinken lassen'),
         ],
       );
     }
 
-    if (shift == 'Frei') {
+    if (goal == 'Kraft' && energy == 'Stark') {
       return const ShiftFitPlan(
-        recommendation: 'Build & Recharge',
-        focus: 'Etwas mehr Volumen, trotzdem smart',
-        tagline: 'Freier Tag: Training, Meal Prep und ein stabiler Schlafanker.',
-        totalMinutes: 40,
-        intensity: 'Aufbau',
-        recoveryScore: 81,
-        accent: orange,
-        sleepHint: 'Schlafanker halten: maximal 60 Min später ins Bett.',
-        fuelHint: 'Meal Prep: 2 Proteinbasen + 2 schnelle Carb-Optionen.',
-        breathHint: '5 Min Spaziergang nach der größten Mahlzeit.',
+        recommendation: 'Strength Builder',
+        focus: 'Schwer, sauber, progressiv',
+        tagline: 'Grundübungen zuerst, dann kurze Assistance für echte Kraftsteigerung.',
+        totalMinutes: 45,
+        intensity: 'Stark',
+        recoveryScore: 88,
+        accent: lime,
+        sleepHint: 'Nach schweren Sätzen: 10 Min Cooldown und heute konsequent Schlaf priorisieren.',
+        fuelHint: 'Vorher Carbs + Elektrolyte, danach 30-45 g Protein für Muskelaufbau.',
+        breathHint: 'Zwischen Arbeitssätzen 5 tiefe Nasenatemzüge, dann erst der nächste Satz.',
         blocks: [
-          PlanBlock('Warm-up', '8 Min', Icons.local_fire_department, 'Dynamisch mobilisieren'),
-          PlanBlock('Full Body', '24 Min', Icons.fitness_center, '4 Runden Ganzkörper'),
-          PlanBlock('Recharge', '8 Min', Icons.spa, 'Stretch + Plan für morgen'),
+          PlanBlock('Warm-up', '7 Min', Icons.local_fire_department, 'RAMP: Puls, Mobilität, Aktivierung'),
+          PlanBlock('Heavy Lift', '20 Min', Icons.fitness_center, 'Kniebeuge oder Hinge: 5x3-5 sauber'),
+          PlanBlock('Push/Pull', '12 Min', Icons.sync_alt, 'Superset: Drücken + Ziehen, 3 Runden'),
+          PlanBlock('Core Brace', '6 Min', Icons.shield_outlined, 'Plank, Dead Bug, Carry-Fokus'),
+        ],
+      );
+    }
+
+    if (goal == 'Ausdauer') {
+      return const ShiftFitPlan(
+        recommendation: 'Cardio Engine',
+        focus: 'Ausdauer ohne Overload',
+        tagline: 'Zone 2 Basis plus kurze Technik-Spitzen für ein stärkeres Herz-Kreislauf-System.',
+        totalMinutes: 34,
+        intensity: 'Moderat',
+        recoveryScore: 80,
+        accent: orange,
+        sleepHint: 'Nach Cardio 5 Min runtergehen, duschen, danach kein weiterer Stressreiz.',
+        fuelHint: 'Bei Einheiten über 30 Min: Wasser + Salz, danach Carbs und Protein auffüllen.',
+        breathHint: 'Nasenatmung als Tempo-Limiter: wenn sie kippt, Intensität senken.',
+        blocks: [
+          PlanBlock('Warm-up', '5 Min', Icons.directions_walk, 'Locker anlaufen, Gelenke vorbereiten'),
+          PlanBlock('Zone 2', '22 Min', Icons.favorite_border, 'Sprechtempo halten, gleichmäßiger Puls'),
+          PlanBlock('Strides', '4 Min', Icons.speed, '4 kurze Technik-Steigerungen, nicht sprinten'),
+          PlanBlock('Cooldown', '3 Min', Icons.spa, 'Atmung beruhigen und Waden lockern'),
+        ],
+      );
+    }
+
+    if (goal == 'Kraft') {
+      return const ShiftFitPlan(
+        recommendation: 'Strength Primer',
+        focus: 'Technik vor Maximalgewicht',
+        tagline: 'Ein kontrollierter Kraftreiz mit genug Reserve für konstante Progression.',
+        totalMinutes: 36,
+        intensity: 'Moderat',
+        recoveryScore: 82,
+        accent: lime,
+        sleepHint: 'Qualität schlägt Volumen: heute mit 2 Wiederholungen Reserve stoppen.',
+        fuelHint: 'Proteinanker setzen und Trainingsgewichte im nächsten Log leicht steigern.',
+        breathHint: 'Vor jedem Satz: einatmen, Rumpfspannung, kontrollierte Wiederholung.',
+        blocks: [
+          PlanBlock('Warm-up', '6 Min', Icons.local_fire_department, 'Gelenke warm, Bewegung vorbereiten'),
+          PlanBlock('Main Lift', '16 Min', Icons.fitness_center, '4 Runden Squat, Hinge oder Press'),
+          PlanBlock('Pull + Carry', '10 Min', Icons.shopping_bag, 'Rücken und Griffkraft stabilisieren'),
+          PlanBlock('Cooldown', '4 Min', Icons.air, 'Puls senken, Hüfte und Brust öffnen'),
         ],
       );
     }
 
     return const ShiftFitPlan(
-      recommendation: '20 Min Training',
-      focus: 'Effektiv zwischen Arbeit und Leben',
-      tagline: 'Ein knackiger Reiz mit genug Reserve für deine nächste Schicht.',
-      totalMinutes: 20,
-      intensity: 'Moderat',
-      recoveryScore: 78,
+      recommendation: 'Hypertrophy Plan',
+      focus: 'Ganzkörper-Reiz mit klarer Progression',
+      tagline: 'Kraft, Muskelaufbau und Core in einer kompakten Session mit sauberer Technik.',
+      totalMinutes: 38,
+      intensity: 'Aufbau',
+      recoveryScore: 84,
       accent: lime,
-      sleepHint: 'Heute gleicher Schlafanker, auch wenn die Schicht früh startet.',
-      fuelHint: 'Wasser + Salz, danach Protein. Koffein-Stopp 8 Std vor Schlaf.',
-      breathHint: '3 Min langsame Nasenatmung nach dem Training.',
+      sleepHint: 'Muskelaufbau passiert in der Erholung: 7-9 Stunden Schlaf als Ziel setzen.',
+      fuelHint: 'Für Aufbau: 1.6-2.2 g Protein/kg und kleine, nachhaltige Kalorienreserve.',
+      breathHint: 'Nach der Session 3 Min langsame Nasenatmung für schnelleres Runterfahren.',
       blocks: [
-        PlanBlock('Warm-up', '4 Min', Icons.local_fire_department, 'Gelenke wach, Puls leicht hoch'),
-        PlanBlock('Circuit', '12 Min', Icons.repeat, 'Squat, Push, Hinge, Core'),
-        PlanBlock('Downshift', '4 Min', Icons.air, 'Cooldown und Atmung'),
+        PlanBlock('Warm-up', '6 Min', Icons.local_fire_department, 'RAMP: Mobilität, Aktivierung, leichter Puls'),
+        PlanBlock('Compound Lifts', '16 Min', Icons.fitness_center, 'Squat, Push, Pull, Hinge als Qualitätszirkel'),
+        PlanBlock('Accessory Superset', '10 Min', Icons.repeat, 'Schultern, Rücken und Glutes mit Kontrolle'),
+        PlanBlock('Core Finisher', '6 Min', Icons.grid_view_rounded, 'Plank, Dead Bug und Carry-Spannung'),
       ],
     );
   }

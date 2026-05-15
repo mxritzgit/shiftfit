@@ -28,7 +28,7 @@ class ShiftFitTopBar extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'ShiftFit',
+                'FitPilot',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
@@ -37,7 +37,7 @@ class ShiftFitTopBar extends StatelessWidget {
               ),
               SizedBox(height: 2),
               Text(
-                'Schichtarbeit. Training. Recovery.',
+                'FitnessPlan. Training. Recovery.',
                 style: TextStyle(
                   color: textMuted,
                   fontSize: 12,
@@ -101,7 +101,7 @@ class _AvatarBadge extends StatelessWidget {
                 letterSpacing: -0.2,
               ),
             )
-          : Icon(Icons.nightlight_round, color: plan.accent, size: 18),
+          : Icon(Icons.fitness_center_rounded, color: plan.accent, size: 18),
     );
 
     if (onTap == null) return badge;

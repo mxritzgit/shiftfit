@@ -1,16 +1,16 @@
-# ShiftFit
+# FitPilot
 
-ShiftFit ist eine Flutter-App für Fitness und Recovery im Schichtdienst.
+FitPilot ist eine Flutter-App für klare FitnessPläne, Training, Recovery und Ernährung.
 
 Die App bündelt aktuell diese Bereiche:
-- Heute-Dashboard mit Check-in für Schicht, Energie und Stress
-- Wochenplaner für den Schichtrhythmus
+- Heute-Dashboard mit Check-in für Trainingsziel, Energie und Belastung
+- Wochenplaner für den Trainingssplit
 - Trends/Readiness-Ansicht
 - Meal-Analyse per Foto und Barcode
 
 ## Projektziel
 
-ShiftFit soll Menschen mit Früh-, Spät- und Nachtschichten helfen, Training, Regeneration und Ernährung alltagstauglich zu steuern.
+FitPilot soll Training, Regeneration und Ernährung alltagstauglich steuern: kurze, evidenzbasierte Pläne statt überladener Fitness-Tracker.
 
 ## Code-Struktur
 
@@ -116,7 +116,7 @@ flutter run
 
 ## Nächste sinnvolle Richtung
 
-Wenn ShiftFit weiter wächst, können wir als Nächstes zusätzlich sauber trennen in:
+Wenn FitPilot weiter wächst, können wir als Nächstes zusätzlich sauber trennen in:
 - `features/` statt rein nach Dateityp
 - persistente State-Schicht
 - echte Repository-/Data-Layer für externe Quellen

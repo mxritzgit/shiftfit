@@ -48,9 +48,9 @@ class TrendsScreen extends StatelessWidget {
   final String? profileInitial;
 
   int get loadBalance {
-    final nights = weekPlan.where((shift) => shift == 'Nacht').length;
-    final free = weekPlan.where((shift) => shift == 'Frei').length;
-    return (74 + free * 4 - nights * 6).clamp(48, 94).toInt();
+    final hardSessions = weekPlan.where((shift) => shift == 'Kraft' || shift == 'Muskelaufbau').length;
+    final recoverySlots = weekPlan.where((shift) => shift == 'Mobility' || shift == 'Recovery' || shift == 'Frei').length;
+    return (76 + recoverySlots * 4 - hardSessions * 2).clamp(48, 94).toInt();
   }
 
   @override
@@ -125,7 +125,7 @@ class TrendsScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Readiness bleibt\nsteuerbar.',
+                'Fortschritt bleibt\nsichtbar.',
                 style: TextStyle(
                   fontSize: 26,
                   height: 1.1,
@@ -135,7 +135,7 @@ class TrendsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Wo du heute stehst — und wie die Woche läuft.',
+                'Training, Recovery und Routinen auf einen Blick.',
                 style: TextStyle(
                   color: textMuted,
                   fontSize: 13,
@@ -154,7 +154,7 @@ class TrendsScreen extends StatelessWidget {
               completedTodayCount >= totalBlocksToday,
         ),
         const SizedBox(height: 22),
-        const SectionHeader(title: 'Readiness Verlauf', action: '7 Tage'),
+        const SectionHeader(title: 'Progress Verlauf', action: '7 Tage'),
         const SizedBox(height: 10),
         TrendBarsCard(bars: bars),
         const SizedBox(height: 22),

@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Shiftfit</string>
+	<string>FitPilot</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>shiftfit</string>
+	<string>FitPilot</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -27,13 +27,13 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>ShiftFit braucht Kamerazugriff, damit du Mahlzeiten fotografieren und analysieren kannst.</string>
+	<string>FitPilot braucht Kamerazugriff, damit du Mahlzeiten fotografieren und analysieren kannst.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>ShiftFit braucht Zugriff auf deine Fotobibliothek, damit du Mahlzeiten aus der Galerie analysieren kannst.</string>
+	<string>FitPilot braucht Zugriff auf deine Fotobibliothek, damit du Mahlzeiten aus der Galerie analysieren kannst.</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>ShiftFit liest deine Schrittzahl aus Apple Health, damit dein Tagesziel automatisch aktualisiert wird.</string>
+	<string>FitPilot liest deine Schrittzahl aus Apple Health, damit dein Tagesziel automatisch aktualisiert wird.</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>ShiftFit kann optional Schrittdaten in Apple Health zurückschreiben.</string>
+	<string>FitPilot kann optional Schrittdaten in Apple Health zurückschreiben.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

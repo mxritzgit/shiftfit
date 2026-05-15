@@ -47,7 +47,7 @@ class ShiftFitHomePage extends StatefulWidget {
 }
 
 class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
-  String selectedShift = 'Früh';
+  String selectedShift = 'Muskelaufbau';
   String selectedEnergy = 'Normal';
   String selectedStress = 'Mittel';
   int selectedTab = 0;
@@ -88,12 +88,12 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
   HealthService get _health =>
       widget.healthService ?? const NoopHealthService();
   final List<String> weekPlan = [
-    'Früh',
-    'Früh',
-    'Spät',
-    'Spät',
-    'Nacht',
-    'Frei',
+    'Kraft',
+    'Muskelaufbau',
+    'Ausdauer',
+    'Mobility',
+    'Kraft',
+    'Recovery',
     'Frei',
   ];
 

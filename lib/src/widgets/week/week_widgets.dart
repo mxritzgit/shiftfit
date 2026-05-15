@@ -119,16 +119,16 @@ class PlanningTipsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final nights = weekPlan.where((shift) => shift == 'Nacht').length;
-    final freeDays = weekPlan.where((shift) => shift == 'Frei').length;
+    final strengthDays = weekPlan.where((shift) => shift == 'Kraft' || shift == 'Muskelaufbau').length;
+    final recoveryDays = weekPlan.where((shift) => shift == 'Mobility' || shift == 'Recovery' || shift == 'Frei').length;
     final tips = [
-      nights > 0
-          ? 'Nach Nachtschichten: Sonnenbrille heim, Zimmer kühl und dunkel.'
-          : 'Ohne Nachtschicht: Schlafanker konstant halten.',
-      freeDays > 1
-          ? 'Freie Tage für Krafttraining und Meal Prep nutzen.'
-          : 'Bei wenig frei: kurze Recovery-Sessions priorisieren.',
-      'Harte Einheiten auf freie oder Frühtage legen, Spät eher mobilisieren.',
+      strengthDays >= 3
+          ? 'Drei Kraftreize reichen: Gewichte sauber steigern, nicht jeden Satz ausmaxen.'
+          : 'Zu wenig Kraftreiz: eine kurze Ganzkörper-Session ergänzen.',
+      recoveryDays >= 2
+          ? 'Recovery ist eingeplant: Mobility und Schlaf schützen die Progression.'
+          : 'Mindestens zwei leichte Tage halten Gelenke und Nervensystem frisch.',
+      'Wger-Prinzip: große Bewegungsmuster zuerst, Accessory danach, Core zum Abschluss.',
     ];
 
     return AppCard(
