@@ -17,82 +17,136 @@ class ShiftFitHero extends StatelessWidget {
       key: const ValueKey('today-ios-hero'),
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: Colors.black,
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF120A2A), Colors.black, Color(0xFF10170E)],
+        ),
         borderRadius: BorderRadius.circular(28),
         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          Row(
-            children: [
-              const Expanded(
-                child: _TodayEyebrow(label: 'Heute'),
+          Positioned(
+            right: -26,
+            top: -22,
+            child: Container(
+              width: 142,
+              height: 142,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: lime.withValues(alpha: 0.13),
               ),
-              _HeroMetric(value: '${plan.totalMinutes} Min', label: 'Dauer'),
-            ],
-          ),
-          const SizedBox(height: 18),
-          Text(
-            plan.recommendation,
-            style: const TextStyle(
-              fontSize: 34,
-              height: 1.04,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -1.2,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            plan.focus,
-            style: const TextStyle(
-              color: Color(0xFF2997FF),
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.1,
+          Positioned(
+            right: 10,
+            bottom: 70,
+            child: Transform.rotate(
+              angle: -0.18,
+              child: Container(
+                width: 76,
+                height: 104,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(22),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      violet.withValues(alpha: 0.70),
+                      plan.accent.withValues(alpha: 0.42),
+                    ],
+                  ),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                ),
+                child: Icon(
+                  Icons.fitness_center_rounded,
+                  color: Colors.white.withValues(alpha: 0.72),
+                  size: 34,
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            plan.tagline,
-            style: const TextStyle(
-              color: Color(0xB3FFFFFF),
-              fontSize: 15,
-              height: 1.35,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-          const SizedBox(height: 18),
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: _HeroMetric(value: plan.intensity, label: 'Intensität')),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _HeroMetric(
-                  value: '${plan.recoveryScore}',
-                  label: 'Readiness',
+              Row(
+                children: [
+                  const Expanded(
+                    child: _TodayEyebrow(label: 'FitPilot Coach'),
+                  ),
+                  _HeroMetric(value: '${plan.totalMinutes} Min', label: 'Dauer'),
+                ],
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: 250,
+                child: Text(
+                  plan.recommendation,
+                  style: const TextStyle(
+                    fontSize: 34,
+                    height: 1.04,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -1.2,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                plan.focus,
+                style: TextStyle(
+                  color: plan.accent,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.1,
+                ),
+              ),
+              const SizedBox(height: 6),
+              SizedBox(
+                width: 280,
+                child: Text(
+                  plan.tagline,
+                  style: const TextStyle(
+                    color: Color(0xB3FFFFFF),
+                    fontSize: 15,
+                    height: 1.35,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(child: _HeroMetric(value: plan.intensity, label: 'Intensität')),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _HeroMetric(
+                      value: '${plan.recoveryScore}',
+                      label: 'Readiness',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  key: const ValueKey('today-open-plan'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: lime,
+                    foregroundColor: bg,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: const StadiumBorder(),
+                  ),
+                  onPressed: () => showPlanSheet(context, plan),
+                  icon: const Icon(Icons.play_arrow_rounded, size: 19),
+                  label: const Text(
+                    'Plan starten',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 18),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              key: const ValueKey('today-open-plan'),
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF0071E3),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: const StadiumBorder(),
-              ),
-              onPressed: () => showPlanSheet(context, plan),
-              icon: const Icon(Icons.play_arrow_rounded, size: 19),
-              label: const Text(
-                'Plan starten',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-            ),
           ),
         ],
       ),
@@ -167,6 +221,155 @@ class _HeroMetric extends StatelessWidget {
               color: Color(0x8CFFFFFF),
               fontSize: 11,
               fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class FitPilotHubGrid extends StatelessWidget {
+  const FitPilotHubGrid({super.key, required this.plan});
+
+  final ShiftFitPlan plan;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      key: const ValueKey('fitpilot-hub-grid'),
+      padding: const EdgeInsets.all(10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(8, 6, 8, 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Dein Fitness-Hub',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                ),
+                Text(
+                  'heute',
+                  style: TextStyle(
+                    color: textMuted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: _HubTile(
+                  icon: Icons.fitness_center_rounded,
+                  title: 'Workout',
+                  subtitle: '${plan.totalMinutes} Min',
+                  color: plan.accent,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: _HubTile(
+                  icon: Icons.restaurant_rounded,
+                  title: 'Nutrition',
+                  subtitle: 'Protein zuerst',
+                  color: orange,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Row(
+            children: [
+              Expanded(
+                child: _HubTile(
+                  icon: Icons.emoji_events_rounded,
+                  title: 'Challenge',
+                  subtitle: '7 Tage Reset',
+                  color: violet,
+                ),
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: _HubTile(
+                  icon: Icons.play_circle_rounded,
+                  title: 'Guides',
+                  subtitle: 'Form & Tipps',
+                  color: cyan,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HubTile extends StatelessWidget {
+  const _HubTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: surfaceSoft,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.2,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: textMuted,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -596,6 +799,114 @@ class RecoveryToolCard extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class WeeklyChallengeCard extends StatelessWidget {
+  const WeeklyChallengeCard({super.key, required this.plan});
+
+  final ShiftFitPlan plan;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const ValueKey('weekly-challenge-card'),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [deepViolet, Color(0xFF111827)],
+        ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                StatusPill(label: 'WEEKLY CHALLENGE', color: lime),
+                const SizedBox(height: 12),
+                const Text(
+                  'Strong Start Week',
+                  style: TextStyle(
+                    fontSize: 21,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  '3 Workouts, 2 Protein-Ziele und ein Mobility-Finish. Kurz genug für volle Wochen, stark genug für Fortschritt.',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.72),
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    const _ChallengeMetric(value: '3/7', label: 'Tage'),
+                    const SizedBox(width: 8),
+                    _ChallengeMetric(value: plan.intensity, label: 'Level'),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 14),
+          Container(
+            width: 74,
+            height: 116,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            ),
+            child: const Icon(
+              Icons.emoji_events_rounded,
+              color: lime,
+              size: 38,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChallengeMetric extends StatelessWidget {
+  const _ChallengeMetric({required this.value, required this.label});
+
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.09),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(color: textMuted, fontSize: 11),
           ),
         ],
       ),

@@ -5,6 +5,8 @@ const Color surface = Color(0xFF14171D);
 const Color surfaceSoft = Color(0xFF1B1F27);
 
 const Color lime = Color(0xFFB6F36A);
+const Color violet = Color(0xFF8B5CF6);
+const Color deepViolet = Color(0xFF4C1D95);
 const Color cyan = Color(0xFF7DD3FC);
 const Color orange = Color(0xFFFDBA74);
 const Color pink = Color(0xFFF9A8D4);

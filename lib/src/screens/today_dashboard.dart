@@ -134,6 +134,8 @@ class TodayDashboard extends StatelessWidget {
         const SizedBox(height: 18),
         ShiftFitHero(plan: plan),
         const SizedBox(height: 12),
+        FitPilotHubGrid(plan: plan),
+        const SizedBox(height: 12),
         QuickCheckInCard(
           selectedShift: selectedShift,
           selectedEnergy: selectedEnergy,
@@ -176,6 +178,10 @@ class TodayDashboard extends StatelessWidget {
           const SizedBox(height: 10),
           _StreakBadge(streak: workoutStreak),
         ],
+        const SizedBox(height: 20),
+        const SectionHeader(title: 'Motivation', action: 'Challenge'),
+        const SizedBox(height: 10),
+        WeeklyChallengeCard(plan: plan),
       ],
     );
   }

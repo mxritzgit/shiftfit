@@ -22,12 +22,16 @@ void main() {
     expect(find.byKey(const ValueKey('today-micro-checkin')), findsOneWidget);
     expect(find.byKey(const ValueKey('daily-tracker-card')), findsOneWidget);
     expect(find.byKey(const ValueKey('today-session-card')), findsOneWidget);
+    expect(find.byKey(const ValueKey('fitpilot-hub-grid')), findsOneWidget);
+    expect(find.byKey(const ValueKey('weekly-challenge-card')), findsOneWidget);
     expect(find.text('Heute'), findsWidgets);
     expect(find.text('Hypertrophy Plan'), findsOneWidget);
     expect(find.text('Plan starten'), findsOneWidget);
     expect(find.text('Körpergefühl'), findsOneWidget);
     expect(find.text('Tageswerte'), findsOneWidget);
     expect(find.text('Session'), findsOneWidget);
+    expect(find.text('Dein Fitness-Hub'), findsOneWidget);
+    expect(find.text('Strong Start Week'), findsOneWidget);
     expect(find.text('Dein FitnessPlan\nfür heute.'), findsNothing);
     expect(find.text('Trainingsfokus'), findsNothing);
     expect(find.text('Coach Tools'), findsNothing);
@@ -71,14 +75,14 @@ void main() {
     expect(find.textContaining('Warm-up'), findsWidgets);
   });
 
-  testWidgets('Bottom navigation switches between Heute, Plan, Trends and Kcal', (
+  testWidgets('Bottom navigation switches between Heute, Training, Trends and Food', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ShiftFitApp());
 
     expect(find.text('Hypertrophy Plan'), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('nav-Plan')));
+    await tester.tap(find.byKey(const ValueKey('nav-Training')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('screen-week')), findsOneWidget);
     expect(find.text('Trainingswoche,\nsmart geplant.'), findsOneWidget);
@@ -90,7 +94,7 @@ void main() {
     expect(find.text('Fortschritt bleibt\nsichtbar.'), findsOneWidget);
     expect(find.text('Progress Verlauf'), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('nav-Kcal')));
+    await tester.tap(find.byKey(const ValueKey('nav-Food')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('screen-kcal-tracker')), findsOneWidget);
     expect(find.byKey(const ValueKey('analyse-daily-kcal-card')), findsOneWidget);
@@ -109,7 +113,7 @@ void main() {
     expect(find.text('Hypertrophy Plan'), findsOneWidget);
   });
 
-  testWidgets('Kcal tab supports deterministic itemized photo results and daily kcal adding', (
+  testWidgets('Food tab supports deterministic itemized photo results and daily kcal adding', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -119,7 +123,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byKey(const ValueKey('nav-Kcal')));
+    await tester.tap(find.byKey(const ValueKey('nav-Food')));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('analyse-daily-kcal-total')), findsOneWidget);
@@ -175,14 +179,14 @@ void main() {
     );
   });
 
-  testWidgets('Kcal tab searches OpenFoodFacts products and adds selected item', (
+  testWidgets('Food tab searches OpenFoodFacts products and adds selected item', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
       ShiftFitApp(productService: _FakeProductLookupService()),
     );
 
-    await tester.tap(find.byKey(const ValueKey('nav-Kcal')));
+    await tester.tap(find.byKey(const ValueKey('nav-Food')));
     await tester.pumpAndSettle();
 
     await tester.enterText(
@@ -221,7 +225,7 @@ void main() {
       ShiftFitApp(productService: _FakeProductLookupService()),
     );
 
-    await tester.tap(find.byKey(const ValueKey('nav-Kcal')));
+    await tester.tap(find.byKey(const ValueKey('nav-Food')));
     await tester.pumpAndSettle();
 
     await tester.enterText(
@@ -242,7 +246,7 @@ void main() {
       ShiftFitApp(productService: _FlakyProductLookupService()),
     );
 
-    await tester.tap(find.byKey(const ValueKey('nav-Kcal')));
+    await tester.tap(find.byKey(const ValueKey('nav-Food')));
     await tester.pumpAndSettle();
 
     await tester.enterText(
@@ -269,7 +273,7 @@ void main() {
       ShiftFitApp(productService: _EmptyThenSuccessProductLookupService()),
     );
 
-    await tester.tap(find.byKey(const ValueKey('nav-Kcal')));
+    await tester.tap(find.byKey(const ValueKey('nav-Food')));
     await tester.pumpAndSettle();
 
     await tester.enterText(
@@ -295,12 +299,12 @@ void main() {
     );
   });
 
-  testWidgets('Plan tab updates weekly split and summaries', (
+  testWidgets('Training tab updates weekly split and summaries', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ShiftFitApp());
 
-    await tester.tap(find.byKey(const ValueKey('nav-Plan')));
+    await tester.tap(find.byKey(const ValueKey('nav-Training')));
     await tester.pumpAndSettle();
 
     expect(find.text('3 Krafttage'), findsOneWidget);
