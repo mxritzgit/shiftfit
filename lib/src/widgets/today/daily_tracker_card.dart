@@ -60,7 +60,7 @@ class DailyTrackerCard extends StatelessWidget {
             children: [
               const Expanded(
                 child: Text(
-                  'Tagestracker',
+                  'Tageswerte',
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                 ),
               ),

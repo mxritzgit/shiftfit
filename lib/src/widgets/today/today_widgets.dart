@@ -13,27 +13,160 @@ class ShiftFitHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.all(18),
+    return Container(
+      key: const ValueKey('today-ios-hero'),
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.black,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Dein FitnessPlan\nfür heute.',
-            style: TextStyle(
-              fontSize: 26,
-              height: 1.1,
+          Row(
+            children: [
+              const Expanded(
+                child: _TodayEyebrow(label: 'Heute'),
+              ),
+              _HeroMetric(value: '${plan.totalMinutes} Min', label: 'Dauer'),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Text(
+            plan.recommendation,
+            style: const TextStyle(
+              fontSize: 34,
+              height: 1.04,
               fontWeight: FontWeight.w700,
-              letterSpacing: -1,
+              letterSpacing: -1.2,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            plan.focus,
+            style: const TextStyle(
+              color: Color(0xFF2997FF),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.1,
             ),
           ),
           const SizedBox(height: 6),
-          const Text(
-            'Kraft, Ausdauer und Recovery in einem klaren Tagesplan.',
-            style: TextStyle(
-              color: textMuted,
-              fontSize: 13,
-              height: 1.4,
+          Text(
+            plan.tagline,
+            style: const TextStyle(
+              color: Color(0xB3FFFFFF),
+              fontSize: 15,
+              height: 1.35,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(child: _HeroMetric(value: plan.intensity, label: 'Intensität')),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _HeroMetric(
+                  value: '${plan.recoveryScore}',
+                  label: 'Readiness',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              key: const ValueKey('today-open-plan'),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF0071E3),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: const StadiumBorder(),
+              ),
+              onPressed: () => showPlanSheet(context, plan),
+              icon: const Icon(Icons.play_arrow_rounded, size: 19),
+              label: const Text(
+                'Plan starten',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TodayEyebrow extends StatelessWidget {
+  const _TodayEyebrow({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: const BoxDecoration(
+            color: Color(0xFF2997FF),
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xB3FFFFFF),
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.1,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HeroMetric extends StatelessWidget {
+  const _HeroMetric({required this.value, required this.label});
+
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0x8CFFFFFF),
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -64,7 +197,12 @@ class QuickCheckInCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final recoveryCopy = selectedStress == 'Hoch'
+        ? 'Heute sauber trainieren, nicht erzwingen.'
+        : 'Weniger Regler, klarere Entscheidung.';
+
     return AppCard(
+      key: const ValueKey('today-micro-checkin'),
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -74,15 +212,24 @@ class QuickCheckInCard extends StatelessWidget {
             children: [
               const Expanded(
                 child: Text(
-                  'Heute',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+                  'Körpergefühl',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.3,
+                  ),
                 ),
               ),
-              StatusPill(label: 'Check-in', color: plan.accent),
+              StatusPill(label: selectedShift, color: plan.accent),
             ],
           ),
+          const SizedBox(height: 4),
+          Text(
+            recoveryCopy,
+            style: const TextStyle(color: textMuted, fontSize: 12, height: 1.35),
+          ),
           const SizedBox(height: 16),
-          const FieldLabel('ZIEL'),
+          const FieldLabel('FOKUS'),
           const SizedBox(height: 8),
           SegmentedOptions(
             options: const ['Kraft', 'Muskelaufbau', 'Ausdauer', 'Recovery'],
@@ -96,66 +243,6 @@ class QuickCheckInCard extends StatelessWidget {
             options: const ['Müde', 'Normal', 'Stark'],
             selectedValue: selectedEnergy,
             onSelected: onEnergySelected,
-          ),
-          const SizedBox(height: 14),
-          const FieldLabel('BELASTUNG'),
-          const SizedBox(height: 8),
-          SegmentedOptions(
-            options: const ['Niedrig', 'Mittel', 'Hoch'],
-            selectedValue: selectedStress,
-            onSelected: onStressSelected,
-          ),
-          const SizedBox(height: 18),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: surfaceSoft,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: plan.accent.withValues(alpha: 0.18)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  plan.recommendation,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.4,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  plan.focus,
-                  style: const TextStyle(
-                    color: textMuted,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    key: const ValueKey('today-open-plan'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: plan.accent,
-                      foregroundColor: bg,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onPressed: () => showPlanSheet(context, plan),
-                    icon: const Icon(Icons.play_arrow_rounded, size: 18),
-                    label: const Text(
-                      'Plan öffnen',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
@@ -238,6 +325,7 @@ class DailyPlanCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
+      key: const ValueKey('today-session-card'),
       padding: const EdgeInsets.all(8),
       child: Column(
         children: [

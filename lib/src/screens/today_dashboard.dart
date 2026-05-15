@@ -131,9 +131,9 @@ class TodayDashboard extends StatelessWidget {
           onProfilePressed: onProfilePressed,
           profileInitial: profileInitial,
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 18),
         ShiftFitHero(plan: plan),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         QuickCheckInCard(
           selectedShift: selectedShift,
           selectedEnergy: selectedEnergy,
@@ -143,9 +143,7 @@ class TodayDashboard extends StatelessWidget {
           onEnergySelected: onEnergySelected,
           onStressSelected: onStressSelected,
         ),
-        const SizedBox(height: 14),
-        RecoveryScoreCard(plan: plan),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         DailyTrackerCard(
           stats: stats,
           healthAuthState: healthAuthState,
@@ -153,8 +151,8 @@ class TodayDashboard extends StatelessWidget {
           onConnectHealth: onConnectHealth,
           onRefreshHealth: onRefreshHealth,
         ),
-        const SizedBox(height: 22),
-        SectionHeader(title: 'FitnessPlan', action: planAction),
+        const SizedBox(height: 20),
+        SectionHeader(title: 'Session', action: planAction),
         const SizedBox(height: 10),
         Builder(
           builder: (innerContext) => DailyPlanCard(
@@ -178,18 +176,6 @@ class TodayDashboard extends StatelessWidget {
           const SizedBox(height: 10),
           _StreakBadge(streak: workoutStreak),
         ],
-        const SizedBox(height: 22),
-        SectionHeader(title: 'Trainingsfokus', action: selectedShift),
-        const SizedBox(height: 10),
-        ShiftTimeline(shift: selectedShift),
-        const SizedBox(height: 22),
-        const SectionHeader(title: 'Coach Tools', action: ''),
-        const SizedBox(height: 10),
-        RecoveryToolsGrid(plan: plan),
-        const SizedBox(height: 22),
-        const SectionHeader(title: 'Wochen Split', action: ''),
-        const SizedBox(height: 10),
-        const RhythmWeekCard(),
       ],
     );
   }
