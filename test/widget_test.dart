@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:shiftfit/main.dart';
+import 'package:shiftfit/src/auth/auth_repository.dart';
 import 'package:shiftfit/src/models/meal_analysis_request.dart';
 import 'package:shiftfit/src/models/meal_analysis_result.dart';
 import 'package:shiftfit/src/models/meal_component.dart';
@@ -11,6 +12,58 @@ import 'package:shiftfit/src/services/meal_photo_input.dart';
 import 'package:shiftfit/src/services/open_food_facts_product_service.dart';
 
 void main() {
+  testWidgets('Auth screen supports register and login flow', (
+    WidgetTester tester,
+  ) async {
+    final authRepository = InMemoryAuthRepository();
+    addTearDown(authRepository.dispose);
+
+    await tester.pumpWidget(ShiftFitApp(authRepository: authRepository));
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey('screen-auth')), findsOneWidget);
+    expect(find.byKey(const ValueKey('auth-hero')), findsOneWidget);
+    expect(find.text('Einloggen'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('auth-toggle-register')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('auth-name-field')), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('auth-name-field')),
+      'Moritz',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('auth-email-field')),
+      'moritz@example.com',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('auth-password-field')),
+      'fitpilot123',
+    );
+    await tester.tap(find.byKey(const ValueKey('auth-submit')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('screen-today')), findsOneWidget);
+
+    await authRepository.signOut();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('screen-auth')), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('auth-email-field')),
+      'moritz@example.com',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('auth-password-field')),
+      'fitpilot123',
+    );
+    await tester.tap(find.byKey(const ValueKey('auth-submit')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('screen-today')), findsOneWidget);
+  });
+
   testWidgets('FitPilot today screen is focused and iOS-polished', (
     WidgetTester tester,
   ) async {

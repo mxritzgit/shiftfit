@@ -36,12 +36,16 @@ class ShiftFitHomePage extends StatefulWidget {
     this.productService,
     this.photoInput,
     this.healthService,
+    this.initialUserName = 'Moritz',
+    this.onSignOut,
   });
 
   final MealAnalyzer? mealAnalyzer;
   final ProductLookupService? productService;
   final MealPhotoInput? photoInput;
   final HealthService? healthService;
+  final String initialUserName;
+  final Future<void> Function()? onSignOut;
 
   @override
   State<ShiftFitHomePage> createState() => _ShiftFitHomePageState();
@@ -83,6 +87,15 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    userName = widget.initialUserName;
+    if (widget.healthService != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _connectHealth());
+    }
+  }
+
+  @override
   void dispose() {
     _profileRefresh.dispose();
     super.dispose();
@@ -105,14 +118,6 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
     energy: selectedEnergy,
     stress: selectedStress,
   );
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.healthService != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _connectHealth());
-    }
-  }
 
   Future<void> _connectHealth() async {
     if (!mounted) return;
@@ -409,6 +414,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
             onResetDay: _resetTodayData,
             onConnectHealth: _connectHealth,
             onRefreshHealth: _refreshHealthSteps,
+            onSignOut: widget.onSignOut,
           ),
         ),
       ),

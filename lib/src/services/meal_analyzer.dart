@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import '../config/supabase_config.dart';
 import '../models/meal_analysis_request.dart';
 import '../models/meal_analysis_result.dart';
 
@@ -11,9 +12,8 @@ abstract class MealAnalyzer {
 class EdgeFunctionMealAnalyzer implements MealAnalyzer {
   const EdgeFunctionMealAnalyzer();
 
-  static const String _supabaseUrl = 'https://ftoozzvmduptrvrrrshb.supabase.co';
-  static const String _supabaseAnonKey =
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0b296enZtZHVwdHJ2cnJyc2hiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NDEyOTAsImV4cCI6MjA5MzQxNzI5MH0.5kx8LowjRc8q8uWqJmUGU8ZjCnplSRDC1NGhm-oG7to';
+  static const String _supabaseUrl = FitPilotSupabaseConfig.url;
+  static const String _supabaseAnonKey = FitPilotSupabaseConfig.anonKey;
   static const String _functionPath = '/functions/v1/analyze-meal';
 
   static const String _basePrompt = '''

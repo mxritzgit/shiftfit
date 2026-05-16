@@ -32,6 +32,7 @@ class ProfileScreen extends StatelessWidget {
     required this.onResetDay,
     required this.onConnectHealth,
     required this.onRefreshHealth,
+    this.onSignOut,
   });
 
   final String name;
@@ -53,6 +54,7 @@ class ProfileScreen extends StatelessWidget {
   final VoidCallback onResetDay;
   final VoidCallback onConnectHealth;
   final VoidCallback onRefreshHealth;
+  final Future<void> Function()? onSignOut;
 
   @override
   Widget build(BuildContext context) {
@@ -140,6 +142,12 @@ class ProfileScreen extends StatelessWidget {
                 },
                 onExport: () => _showExportSheet(context),
                 onAbout: () => _showAboutSheet(context),
+                onSignOut: onSignOut == null
+                    ? null
+                    : () async {
+                        Navigator.maybePop(context);
+                        await onSignOut!.call();
+                      },
               ),
               const SizedBox(height: 18),
               const _FooterCredit(),

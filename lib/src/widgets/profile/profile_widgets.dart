@@ -1546,12 +1546,14 @@ class ProfileActionsCard extends StatelessWidget {
     required this.onResetDay,
     required this.onExport,
     required this.onAbout,
+    this.onSignOut,
   });
 
   final VoidCallback onEditProfile;
   final VoidCallback onResetDay;
   final VoidCallback onExport;
   final VoidCallback onAbout;
+  final VoidCallback? onSignOut;
 
   @override
   Widget build(BuildContext context) {
@@ -1594,6 +1596,17 @@ class ProfileActionsCard extends StatelessWidget {
             onTap: onAbout,
             keyValue: const ValueKey('profile-action-about'),
           ),
+          if (onSignOut != null) ...[
+            const _Divider(),
+            _ActionRow(
+              icon: Icons.logout_rounded,
+              color: pink,
+              title: 'Ausloggen',
+              subtitle: 'Zurück zum Login',
+              onTap: onSignOut!,
+              keyValue: const ValueKey('profile-action-logout'),
+            ),
+          ],
         ],
       ),
     );
