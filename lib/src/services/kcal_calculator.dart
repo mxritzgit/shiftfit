@@ -1,23 +1,60 @@
 import '../models/user_profile.dart';
 
-/// Schätzt die durch Schritte verbrannten Kilokalorien.
+/// Schätzt aktive Kilokalorien aus Schritten.
 ///
-/// Faustregel: ca. 0.04 kcal pro Schritt bei einer 70 kg schweren Person, der
-/// Verbrauch skaliert annähernd linear mit dem Körpergewicht. Daraus folgt
-/// `kcal = steps * weight_kg * 0.04 / 70 ≈ steps * weight_kg * 0.00057`.
-/// Quelle: Energy Expenditure for Walking (ACSM Metabolic Equation,
-/// abgeleitet aus MET 3.5 für gemächliches Gehen).
+/// Das ist bewusst kein fixer "kcal pro Schritt"-Wert mehr. Schritte werden
+/// erst über eine höhenbasierte Schrittlänge in Distanz umgerechnet, dann über
+/// den etablierten Netto-Energieaufwand fürs Gehen geschätzt:
 ///
-/// Liefert nie negative Werte und ist gegen Nonsense-Eingaben (steps < 0,
-/// weight ≤ 0) abgesichert.
+///   Distanz km = steps × stepLengthMeters / 1000
+///   active kcal ≈ 0.5 × bodyWeightKg × distanceKm
+///
+/// Die 0.5 kcal/kg/km stammen aus der horizontalen Netto-Komponente der
+/// ACSM-Walking-Gleichung (0.1 ml O2/kg/m × 5 kcal/L O2). Netto ist hier
+/// wichtig: Das Food-Ziel enthält bereits Grundumsatz/Alltag; "Verbrannt" soll
+/// nur den zusätzlichen Bewegungsbonus addieren, nicht Ruheumsatz doppelt.
+/// Die Schrittlänge nutzt gängige Pedometer-Heuristiken aus der Körpergröße
+/// (männlich 41.5%, weiblich 41.3%, neutral 41.4%).
+///
+/// Liefert nie negative Werte und ist gegen Nonsense-Eingaben abgesichert.
+double estimateStepLengthMeters({
+  required int heightCm,
+  BiologicalSex sex = BiologicalSex.neutral,
+}) {
+  if (heightCm <= 0) return 0;
+  final ratio = switch (sex) {
+    BiologicalSex.male => 0.415,
+    BiologicalSex.female => 0.413,
+    BiologicalSex.neutral => 0.414,
+  };
+  return ((heightCm * ratio) / 100).clamp(0.45, 1.05).toDouble();
+}
+
+double estimateWalkingDistanceKm({
+  required int steps,
+  required int heightCm,
+  BiologicalSex sex = BiologicalSex.neutral,
+}) {
+  if (steps <= 0 || heightCm <= 0) return 0;
+  return steps * estimateStepLengthMeters(heightCm: heightCm, sex: sex) / 1000;
+}
+
 int estimateKcalBurnedFromSteps({
   required int steps,
   required int weightKg,
+  required int heightCm,
+  BiologicalSex sex = BiologicalSex.neutral,
 }) {
-  if (steps <= 0 || weightKg <= 0) {
+  if (steps <= 0 || weightKg <= 0 || heightCm <= 0) {
     return 0;
   }
-  return (steps * weightKg * 0.00057).round();
+  final distanceKm = estimateWalkingDistanceKm(
+    steps: steps,
+    heightCm: heightCm,
+    sex: sex,
+  );
+  final activeKcal = weightKg * distanceKm * 0.5;
+  return activeKcal.clamp(0, 99999).round();
 }
 
 class KcalTargets {

@@ -67,28 +67,68 @@ class MealAnalysisScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      key: const ValueKey('screen-kcal-tracker'),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _KcalHeader(),
-        const SizedBox(height: 4),
-        CaloriesOverviewCard(
-          dailyConsumedKcal: dailyConsumedKcal,
-          kcalGoal: profile.dailyKcalGoal,
-          burnedKcal: burnedKcal,
-        ),
-        const SizedBox(height: 10),
-        MacrosOverviewCard(
-          progress: macroProgress,
-          profile: profile,
-        ),
-        const SizedBox(height: 10),
-        MealsTodayCard(
-          meals: loggedMeals,
-          onMealTap: (slot) => _openAddSheet(context, slot),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final boundedHeight = constraints.hasBoundedHeight;
+        final children = <Widget>[
+          const _KcalHeader(),
+          SizedBox(height: boundedHeight ? 8 : 4),
+          if (boundedHeight)
+            Expanded(
+              flex: 36,
+              child: CaloriesOverviewCard(
+                dailyConsumedKcal: dailyConsumedKcal,
+                kcalGoal: profile.dailyKcalGoal,
+                burnedKcal: burnedKcal,
+              ),
+            )
+          else
+            CaloriesOverviewCard(
+              dailyConsumedKcal: dailyConsumedKcal,
+              kcalGoal: profile.dailyKcalGoal,
+              burnedKcal: burnedKcal,
+            ),
+          const SizedBox(height: 10),
+          if (boundedHeight)
+            Expanded(
+              flex: 27,
+              child: MacrosOverviewCard(
+                progress: macroProgress,
+                profile: profile,
+              ),
+            )
+          else
+            MacrosOverviewCard(
+              progress: macroProgress,
+              profile: profile,
+            ),
+          const SizedBox(height: 10),
+          if (boundedHeight)
+            Expanded(
+              flex: 37,
+              child: MealsTodayCard(
+                meals: loggedMeals,
+                onMealTap: (slot) => _openAddSheet(context, slot),
+              ),
+            )
+          else
+            MealsTodayCard(
+              meals: loggedMeals,
+              onMealTap: (slot) => _openAddSheet(context, slot),
+            ),
+        ];
+
+        return SizedBox(
+          key: const ValueKey('kcal-page-fill'),
+          height: boundedHeight ? constraints.maxHeight : null,
+          child: Column(
+            key: const ValueKey('screen-kcal-tracker'),
+            mainAxisSize: boundedHeight ? MainAxisSize.max : MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: children,
+          ),
+        );
+      },
     );
   }
 }

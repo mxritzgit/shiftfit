@@ -498,7 +498,8 @@ class _AutoCalcRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hint = suggestion == null
-        ? 'Berechnet kcal + Makros aus Größe, Gewicht, Alter und Schritten (Mifflin-St Jeor).'
+        ? 'Berechnet kcal + Makros aus Größe, Gewicht, Alter und Schrittziel. '
+            'Verbrannt nutzt Gewicht + Größe für die tägliche Distanz.'
         : '${suggestion!.kcal} kcal · BMR ${suggestion!.bmr} · ${suggestion!.activityLabel} (×${suggestion!.activityFactor.toStringAsFixed(2)})';
     return InkWell(
       key: const ValueKey('settings-auto-calc'),

@@ -365,19 +365,25 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final body = selectedTab == 3
+        ? Padding(
+            key: const ValueKey('tab-fixed-3'),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+            child: buildSelectedScreen(),
+          )
+        : SingleChildScrollView(
+            key: ValueKey('tab-scroll-$selectedTab'),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            child: buildSelectedScreen(),
+          );
+
     return Scaffold(
       backgroundColor: bg,
       bottomNavigationBar: ShiftFitBottomNav(
         selectedIndex: selectedTab,
         onSelected: (index) => setState(() => selectedTab = index),
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          key: ValueKey('tab-scroll-$selectedTab'),
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-          child: buildSelectedScreen(),
-        ),
-      ),
+      body: SafeArea(child: body),
     );
   }
 
@@ -423,6 +429,8 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         burnedKcal: estimateKcalBurnedFromSteps(
           steps: dailySteps,
           weightKg: profile.weightKg,
+          heightCm: profile.heightCm,
+          sex: profile.sex,
         ),
         onAddMeal: (result, slot) =>
             _addResultToDailyTotal(result, slot: slot),

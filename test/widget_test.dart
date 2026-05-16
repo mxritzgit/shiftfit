@@ -96,7 +96,10 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('nav-Food')));
     await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('tab-fixed-3')), findsOneWidget);
+    expect(find.byKey(const ValueKey('tab-scroll-3')), findsNothing);
     expect(find.byKey(const ValueKey('screen-kcal-tracker')), findsOneWidget);
+    expect(find.byKey(const ValueKey('kcal-page-fill')), findsOneWidget);
     expect(find.byKey(const ValueKey('analyse-daily-kcal-card')), findsOneWidget);
     expect(find.byKey(const ValueKey('analyse-daily-kcal-total')), findsOneWidget);
     expect(find.byKey(const ValueKey('meal-slot-breakfast')), findsOneWidget);

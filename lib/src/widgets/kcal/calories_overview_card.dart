@@ -23,10 +23,10 @@ class CaloriesOverviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final goal = kcalGoal <= 0 ? 1 : kcalGoal;
-    final eaten = dailyConsumedKcal.clamp(0, 99999);
-    final burned = burnedKcal.clamp(0, 99999);
+    final eaten = dailyConsumedKcal.clamp(0, 99999).toInt();
+    final burned = burnedKcal.clamp(0, 99999).toInt();
     final adjustedGoal = goal + burned;
-    final remaining = (adjustedGoal - eaten).clamp(-99999, 99999);
+    final remaining = (adjustedGoal - eaten).clamp(-99999, 99999).toInt();
     final progress = (eaten / adjustedGoal).clamp(0.0, 1.0);
     final remainingColor = remaining >= 0 ? lime : orange;
 
@@ -34,6 +34,7 @@ class CaloriesOverviewCard extends StatelessWidget {
       key: const ValueKey('analyse-daily-kcal-card'),
       padding: const EdgeInsets.all(14),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -324,6 +325,7 @@ class MacrosOverviewCard extends StatelessWidget {
       key: const ValueKey('macro-targets-card'),
       padding: const EdgeInsets.all(14),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -584,6 +586,7 @@ class MealsTodayCard extends StatelessWidget {
       key: const ValueKey('kcal-meals-today-card'),
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
