@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart' show LaunchMode;
 
 import '../config/supabase_config.dart';
 
@@ -90,9 +91,15 @@ class SupabaseAuthRepository implements AuthRepository {
 
   @override
   Future<void> signInWithOAuth(FitPilotOAuthProvider provider) async {
+    // Google blockiert OAuth in embedded Browser-Sheets (Custom Tab /
+    // SFSafariViewController) und liefert dort nur einen weissen Screen.
+    // Mit externalApplication oeffnet sich der echte System-Browser
+    // (Safari/Chrome), nach erfolgreichem Login springt iOS/Android
+    // ueber das fitpilot://login-callback/ Scheme zurueck in die App.
     final launched = await _client.auth.signInWithOAuth(
       provider.supabaseProvider,
       redirectTo: FitPilotSupabaseConfig.oauthRedirectUrl,
+      authScreenLaunchMode: LaunchMode.externalApplication,
     );
     if (!launched) {
       throw AuthException('${provider.displayName} Login wurde abgebrochen.');
