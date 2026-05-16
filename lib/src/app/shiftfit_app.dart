@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../auth/auth_repository.dart';
+import '../services/fitpilot_sync.dart';
 import '../services/health_service.dart';
 import '../services/meal_analyzer.dart';
 import '../services/meal_photo_input.dart';
 import '../services/open_food_facts_product_service.dart';
-import '../services/profile_sync.dart';
 import '../theme/app_theme.dart';
 import 'auth_gate.dart';
 import 'shiftfit_home_page.dart';
@@ -38,23 +38,26 @@ class ShiftFitApp extends StatelessWidget {
       home: AuthGate(
         authRepository: repository,
         builder: (context, user) => ShiftFitHomePage(
+          // Key auf user.id pinnen: bei Sign-Out und neuem Login wird die
+          // Page komplett neu erstellt (frischer State, eigene Sync-Instanz).
+          key: ValueKey('home-${user.id}'),
           mealAnalyzer: mealAnalyzer,
           productService: productService,
           photoInput: photoInput,
           healthService: healthService,
           initialUserName: user.firstName,
           onSignOut: repository.signOut,
-          profileSync: _profileSyncFor(user.id),
+          sync: _syncFor(user.id),
         ),
       ),
     );
   }
 
-  ProfileSync? _profileSyncFor(String userId) {
+  FitPilotSync? _syncFor(String userId) {
     // Im Test/Preview (kein Supabase.initialize) wirft instance.client - dann
     // bleibt der Sync null und die Home-Page laeuft mit Defaults weiter.
     try {
-      return ProfileSync(Supabase.instance.client, userId);
+      return FitPilotSync.forUser(Supabase.instance.client, userId);
     } catch (_) {
       return null;
     }
