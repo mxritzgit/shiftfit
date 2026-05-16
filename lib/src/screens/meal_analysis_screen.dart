@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../models/favorite_meal.dart';
+import '../models/logged_meal.dart';
 import '../models/macro_progress.dart';
 import '../models/meal_component.dart';
 import '../models/meal_analysis_request.dart';
@@ -16,8 +17,8 @@ import '../services/meal_photo_input.dart';
 import '../services/open_food_facts_product_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/common/basic_widgets.dart';
+import '../widgets/kcal/calories_overview_card.dart';
 import '../widgets/kcal/favorites_card.dart';
-import '../widgets/kcal/macro_targets_card.dart';
 import '../widgets/meal/meal_widgets.dart';
 import 'barcode_scanner_screen.dart';
 
@@ -31,6 +32,8 @@ class MealAnalysisScreen extends StatefulWidget {
     this.macroProgress = MacroProgress.empty,
     this.profile = const UserProfile(),
     this.favorites = const <FavoriteMeal>[],
+    this.loggedMeals = const <LoggedMeal>[],
+    this.burnedKcal = 0,
     ValueChanged<MealAnalysisResult>? onAddResultToDailyTotal,
     ValueChanged<int>? onAdjustDailyKcal,
     ValueChanged<String>? onRemoveFavorite,
@@ -52,6 +55,8 @@ class MealAnalysisScreen extends StatefulWidget {
   final MacroProgress macroProgress;
   final UserProfile profile;
   final List<FavoriteMeal> favorites;
+  final List<LoggedMeal> loggedMeals;
+  final int burnedKcal;
   final ValueChanged<MealAnalysisResult> onAddResultToDailyTotal;
   final ValueChanged<int> onAdjustDailyKcal;
   final ValueChanged<String> onRemoveFavorite;
@@ -554,11 +559,12 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
       key: const ValueKey('screen-kcal-tracker'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        KcalSummaryHeader(dailyConsumedKcal: widget.dailyConsumedKcal),
-        const SizedBox(height: 14),
-        MacroTargetsCard(
-          progress: widget.macroProgress,
-          profile: widget.profile,
+        const _KcalHeader(),
+        const SizedBox(height: 6),
+        CaloriesOverviewCard(
+          dailyConsumedKcal: widget.dailyConsumedKcal,
+          kcalGoal: widget.profile.dailyKcalGoal,
+          burnedKcal: widget.burnedKcal,
         ),
         const SizedBox(height: 14),
         buildQuickActions(),
@@ -567,6 +573,13 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
           selected: portionHint,
           onSelected: (hint) => setState(() => portionHint = hint),
         ),
+        const SizedBox(height: 14),
+        MacrosOverviewCard(
+          progress: widget.macroProgress,
+          profile: widget.profile,
+        ),
+        const SizedBox(height: 14),
+        MealsTodayCard(meals: widget.loggedMeals),
         const SizedBox(height: 14),
         buildProductSearchCard(),
         if (widget.favorites.isNotEmpty) ...[
@@ -616,70 +629,60 @@ class _MealAnalysisScreenState extends State<MealAnalysisScreen> {
   }
 }
 
-class KcalSummaryHeader extends StatelessWidget {
-  const KcalSummaryHeader({
-    super.key,
-    required this.dailyConsumedKcal,
-  });
-
-  final int dailyConsumedKcal;
+class _KcalHeader extends StatelessWidget {
+  const _KcalHeader();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      key: const ValueKey('analyse-daily-kcal-card'),
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: hairline),
-      ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2, 4, 0, 8),
       child: Row(
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const StatusPill(label: 'Heute', color: lime),
-                const SizedBox(height: 14),
-                Text(
-                  '$dailyConsumedKcal kcal',
-                  key: const ValueKey('analyse-daily-kcal-total'),
-                  style: const TextStyle(
-                    color: textPrimary,
-                    fontSize: 34,
-                    height: 1,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -1.2,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'getrackt',
-                  style: TextStyle(
-                    color: textMuted,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+          const Text(
+            'Kalorien',
+            style: TextStyle(
+              color: textPrimary,
+              fontSize: 28,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.5,
             ),
           ),
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: lime.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.local_fire_department_rounded,
-              color: lime,
-              size: 22,
-            ),
+          const Spacer(),
+          _HeaderIconButton(
+            icon: Icons.calendar_today_outlined,
+            onTap: () {},
+          ),
+          const SizedBox(width: 8),
+          _HeaderIconButton(
+            icon: Icons.more_horiz_rounded,
+            onTap: () {},
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _HeaderIconButton extends StatelessWidget {
+  const _HeaderIconButton({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkResponse(
+      onTap: onTap,
+      radius: 24,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: surface,
+          shape: BoxShape.circle,
+          border: Border.all(color: hairline),
+        ),
+        child: Icon(icon, color: textPrimary, size: 16),
       ),
     );
   }

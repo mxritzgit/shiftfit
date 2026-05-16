@@ -5,6 +5,7 @@ import '../models/daily_mood.dart';
 import '../models/favorite_meal.dart';
 import '../models/habit.dart';
 import '../models/lifetime_stats.dart';
+import '../models/logged_meal.dart';
 import '../models/macro_progress.dart';
 import '../models/meal_analysis_result.dart';
 import '../models/shift_fit_plan.dart';
@@ -60,6 +61,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
   Set<String> completedBlockIds = <String>{};
   int workoutStreak = 0;
   List<FavoriteMeal> favorites = <FavoriteMeal>[];
+  List<LoggedMeal> loggedMeals = <LoggedMeal>[];
   CaffeineDay caffeineDay = const CaffeineDay();
   DailyMood mood = DailyMood.empty;
   HabitState habits = const HabitState();
@@ -252,12 +254,46 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
       macroProgress = macroProgress.add(result);
       lifetimeStats = lifetimeStats.incrementMeals();
       _rememberFavorite(result);
+      final entry = LoggedMeal(
+        id: '${DateTime.now().microsecondsSinceEpoch}',
+        result: result,
+        loggedAt: DateTime.now(),
+      );
+      loggedMeals = [entry, ...loggedMeals];
     });
   }
 
   void _adjustDailyTotalDelta(int delta) {
     setState(() {
       dailyConsumedKcal = (dailyConsumedKcal + delta).clamp(0, 99999);
+      if (loggedMeals.isNotEmpty) {
+        final latest = loggedMeals.first;
+        final adjustedKcal =
+            (latest.result.caloriesKcal + delta).clamp(0, 99999);
+        loggedMeals = [
+          LoggedMeal(
+            id: latest.id,
+            loggedAt: latest.loggedAt,
+            result: MealAnalysisResult(
+              mealName: latest.result.mealName,
+              caloriesKcal: adjustedKcal,
+              estimatedGrams: latest.result.estimatedGrams,
+              kcalPer100G: latest.result.kcalPer100G,
+              protein: latest.result.protein,
+              carbs: latest.result.carbs,
+              fat: latest.result.fat,
+              confidence: latest.result.confidence,
+              portionNotes: latest.result.portionNotes,
+              items: latest.result.items,
+              isAdjusted: true,
+              sourceLabel: latest.result.sourceLabel,
+              barcode: latest.result.barcode,
+              brand: latest.result.brand,
+            ),
+          ),
+          ...loggedMeals.skip(1),
+        ];
+      }
     });
   }
 
@@ -287,6 +323,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         caffeineDay = const CaffeineDay();
         mood = DailyMood.empty;
         habits = const HabitState();
+        loggedMeals = <LoggedMeal>[];
       }
     });
     if (result.resetDay) {
@@ -306,6 +343,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
       caffeineDay = const CaffeineDay();
       mood = DailyMood.empty;
       habits = const HabitState();
+      loggedMeals = <LoggedMeal>[];
     });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Tagesdaten zurückgesetzt.')),
@@ -407,6 +445,8 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         macroProgress: macroProgress,
         profile: profile,
         favorites: favorites,
+        loggedMeals: loggedMeals,
+        burnedKcal: 0,
         onAddResultToDailyTotal: _addResultToDailyTotal,
         onAdjustDailyKcal: _adjustDailyTotalDelta,
         onRemoveFavorite: _removeFavorite,
