@@ -17,6 +17,7 @@ import '../services/kcal_calculator.dart';
 import '../services/meal_analyzer.dart';
 import '../services/meal_photo_input.dart';
 import '../services/open_food_facts_product_service.dart';
+import '../services/profile_sync.dart';
 import '../screens/meal_analysis_screen.dart';
 import '../screens/profile_screen.dart';
 import '../screens/today_dashboard.dart';
@@ -38,6 +39,7 @@ class ShiftFitHomePage extends StatefulWidget {
     this.healthService,
     this.initialUserName = 'Moritz',
     this.onSignOut,
+    this.profileSync,
   });
 
   final MealAnalyzer? mealAnalyzer;
@@ -46,6 +48,7 @@ class ShiftFitHomePage extends StatefulWidget {
   final HealthService? healthService;
   final String initialUserName;
   final Future<void> Function()? onSignOut;
+  final ProfileSync? profileSync;
 
   @override
   State<ShiftFitHomePage> createState() => _ShiftFitHomePageState();
@@ -77,6 +80,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
   LifetimeStats lifetimeStats = LifetimeStats();
   String userName = 'Moritz';
   final ValueNotifier<int> _profileRefresh = ValueNotifier<int>(0);
+  late bool _profileLoaded;
 
   int get stepsGoal => profile.dailyStepsGoal;
 
@@ -90,8 +94,29 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
   void initState() {
     super.initState();
     userName = widget.initialUserName;
+    // Ohne Sync (Preview/Test) ueberspringen wir den Boot-Screen direkt,
+    // damit erste Builds ohne pumpAndSettle das Home anzeigen.
+    _profileLoaded = widget.profileSync == null;
     if (widget.healthService != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _connectHealth());
+    }
+    if (!_profileLoaded) {
+      _loadProfileFromSupabase();
+    }
+  }
+
+  Future<void> _loadProfileFromSupabase() async {
+    final sync = widget.profileSync;
+    if (sync == null) return;
+    try {
+      final loaded = await sync.load();
+      if (!mounted) return;
+      setState(() {
+        if (loaded != null) profile = loaded;
+        _profileLoaded = true;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _profileLoaded = true);
     }
   }
 
@@ -364,6 +389,10 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         selectedFoodDate = DateUtils.dateOnly(DateTime.now());
       }
     });
+    // Fire-and-forget gegen Supabase. Bei Fehler bleibt der lokale State
+    // korrekt, beim naechsten App-Start zieht load() halt wieder den
+    // letzten erfolgreich gespeicherten Stand.
+    widget.profileSync?.save(result.profile).catchError((_) {});
     if (result.resetDay) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Tagesdaten zurückgesetzt.')),
@@ -423,6 +452,10 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_profileLoaded) {
+      return const _ProfileBootScreen();
+    }
+
     final body = selectedTab == 3
         ? Padding(
             key: const ValueKey('tab-fixed-3'),
@@ -535,5 +568,53 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
     final parts = userName.trim().split(RegExp(r'\s+'));
     if (parts.isEmpty || parts.first.isEmpty) return 'S';
     return parts.first.substring(0, 1).toUpperCase();
+  }
+}
+
+class _ProfileBootScreen extends StatelessWidget {
+  const _ProfileBootScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      key: const ValueKey('screen-profile-boot'),
+      backgroundColor: bg,
+      body: SafeArea(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: lime,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(Icons.bolt_rounded, color: bg, size: 32),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'FitPilot',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.4,
+                ),
+              ),
+              const SizedBox(height: 22),
+              const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.4,
+                  color: lime,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

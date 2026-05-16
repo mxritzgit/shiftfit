@@ -133,111 +133,110 @@ class _AuthScreenState extends State<AuthScreen> {
       key: const ValueKey('screen-auth'),
       backgroundColor: bg,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(28, 28, 28, 28),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 460),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const _Wordmark(),
-                const SizedBox(height: 56),
-                _Headline(isRegister: _isRegister),
-                const SizedBox(height: 36),
-                _OAuthSection(
-                  oauthLoading: _oauthLoading,
-                  busy: _busy,
-                  onApple: () => _startOAuth(FitPilotOAuthProvider.apple),
-                  onGoogle: () => _startOAuth(FitPilotOAuthProvider.google),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight - 36,
+                  maxWidth: 400,
                 ),
-                const SizedBox(height: 28),
-                const _OrDivider(),
-                const SizedBox(height: 24),
-                _EmailForm(
-                  isRegister: _isRegister,
-                  loading: _loading,
-                  busy: _busy,
-                  passwordVisible: _passwordVisible,
-                  nameController: _nameController,
-                  emailController: _emailController,
-                  passwordController: _passwordController,
-                  error: _error,
-                  message: _message,
-                  onTogglePassword: () =>
-                      setState(() => _passwordVisible = !_passwordVisible),
-                  onSubmit: _submit,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 12),
+                      const _BrandHeader(),
+                      const SizedBox(height: 36),
+                      _OAuthSection(
+                        oauthLoading: _oauthLoading,
+                        busy: _busy,
+                        onApple: () =>
+                            _startOAuth(FitPilotOAuthProvider.apple),
+                        onGoogle: () =>
+                            _startOAuth(FitPilotOAuthProvider.google),
+                      ),
+                      const SizedBox(height: 22),
+                      const _OrDivider(),
+                      const SizedBox(height: 22),
+                      _EmailForm(
+                        isRegister: _isRegister,
+                        loading: _loading,
+                        busy: _busy,
+                        passwordVisible: _passwordVisible,
+                        nameController: _nameController,
+                        emailController: _emailController,
+                        passwordController: _passwordController,
+                        error: _error,
+                        message: _message,
+                        onTogglePassword: () => setState(
+                          () => _passwordVisible = !_passwordVisible,
+                        ),
+                        onSubmit: _submit,
+                      ),
+                      const SizedBox(height: 18),
+                      _ModeFooter(
+                        isRegister: _isRegister,
+                        onChanged: _setMode,
+                      ),
+                      const SizedBox(height: 6),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 20),
-                _ModeFooter(isRegister: _isRegister, onChanged: _setMode),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
       ),
     );
   }
 }
 
-class _Wordmark extends StatelessWidget {
-  const _Wordmark();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 30,
-          height: 30,
-          decoration: BoxDecoration(
-            color: lime,
-            borderRadius: BorderRadius.circular(9),
-          ),
-          child: const Icon(Icons.bolt_rounded, color: bg, size: 20),
-        ),
-        const SizedBox(width: 10),
-        const Text(
-          'FitPilot',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.4,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _Headline extends StatelessWidget {
-  const _Headline({required this.isRegister});
-
-  final bool isRegister;
+class _BrandHeader extends StatelessWidget {
+  const _BrandHeader();
 
   @override
   Widget build(BuildContext context) {
     return Column(
       key: const ValueKey('auth-hero'),
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          isRegister ? 'Komm an Bord.' : 'Willkommen.',
-          style: const TextStyle(
-            fontSize: 36,
-            height: 1.05,
+        Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: lime,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: lime.withValues(alpha: 0.25),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: const Icon(Icons.bolt_rounded, color: bg, size: 32),
+        ),
+        const SizedBox(height: 18),
+        const Text(
+          'FitPilot',
+          style: TextStyle(
+            fontSize: 28,
             fontWeight: FontWeight.w800,
-            letterSpacing: -1.2,
+            letterSpacing: -0.8,
+            height: 1.0,
           ),
         ),
-        const SizedBox(height: 12),
-        Text(
-          isRegister
-              ? 'Account in unter einer Minute. Plan, Kalorien, Fortschritt.'
-              : 'Melde dich an und mach da weiter, wo du aufgehört hast.',
-          style: const TextStyle(
+        const SizedBox(height: 8),
+        const Text(
+          'Plan, Kalorien und Fortschritt.\nIn einer App.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
             color: textMuted,
             fontSize: 15,
-            height: 1.4,
+            height: 1.35,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
@@ -265,12 +264,15 @@ class _OAuthSection extends StatelessWidget {
         _ProviderButton(
           keyValue: const ValueKey('auth-apple-oauth'),
           label: 'Mit Apple anmelden',
-          icon: const Icon(Icons.apple, color: Colors.black, size: 22),
+          icon: const Padding(
+            padding: EdgeInsets.only(bottom: 2),
+            child: Icon(Icons.apple, color: Colors.black, size: 22),
+          ),
           loading: oauthLoading == FitPilotOAuthProvider.apple,
           enabled: !busy,
           onTap: onApple,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         _ProviderButton(
           keyValue: const ValueKey('auth-google-oauth'),
           label: 'Mit Google anmelden',
@@ -305,44 +307,58 @@ class _ProviderButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Opacity(
       opacity: enabled ? 1 : 0.55,
-      child: Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          key: keyValue,
-          borderRadius: BorderRadius.circular(14),
-          onTap: enabled ? onTap : null,
-          child: SizedBox(
-            height: 54,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 18),
-                    child: loading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.2,
-                              color: Colors.black,
-                            ),
-                          )
-                        : icon,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: enabled
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
                   ),
-                ),
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 15.5,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.1,
+                ]
+              : null,
+        ),
+        child: Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            key: keyValue,
+            borderRadius: BorderRadius.circular(12),
+            onTap: enabled ? onTap : null,
+            child: SizedBox(
+              height: 50,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 18),
+                      child: loading
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.black,
+                              ),
+                            )
+                          : icon,
+                    ),
                   ),
-                ),
-              ],
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      color: Color(0xFF111111),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.1,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -375,33 +391,40 @@ class _GoogleGPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final r = size.width / 2;
-    final stroke = r * 0.46;
-    final rect = Rect.fromCircle(
+    final stroke = r * 0.42;
+    final ringRect = Rect.fromCircle(
       center: Offset(r, r),
       radius: r - stroke / 2,
     );
 
-    final p = Paint()
+    double rad(double deg) => deg * math.pi / 180;
+
+    final ring = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = stroke
       ..strokeCap = StrokeCap.butt;
 
-    double rad(double deg) => deg * math.pi / 180;
+    // 0° = east (3 o'clock), positive = clockwise (Flutter Canvas convention).
+    // Gap from 335° back through 25° (50° gap on the right) - that's where the
+    // inner blue bar exits the ring. Color rotation matches the official mark:
+    //   Green  25° → 95°  (bottom-right quadrant)
+    //   Yellow 95° → 185° (bottom-left)
+    //   Red   185° → 285° (top-left arc)
+    //   Blue  285° → 335° (top-right, ends just above the bar)
+    canvas.drawArc(ringRect, rad(25), rad(70), false, ring..color = _green);
+    canvas.drawArc(ringRect, rad(95), rad(90), false, ring..color = _yellow);
+    canvas.drawArc(ringRect, rad(185), rad(100), false, ring..color = _red);
+    canvas.drawArc(ringRect, rad(285), rad(50), false, ring..color = _blue);
 
-    // Gap on the right at ~-12° to 6° (33°) where the inner bar exits.
-    // Going clockwise (positive sweep):
-    canvas.drawArc(rect, rad(6), rad(70), false, p..color = _green);
-    canvas.drawArc(rect, rad(76), rad(118), false, p..color = _yellow);
-    canvas.drawArc(rect, rad(194), rad(120), false, p..color = _red);
-    canvas.drawArc(rect, rad(314), rad(33), false, p..color = _blue);
-
-    // Inner horizontal bar (blue) from the gap inward to the center,
-    // half-height of the ring stroke for the classic G silhouette.
-    final barRect = Rect.fromLTWH(
-      r,
+    // Inner horizontal bar, blue, exits through the gap to the right.
+    // Right edge sits flush against the inner ring radius; left edge stops
+    // just past the vertical center to keep the classic G silhouette.
+    final innerR = r - stroke;
+    final barRect = Rect.fromLTRB(
+      r - stroke * 0.15,
       r - stroke / 2,
-      r - stroke * 0.65,
-      stroke,
+      r + innerR,
+      r + stroke / 2,
     );
     canvas.drawRect(barRect, Paint()..color = _blue);
   }
@@ -426,7 +449,7 @@ class _OrDivider extends StatelessWidget {
               color: textMuted,
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              letterSpacing: 0.1,
+              letterSpacing: 0.2,
             ),
           ),
         ),
@@ -476,7 +499,7 @@ class _EmailForm extends StatelessWidget {
           child: isRegister
               ? Padding(
                   key: const ValueKey('name-field-wrap'),
-                  padding: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.only(bottom: 10),
                   child: TextField(
                     key: const ValueKey('auth-name-field'),
                     controller: nameController,
@@ -503,7 +526,7 @@ class _EmailForm extends StatelessWidget {
             prefixIcon: Icon(Icons.mail_outline_rounded),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         TextField(
           key: const ValueKey('auth-password-field'),
           controller: passwordController,
@@ -530,16 +553,16 @@ class _EmailForm extends StatelessWidget {
           ),
         ),
         if (error != null) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           _InlineNote(text: error!, isError: true),
         ],
         if (message != null) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           _InlineNote(text: message!, isError: false),
         ],
-        const SizedBox(height: 18),
+        const SizedBox(height: 14),
         SizedBox(
-          height: 54,
+          height: 52,
           child: FilledButton(
             key: const ValueKey('auth-submit'),
             style: FilledButton.styleFrom(
@@ -548,10 +571,10 @@ class _EmailForm extends StatelessWidget {
               disabledBackgroundColor: lime.withValues(alpha: 0.4),
               disabledForegroundColor: bg.withValues(alpha: 0.6),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
               ),
               textStyle: const TextStyle(
-                fontSize: 16,
+                fontSize: 15.5,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.2,
               ),
@@ -559,8 +582,8 @@ class _EmailForm extends StatelessWidget {
             onPressed: busy ? null : onSubmit,
             child: loading
                 ? const SizedBox(
-                    width: 20,
-                    height: 20,
+                    width: 18,
+                    height: 18,
                     child: CircularProgressIndicator(
                       strokeWidth: 2.2,
                       color: bg,
@@ -588,7 +611,9 @@ class _InlineNote extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(
-          isError ? Icons.error_outline_rounded : Icons.check_circle_outline_rounded,
+          isError
+              ? Icons.error_outline_rounded
+              : Icons.check_circle_outline_rounded,
           size: 16,
           color: color,
         ),
@@ -628,7 +653,7 @@ class _ModeFooter extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         onTap: () => onChanged(!isRegister),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           child: RichText(
             text: TextSpan(
               style: const TextStyle(
