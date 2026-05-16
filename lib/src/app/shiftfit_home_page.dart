@@ -55,6 +55,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
   int dailyConsumedKcal = 0;
   int dailyWaterMl = 0;
   int dailySteps = 0;
+  DateTime selectedFoodDate = DateUtils.dateOnly(DateTime.now());
   UserProfile profile = const UserProfile();
   MacroProgress macroProgress = MacroProgress.empty;
   SleepEntry? lastSleep;
@@ -229,52 +230,101 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
     }
   }
 
+  bool _isSameFoodDate(DateTime a, DateTime b) {
+    return DateUtils.isSameDay(a, b);
+  }
+
+  bool get _selectedFoodDateIsToday {
+    return _isSameFoodDate(selectedFoodDate, DateTime.now());
+  }
+
+  DateTime _timestampForSelectedFoodDate() {
+    final now = DateTime.now();
+    final day = DateUtils.dateOnly(selectedFoodDate);
+    return DateTime(day.year, day.month, day.day, now.hour, now.minute);
+  }
+
+  List<LoggedMeal> _mealsForFoodDate(DateTime date) {
+    final day = DateUtils.dateOnly(date);
+    return loggedMeals
+        .where((meal) => _isSameFoodDate(meal.loggedAt, day))
+        .toList(growable: false);
+  }
+
+  int _consumedKcalForFoodDate(DateTime date) {
+    return _mealsForFoodDate(date).fold<int>(
+      0,
+      (sum, meal) => sum + meal.result.caloriesKcal,
+    );
+  }
+
+  MacroProgress _macroProgressForFoodDate(DateTime date) {
+    return _mealsForFoodDate(date).fold<MacroProgress>(
+      MacroProgress.empty,
+      (progress, meal) => progress.add(meal.result),
+    );
+  }
+
+  MealAnalysisResult _copyResultWithKcal(
+    MealAnalysisResult original,
+    int caloriesKcal,
+  ) {
+    return MealAnalysisResult(
+      mealName: original.mealName,
+      caloriesKcal: caloriesKcal,
+      estimatedGrams: original.estimatedGrams,
+      kcalPer100G: original.kcalPer100G,
+      protein: original.protein,
+      carbs: original.carbs,
+      fat: original.fat,
+      confidence: original.confidence,
+      portionNotes: original.portionNotes,
+      items: original.items,
+      isAdjusted: true,
+      sourceLabel: original.sourceLabel,
+      barcode: original.barcode,
+      brand: original.brand,
+    );
+  }
+
   void _addResultToDailyTotal(MealAnalysisResult result, {MealSlot? slot}) {
     setState(() {
-      dailyConsumedKcal += result.caloriesKcal;
-      macroProgress = macroProgress.add(result);
       lifetimeStats = lifetimeStats.incrementMeals();
       _rememberFavorite(result);
       final entry = LoggedMeal(
         id: '${DateTime.now().microsecondsSinceEpoch}',
         result: result,
-        loggedAt: DateTime.now(),
+        loggedAt: _timestampForSelectedFoodDate(),
         forcedSlot: slot,
       );
       loggedMeals = [entry, ...loggedMeals];
+      if (_selectedFoodDateIsToday) {
+        dailyConsumedKcal = _consumedKcalForFoodDate(DateTime.now());
+        macroProgress = _macroProgressForFoodDate(DateTime.now());
+      }
     });
   }
 
   void _adjustDailyTotalDelta(int delta) {
     setState(() {
-      dailyConsumedKcal = (dailyConsumedKcal + delta).clamp(0, 99999);
-      if (loggedMeals.isNotEmpty) {
-        final latest = loggedMeals.first;
-        final adjustedKcal =
-            (latest.result.caloriesKcal + delta).clamp(0, 99999);
-        loggedMeals = [
-          LoggedMeal(
-            id: latest.id,
-            loggedAt: latest.loggedAt,
-            result: MealAnalysisResult(
-              mealName: latest.result.mealName,
-              caloriesKcal: adjustedKcal,
-              estimatedGrams: latest.result.estimatedGrams,
-              kcalPer100G: latest.result.kcalPer100G,
-              protein: latest.result.protein,
-              carbs: latest.result.carbs,
-              fat: latest.result.fat,
-              confidence: latest.result.confidence,
-              portionNotes: latest.result.portionNotes,
-              items: latest.result.items,
-              isAdjusted: true,
-              sourceLabel: latest.result.sourceLabel,
-              barcode: latest.result.barcode,
-              brand: latest.result.brand,
-            ),
-          ),
-          ...loggedMeals.skip(1),
-        ];
+      final index = loggedMeals.indexWhere(
+        (meal) => _isSameFoodDate(meal.loggedAt, selectedFoodDate),
+      );
+      if (index == -1) return;
+      final latest = loggedMeals[index];
+      final adjustedKcal =
+          (latest.result.caloriesKcal + delta).clamp(0, 99999).toInt();
+      final nextMeals = [...loggedMeals];
+      nextMeals[index] = LoggedMeal(
+        id: latest.id,
+        loggedAt: latest.loggedAt,
+        result: _copyResultWithKcal(latest.result, adjustedKcal),
+        forcedSlot: latest.forcedSlot,
+      );
+      loggedMeals = nextMeals;
+      if (_selectedFoodDateIsToday) {
+        dailyConsumedKcal = _consumedKcalForFoodDate(DateTime.now());
+        macroProgress = _macroProgressForFoodDate(DateTime.now());
       }
     });
   }
@@ -306,6 +356,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         mood = DailyMood.empty;
         habits = const HabitState();
         loggedMeals = <LoggedMeal>[];
+        selectedFoodDate = DateUtils.dateOnly(DateTime.now());
       }
     });
     if (result.resetDay) {
@@ -326,6 +377,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
       mood = DailyMood.empty;
       habits = const HabitState();
       loggedMeals = <LoggedMeal>[];
+      selectedFoodDate = DateUtils.dateOnly(DateTime.now());
     });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Tagesdaten zurückgesetzt.')),
@@ -421,11 +473,15 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         analyzer: widget.mealAnalyzer,
         productService: widget.productService,
         photoInput: widget.photoInput,
-        dailyConsumedKcal: dailyConsumedKcal,
-        macroProgress: macroProgress,
+        selectedDate: selectedFoodDate,
+        onDateSelected: (date) {
+          setState(() => selectedFoodDate = DateUtils.dateOnly(date));
+        },
+        dailyConsumedKcal: _consumedKcalForFoodDate(selectedFoodDate),
+        macroProgress: _macroProgressForFoodDate(selectedFoodDate),
         profile: profile,
         favorites: favorites,
-        loggedMeals: loggedMeals,
+        loggedMeals: _mealsForFoodDate(selectedFoodDate),
         burnedKcal: estimateKcalBurnedFromSteps(
           steps: dailySteps,
           weightKg: profile.weightKg,

@@ -100,6 +100,9 @@ void main() {
     expect(find.byKey(const ValueKey('tab-scroll-3')), findsNothing);
     expect(find.byKey(const ValueKey('screen-kcal-tracker')), findsOneWidget);
     expect(find.byKey(const ValueKey('kcal-page-fill')), findsOneWidget);
+    expect(find.byKey(const ValueKey('food-date-strip')), findsOneWidget);
+    expect(find.byKey(const ValueKey('food-date-chip-0')), findsOneWidget);
+    expect(find.byKey(const ValueKey('food-date-chip-3')), findsOneWidget);
     expect(find.byKey(const ValueKey('analyse-daily-kcal-card')), findsOneWidget);
     expect(find.byKey(const ValueKey('analyse-daily-kcal-total')), findsOneWidget);
     expect(find.byKey(const ValueKey('meal-slot-breakfast')), findsOneWidget);
@@ -223,6 +226,67 @@ void main() {
       find.descendant(
         of: find.byKey(const ValueKey('analyse-daily-kcal-card')),
         matching: find.text('252 kcal'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('Food calendar lets future days keep separate planned kcal', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      ShiftFitApp(productService: _FakeProductLookupService()),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('nav-Food')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('food-date-chip-0')), findsOneWidget);
+    expect(find.byKey(const ValueKey('food-date-chip-2')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('analyse-daily-kcal-card')),
+        matching: find.text('0 kcal'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('food-date-chip-2')));
+    await tester.pumpAndSettle();
+    expect(find.text('In 2 Tagen'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('meal-slot-breakfast')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const ValueKey('kcal-product-search-input')),
+      'Dr Oetker Salami',
+    );
+    await tester.tap(find.byKey(const ValueKey('kcal-product-search-button')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('kcal-product-suggestion-0')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const ValueKey('analyse-add-daily-button')));
+    await tester.tap(find.byKey(const ValueKey('analyse-add-daily-button')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('analyse-daily-kcal-card')),
+        matching: find.text('252 kcal'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('food-date-chip-0')));
+    await tester.pumpAndSettle();
+    expect(find.text('Heute'), findsWidgets);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('analyse-daily-kcal-card')),
+        matching: find.text('0 kcal'),
       ),
       findsOneWidget,
     );
