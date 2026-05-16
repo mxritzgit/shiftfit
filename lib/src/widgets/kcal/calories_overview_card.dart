@@ -25,13 +25,14 @@ class CaloriesOverviewCard extends StatelessWidget {
     final goal = kcalGoal <= 0 ? 1 : kcalGoal;
     final eaten = dailyConsumedKcal.clamp(0, 99999);
     final burned = burnedKcal.clamp(0, 99999);
-    final remaining = (goal - eaten - burned).clamp(-99999, 99999);
-    final progress = (eaten / goal).clamp(0.0, 1.0);
+    final adjustedGoal = goal + burned;
+    final remaining = (adjustedGoal - eaten).clamp(-99999, 99999);
+    final progress = (eaten / adjustedGoal).clamp(0.0, 1.0);
     final remainingColor = remaining >= 0 ? lime : orange;
 
     return AppCard(
       key: const ValueKey('analyse-daily-kcal-card'),
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -51,43 +52,43 @@ class CaloriesOverviewCard extends StatelessWidget {
                         letterSpacing: 1.2,
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 8),
                     Text(
                       _formatThousands(remaining),
                       style: TextStyle(
                         color: remainingColor,
-                        fontSize: 52,
+                        fontSize: 40,
                         fontWeight: FontWeight.w700,
                         height: 1.0,
-                        letterSpacing: -1.5,
+                        letterSpacing: -1.2,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     const Text(
                       'kcal',
                       style: TextStyle(
                         color: textPrimary,
-                        fontSize: 16,
+                        fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 8),
                     Text(
                       remaining >= 0
-                          ? '$eaten von $goal kcal'
+                          ? '$eaten von $adjustedGoal kcal'
                           : '${-remaining} kcal über Ziel',
                       style: const TextStyle(
                         color: textMuted,
-                        fontSize: 12,
-                        height: 1.4,
+                        fontSize: 11,
+                        height: 1.3,
                       ),
                     ),
                   ],
                 ),
               ),
               SizedBox(
-                width: 140,
-                height: 140,
+                width: 108,
+                height: 108,
                 child: _ProgressRing(
                   progress: progress,
                   child: Column(
@@ -97,7 +98,7 @@ class CaloriesOverviewCard extends StatelessWidget {
                         '${(progress * 100).round()}%',
                         style: const TextStyle(
                           color: textPrimary,
-                          fontSize: 24,
+                          fontSize: 20,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -106,7 +107,7 @@ class CaloriesOverviewCard extends StatelessWidget {
                         'des Ziels',
                         style: TextStyle(
                           color: textMuted,
-                          fontSize: 11,
+                          fontSize: 10,
                         ),
                       ),
                     ],
@@ -115,7 +116,7 @@ class CaloriesOverviewCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
@@ -126,7 +127,7 @@ class CaloriesOverviewCard extends StatelessWidget {
                   value: _formatThousands(goal),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: _StatTile(
                   icon: Icons.restaurant_rounded,
@@ -136,7 +137,7 @@ class CaloriesOverviewCard extends StatelessWidget {
                   combinedKcalKey: const ValueKey('analyse-daily-kcal-total'),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: _StatTile(
                   icon: Icons.local_fire_department_outlined,
@@ -176,18 +177,18 @@ class _StatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
       decoration: BoxDecoration(
         color: surfaceSoft,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: iconColor, size: 14),
-              const SizedBox(width: 6),
+              Icon(icon, color: iconColor, size: 12),
+              const SizedBox(width: 4),
               Flexible(
                 child: Text(
                   label,
@@ -195,22 +196,22 @@ class _StatTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: textMuted,
-                    fontSize: 10,
+                    fontSize: 9,
                     fontWeight: FontWeight.w600,
-                    letterSpacing: 0.8,
+                    letterSpacing: 0.6,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           if (combinedKcal != null)
             Text(
               combinedKcal!,
               key: combinedKcalKey,
               style: const TextStyle(
                 color: textPrimary,
-                fontSize: 16,
+                fontSize: 14,
                 fontWeight: FontWeight.w700,
               ),
             )
@@ -219,7 +220,7 @@ class _StatTile extends StatelessWidget {
               value!,
               style: const TextStyle(
                 color: textPrimary,
-                fontSize: 18,
+                fontSize: 15,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -228,7 +229,7 @@ class _StatTile extends StatelessWidget {
                 'kcal',
                 style: TextStyle(
                   color: textMuted,
-                  fontSize: 10,
+                  fontSize: 9,
                 ),
               ),
           ],
@@ -260,7 +261,7 @@ class _RingPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    const stroke = 12.0;
+    const stroke = 10.0;
     final rect = Offset(stroke / 2, stroke / 2) &
         Size(size.width - stroke, size.height - stroke);
     final center = rect.center;
@@ -321,7 +322,7 @@ class MacrosOverviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppCard(
       key: const ValueKey('macro-targets-card'),
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -352,19 +353,19 @@ class MacrosOverviewCard extends StatelessWidget {
                           'Details ansehen',
                           style: TextStyle(
                             color: lime,
-                            fontSize: 12,
+                            fontSize: 11,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                         SizedBox(width: 2),
-                        Icon(Icons.chevron_right_rounded, color: lime, size: 16),
+                        Icon(Icons.chevron_right_rounded, color: lime, size: 14),
                       ],
                     ),
                   ),
                 ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -376,7 +377,7 @@ class MacrosOverviewCard extends StatelessWidget {
                   color: lime,
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: _MacroTile(
                   label: 'KOHLENH.',
@@ -385,7 +386,7 @@ class MacrosOverviewCard extends StatelessWidget {
                   color: cyan,
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: _MacroTile(
                   label: 'FETT',
@@ -436,7 +437,7 @@ class _MacroTile extends StatelessWidget {
             letterSpacing: 0.8,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 6),
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -448,24 +449,23 @@ class _MacroTile extends StatelessWidget {
                     '$currentLabel g',
                     style: const TextStyle(
                       color: textPrimary,
-                      fontSize: 16,
+                      fontSize: 14,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 2),
                   Text(
                     '/ ${goal.toStringAsFixed(0)} g',
                     style: const TextStyle(
                       color: textMuted,
-                      fontSize: 11,
+                      fontSize: 10,
                     ),
                   ),
                 ],
               ),
             ),
             SizedBox(
-              width: 36,
-              height: 36,
+              width: 30,
+              height: 30,
               child: _MiniRing(
                 progress: ratio,
                 color: color,
@@ -474,12 +474,12 @@ class _MacroTile extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
             value: ratio,
-            minHeight: 4,
+            minHeight: 3,
             backgroundColor: surfaceSoft,
             valueColor: AlwaysStoppedAnimation(color),
           ),
@@ -506,14 +506,14 @@ class _MiniRing extends StatelessWidget {
       alignment: Alignment.center,
       children: [
         CustomPaint(
-          size: const Size.square(36),
+          size: const Size.square(30),
           painter: _MiniRingPainter(progress: progress, color: color),
         ),
         Text(
           label,
           style: const TextStyle(
             color: textPrimary,
-            fontSize: 9,
+            fontSize: 8,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -582,7 +582,7 @@ class MealsTodayCard extends StatelessWidget {
 
     return AppCard(
       key: const ValueKey('kcal-meals-today-card'),
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 8),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -607,7 +607,7 @@ class MealsTodayCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 2),
           for (final slot in MealSlot.values)
             _MealRow(
               key: ValueKey('meal-slot-${slot.name}'),
@@ -617,7 +617,7 @@ class MealsTodayCard extends StatelessWidget {
             ),
           const Divider(color: hairline, height: 1),
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 14),
+            padding: const EdgeInsets.symmetric(vertical: 8),
             child: Row(
               children: [
                 const Text(
@@ -634,7 +634,7 @@ class MealsTodayCard extends StatelessWidget {
                   _formatThousands(overallTotal),
                   style: const TextStyle(
                     color: textPrimary,
-                    fontSize: 15,
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -688,17 +688,17 @@ class _MealRow extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
           children: [
-            Icon(_icon, color: _color, size: 22),
-            const SizedBox(width: 14),
+            Icon(_icon, color: _color, size: 20),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 slot.label,
                 style: const TextStyle(
                   color: textPrimary,
-                  fontSize: 15,
+                  fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -707,7 +707,7 @@ class _MealRow extends StatelessWidget {
               kcal.toString(),
               style: TextStyle(
                 color: kcal > 0 ? textPrimary : textMuted,
-                fontSize: 15,
+                fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -715,7 +715,7 @@ class _MealRow extends StatelessWidget {
             const Icon(
               Icons.chevron_right_rounded,
               color: textMuted,
-              size: 18,
+              size: 16,
             ),
           ],
         ),

@@ -72,18 +72,18 @@ class MealAnalysisScreen extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const _KcalHeader(),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
         CaloriesOverviewCard(
           dailyConsumedKcal: dailyConsumedKcal,
           kcalGoal: profile.dailyKcalGoal,
           burnedKcal: burnedKcal,
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
         MacrosOverviewCard(
           progress: macroProgress,
           profile: profile,
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
         MealsTodayCard(
           meals: loggedMeals,
           onMealTap: (slot) => _openAddSheet(context, slot),
@@ -98,55 +98,16 @@ class _KcalHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(2, 4, 0, 8),
-      child: Row(
-        children: [
-          const Text(
-            'Kalorien',
-            style: TextStyle(
-              color: textPrimary,
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.5,
-            ),
-          ),
-          const Spacer(),
-          _HeaderIconButton(
-            icon: Icons.calendar_today_outlined,
-            onTap: () {},
-          ),
-          const SizedBox(width: 8),
-          _HeaderIconButton(
-            icon: Icons.more_horiz_rounded,
-            onTap: () {},
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeaderIconButton extends StatelessWidget {
-  const _HeaderIconButton({required this.icon, required this.onTap});
-
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkResponse(
-      onTap: onTap,
-      radius: 24,
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: surface,
-          shape: BoxShape.circle,
-          border: Border.all(color: hairline),
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(2, 2, 0, 4),
+      child: Text(
+        'Kalorien',
+        style: TextStyle(
+          color: textPrimary,
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.3,
         ),
-        child: Icon(icon, color: textPrimary, size: 16),
       ),
     );
   }
