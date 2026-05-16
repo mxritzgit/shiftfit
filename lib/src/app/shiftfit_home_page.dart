@@ -24,7 +24,6 @@ import '../screens/trends_screen.dart';
 import '../screens/week_planner_screen.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_shell/shiftfit_bottom_nav.dart';
-import '../widgets/shared/quick_add_sheet.dart';
 import '../widgets/shared/settings_sheet.dart';
 import '../widgets/today/habits_card.dart';
 import '../widgets/today/mood_card.dart';
@@ -158,25 +157,6 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
       weightLog = weightLog.add(kg);
       lifetimeStats = lifetimeStats.incrementWeightLogs();
     });
-  }
-
-  Future<void> _openQuickAdd() async {
-    final result = await showQuickAddSheet(context);
-    if (result == null || !mounted) return;
-    switch (result.kind) {
-      case QuickAddKind.water:
-        if (result.amount != null) _addWater(result.amount!);
-        break;
-      case QuickAddKind.caffeine:
-        if (result.amount != null) _addCaffeine(result.amount!);
-        break;
-      case QuickAddKind.steps:
-        if (result.amount != null) _addSteps(result.amount!);
-        break;
-      case QuickAddKind.sleep:
-        _logSleep();
-        break;
-    }
   }
 
   void _resetWater() {
@@ -390,14 +370,6 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
       bottomNavigationBar: ShiftFitBottomNav(
         selectedIndex: selectedTab,
         onSelected: (index) => setState(() => selectedTab = index),
-      ),
-      floatingActionButton: FloatingActionButton(
-        key: const ValueKey('quick-add-fab'),
-        onPressed: _openQuickAdd,
-        backgroundColor: lime,
-        foregroundColor: bg,
-        tooltip: 'Schnell loggen',
-        child: const Icon(Icons.bolt_rounded),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
