@@ -482,12 +482,14 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         profile: profile,
         favorites: favorites,
         loggedMeals: _mealsForFoodDate(selectedFoodDate),
-        burnedKcal: estimateKcalBurnedFromSteps(
-          steps: dailySteps,
-          weightKg: profile.weightKg,
-          heightCm: profile.heightCm,
-          sex: profile.sex,
-        ),
+        burnedKcal: _selectedFoodDateIsToday
+            ? estimateKcalBurnedFromSteps(
+                steps: dailySteps,
+                weightKg: profile.weightKg,
+                heightCm: profile.heightCm,
+                sex: profile.sex,
+              )
+            : 0,
         onAddMeal: (result, slot) =>
             _addResultToDailyTotal(result, slot: slot),
         onAdjustDailyKcal: _adjustDailyTotalDelta,
