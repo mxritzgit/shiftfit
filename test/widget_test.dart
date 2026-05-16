@@ -99,11 +99,12 @@ void main() {
     expect(find.byKey(const ValueKey('screen-kcal-tracker')), findsOneWidget);
     expect(find.byKey(const ValueKey('analyse-daily-kcal-card')), findsOneWidget);
     expect(find.byKey(const ValueKey('analyse-daily-kcal-total')), findsOneWidget);
-    expect(find.byKey(const ValueKey('analyse-camera-button')), findsOneWidget);
-    expect(find.byKey(const ValueKey('analyse-gallery-button')), findsOneWidget);
-    expect(find.byKey(const ValueKey('analyse-barcode-button')), findsOneWidget);
-    expect(find.byKey(const ValueKey('kcal-product-search-card')), findsOneWidget);
-    expect(find.text('Barcode'), findsOneWidget);
+    expect(find.byKey(const ValueKey('meal-slot-breakfast')), findsOneWidget);
+    expect(find.byKey(const ValueKey('meal-slot-lunch')), findsOneWidget);
+    expect(find.byKey(const ValueKey('meal-slot-dinner')), findsOneWidget);
+    expect(find.byKey(const ValueKey('meal-slot-snack')), findsOneWidget);
+    expect(find.byKey(const ValueKey('analyse-camera-button')), findsNothing);
+    expect(find.byKey(const ValueKey('kcal-product-search-card')), findsNothing);
     expect(find.text('Demo-Fotoanalyse'), findsNothing);
     expect(find.text('Demo-Barcode laden'), findsNothing);
 
@@ -128,6 +129,9 @@ void main() {
 
     expect(find.byKey(const ValueKey('analyse-daily-kcal-total')), findsOneWidget);
     expect(find.text('0 kcal'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('meal-slot-breakfast')));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const ValueKey('analyse-camera-button')));
     await tester.pump();
@@ -189,6 +193,9 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('nav-Food')));
     await tester.pumpAndSettle();
 
+    await tester.tap(find.byKey(const ValueKey('meal-slot-breakfast')));
+    await tester.pumpAndSettle();
+
     await tester.enterText(
       find.byKey(const ValueKey('kcal-product-search-input')),
       'Dr Oetker Salami',
@@ -228,6 +235,9 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('nav-Food')));
     await tester.pumpAndSettle();
 
+    await tester.tap(find.byKey(const ValueKey('meal-slot-breakfast')));
+    await tester.pumpAndSettle();
+
     await tester.enterText(
       find.byKey(const ValueKey('kcal-product-search-input')),
       'Dr Oetker',
@@ -247,6 +257,9 @@ void main() {
     );
 
     await tester.tap(find.byKey(const ValueKey('nav-Food')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('meal-slot-breakfast')));
     await tester.pumpAndSettle();
 
     await tester.enterText(
@@ -274,6 +287,9 @@ void main() {
     );
 
     await tester.tap(find.byKey(const ValueKey('nav-Food')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('meal-slot-breakfast')));
     await tester.pumpAndSettle();
 
     await tester.enterText(

@@ -610,6 +610,7 @@ class MealsTodayCard extends StatelessWidget {
           const SizedBox(height: 6),
           for (final slot in MealSlot.values)
             _MealRow(
+              key: ValueKey('meal-slot-${slot.name}'),
               slot: slot,
               kcal: totals[slot] ?? 0,
               onTap: onMealTap == null ? null : () => onMealTap!(slot),
@@ -657,6 +658,7 @@ class MealsTodayCard extends StatelessWidget {
 
 class _MealRow extends StatelessWidget {
   const _MealRow({
+    super.key,
     required this.slot,
     required this.kcal,
     required this.onTap,

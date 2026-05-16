@@ -16,13 +16,18 @@ class LoggedMeal {
     required this.id,
     required this.result,
     required this.loggedAt,
+    this.forcedSlot,
   });
 
   final String id;
   final MealAnalysisResult result;
   final DateTime loggedAt;
+  final MealSlot? forcedSlot;
 
   MealSlot get slot {
+    if (forcedSlot != null) {
+      return forcedSlot!;
+    }
     final hour = loggedAt.hour;
     if (hour < 11) return MealSlot.breakfast;
     if (hour < 15) return MealSlot.lunch;
@@ -30,11 +35,15 @@ class LoggedMeal {
     return MealSlot.snack;
   }
 
-  LoggedMeal copyWith({MealAnalysisResult? result}) {
+  LoggedMeal copyWith({
+    MealAnalysisResult? result,
+    MealSlot? forcedSlot,
+  }) {
     return LoggedMeal(
       id: id,
       result: result ?? this.result,
       loggedAt: loggedAt,
+      forcedSlot: forcedSlot ?? this.forcedSlot,
     );
   }
 }

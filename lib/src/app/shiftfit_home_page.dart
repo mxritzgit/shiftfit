@@ -13,6 +13,7 @@ import '../models/sleep_entry.dart';
 import '../models/user_profile.dart';
 import '../models/weight_log.dart';
 import '../services/health_service.dart';
+import '../services/kcal_calculator.dart';
 import '../services/meal_analyzer.dart';
 import '../services/meal_photo_input.dart';
 import '../services/open_food_facts_product_service.dart';
@@ -248,7 +249,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
     }
   }
 
-  void _addResultToDailyTotal(MealAnalysisResult result) {
+  void _addResultToDailyTotal(MealAnalysisResult result, {MealSlot? slot}) {
     setState(() {
       dailyConsumedKcal += result.caloriesKcal;
       macroProgress = macroProgress.add(result);
@@ -258,6 +259,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         id: '${DateTime.now().microsecondsSinceEpoch}',
         result: result,
         loggedAt: DateTime.now(),
+        forcedSlot: slot,
       );
       loggedMeals = [entry, ...loggedMeals];
     });
@@ -446,8 +448,12 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         profile: profile,
         favorites: favorites,
         loggedMeals: loggedMeals,
-        burnedKcal: 0,
-        onAddResultToDailyTotal: _addResultToDailyTotal,
+        burnedKcal: estimateKcalBurnedFromSteps(
+          steps: dailySteps,
+          weightKg: profile.weightKg,
+        ),
+        onAddMeal: (result, slot) =>
+            _addResultToDailyTotal(result, slot: slot),
         onAdjustDailyKcal: _adjustDailyTotalDelta,
         onRemoveFavorite: _removeFavorite,
       ),

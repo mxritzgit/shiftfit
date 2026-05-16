@@ -1,5 +1,25 @@
 import '../models/user_profile.dart';
 
+/// Schätzt die durch Schritte verbrannten Kilokalorien.
+///
+/// Faustregel: ca. 0.04 kcal pro Schritt bei einer 70 kg schweren Person, der
+/// Verbrauch skaliert annähernd linear mit dem Körpergewicht. Daraus folgt
+/// `kcal = steps * weight_kg * 0.04 / 70 ≈ steps * weight_kg * 0.00057`.
+/// Quelle: Energy Expenditure for Walking (ACSM Metabolic Equation,
+/// abgeleitet aus MET 3.5 für gemächliches Gehen).
+///
+/// Liefert nie negative Werte und ist gegen Nonsense-Eingaben (steps < 0,
+/// weight ≤ 0) abgesichert.
+int estimateKcalBurnedFromSteps({
+  required int steps,
+  required int weightKg,
+}) {
+  if (steps <= 0 || weightKg <= 0) {
+    return 0;
+  }
+  return (steps * weightKg * 0.00057).round();
+}
+
 class KcalTargets {
   const KcalTargets({
     required this.kcal,
