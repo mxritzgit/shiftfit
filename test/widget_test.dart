@@ -231,7 +231,7 @@ void main() {
     );
   });
 
-  testWidgets('Food calendar lets future days keep separate planned kcal', (
+  testWidgets('Food calendar keeps past days separate from today', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -253,7 +253,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('food-date-chip-2')));
     await tester.pumpAndSettle();
-    expect(find.text('In 2 Tagen'), findsOneWidget);
+    expect(find.text('Vor 2 Tagen'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('meal-slot-breakfast')));
     await tester.pumpAndSettle();

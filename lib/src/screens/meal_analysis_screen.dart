@@ -26,7 +26,7 @@ class MealAnalysisScreen extends StatelessWidget {
     this.burnedKcal = 0,
     DateTime? selectedDate,
     ValueChanged<DateTime>? onDateSelected,
-    this.visibleFutureDays = 4,
+    this.visiblePastDays = 4,
     void Function(MealAnalysisResult, MealSlot)? onAddMeal,
     ValueChanged<int>? onAdjustDailyKcal,
     ValueChanged<String>? onRemoveFavorite,
@@ -55,7 +55,7 @@ class MealAnalysisScreen extends StatelessWidget {
   final int burnedKcal;
   final DateTime selectedDate;
   final ValueChanged<DateTime> onDateSelected;
-  final int visibleFutureDays;
+  final int visiblePastDays;
   final void Function(MealAnalysisResult, MealSlot) onAddMeal;
   final ValueChanged<int> onAdjustDailyKcal;
   final ValueChanged<String> onRemoveFavorite;
@@ -84,7 +84,7 @@ class MealAnalysisScreen extends StatelessWidget {
           SizedBox(height: boundedHeight ? 6 : 4),
           _FoodDateStrip(
             selectedDate: selectedDate,
-            futureDays: visibleFutureDays,
+            pastDays: visiblePastDays,
             onSelected: onDateSelected,
           ),
           SizedBox(height: boundedHeight ? 8 : 10),
@@ -106,7 +106,7 @@ class MealAnalysisScreen extends StatelessWidget {
           const SizedBox(height: 10),
           if (boundedHeight)
             Expanded(
-              flex: 27,
+              flex: 20,
               child: MacrosOverviewCard(
                 progress: macroProgress,
                 profile: profile,
@@ -120,7 +120,7 @@ class MealAnalysisScreen extends StatelessWidget {
           const SizedBox(height: 10),
           if (boundedHeight)
             Expanded(
-              flex: 37,
+              flex: 44,
               child: MealsTodayCard(
                 meals: loggedMeals,
                 onMealTap: (slot) => _openAddSheet(context, slot),
@@ -171,12 +171,12 @@ class _KcalHeader extends StatelessWidget {
 class _FoodDateStrip extends StatelessWidget {
   const _FoodDateStrip({
     required this.selectedDate,
-    required this.futureDays,
+    required this.pastDays,
     required this.onSelected,
   });
 
   final DateTime selectedDate;
-  final int futureDays;
+  final int pastDays;
   final ValueChanged<DateTime> onSelected;
 
   @override
@@ -184,8 +184,8 @@ class _FoodDateStrip extends StatelessWidget {
     final today = DateUtils.dateOnly(DateTime.now());
     final selected = DateUtils.dateOnly(selectedDate);
     final days = List<DateTime>.generate(
-      futureDays + 1,
-      (index) => today.add(Duration(days: index)),
+      pastDays + 1,
+      (index) => today.subtract(Duration(days: pastDays - index)),
     );
 
     return Container(
@@ -218,7 +218,7 @@ class _FoodDateStrip extends StatelessWidget {
                   ),
                 ),
                 const Text(
-                  'Planbar',
+                  'Verlauf',
                   style: TextStyle(
                     color: textMuted,
                     fontSize: 11,
@@ -235,7 +235,7 @@ class _FoodDateStrip extends StatelessWidget {
                   child: _FoodDateChip(
                     key: ValueKey('food-date-chip-$index'),
                     date: days[index],
-                    label: _chipLabel(index),
+                    label: _chipLabel(index, today, days[index]),
                     selected: DateUtils.isSameDay(days[index], selected),
                     onTap: () => onSelected(days[index]),
                   ),
@@ -249,17 +249,18 @@ class _FoodDateStrip extends StatelessWidget {
     );
   }
 
-  static String _chipLabel(int offset) {
+  static String _chipLabel(int index, DateTime today, DateTime date) {
+    final offset = today.difference(date).inDays;
     if (offset == 0) return 'Heute';
-    if (offset == 1) return 'Morgen';
-    return '+$offset';
+    if (offset == 1) return 'Gestern';
+    return '${date.day}.${date.month}.';
   }
 
   static String _selectedLabel(DateTime today, DateTime selected) {
-    final offset = selected.difference(today).inDays;
+    final offset = today.difference(selected).inDays;
     if (offset == 0) return 'Heute';
-    if (offset == 1) return 'Morgen';
-    return 'In $offset Tagen';
+    if (offset == 1) return 'Gestern';
+    return 'Vor $offset Tagen';
   }
 }
 
