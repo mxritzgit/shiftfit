@@ -37,7 +37,7 @@ class ShiftFitApp extends StatelessWidget {
       theme: buildShiftFitTheme(),
       home: AuthGate(
         authRepository: repository,
-        builder: (context, user) => ShiftFitHomePage(
+        builder: (context, user, freshLogin) => ShiftFitHomePage(
           // Key auf user.id pinnen: bei Sign-Out und neuem Login wird die
           // Page komplett neu erstellt (frischer State, eigene Sync-Instanz).
           key: ValueKey('home-${user.id}'),
@@ -48,6 +48,7 @@ class ShiftFitApp extends StatelessWidget {
           initialUserName: user.firstName,
           onSignOut: repository.signOut,
           sync: _syncFor(user.id),
+          showWelcome: freshLogin,
         ),
       ),
     );

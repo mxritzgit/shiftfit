@@ -13,7 +13,16 @@ class AuthGate extends StatefulWidget {
   });
 
   final AuthRepository authRepository;
-  final Widget Function(BuildContext context, FitPilotUser user) builder;
+
+  /// Builder bekommt den User UND ein Flag ob das eine frische
+  /// Anmeldung in dieser App-Session war. Damit kann die HomePage
+  /// die Welcome-Animation NUR bei tatsaechlichem Login/Register zeigen,
+  /// nicht bei jedem Kaltstart mit gueltiger Session.
+  final Widget Function(
+    BuildContext context,
+    FitPilotUser user,
+    bool freshLogin,
+  ) builder;
 
   @override
   State<AuthGate> createState() => _AuthGateState();
@@ -22,14 +31,29 @@ class AuthGate extends StatefulWidget {
 class _AuthGateState extends State<AuthGate> {
   StreamSubscription<FitPilotUser?>? _subscription;
   FitPilotUser? _user;
+  bool _freshLogin = false;
 
   @override
   void initState() {
     super.initState();
-    _user = widget.authRepository.currentUser;
-    _subscription = widget.authRepository.authStateChanges.listen((user) {
-      if (!mounted) return;
-      setState(() => _user = user);
+    final initial = widget.authRepository.currentUser;
+    _user = initial;
+    // Session-Restore bei App-Start zaehlt nicht als fresh login.
+    _freshLogin = false;
+    _subscription = widget.authRepository.authStateChanges.listen(_onAuthEvent);
+  }
+
+  void _onAuthEvent(FitPilotUser? user) {
+    if (!mounted) return;
+    final wasLoggedOut = _user == null;
+    final isLoggedIn = user != null;
+    setState(() {
+      _user = user;
+      if (wasLoggedOut && isLoggedIn) {
+        _freshLogin = true;
+      } else if (!isLoggedIn) {
+        _freshLogin = false;
+      }
     });
   }
 
@@ -39,10 +63,8 @@ class _AuthGateState extends State<AuthGate> {
     if (oldWidget.authRepository == widget.authRepository) return;
     _subscription?.cancel();
     _user = widget.authRepository.currentUser;
-    _subscription = widget.authRepository.authStateChanges.listen((user) {
-      if (!mounted) return;
-      setState(() => _user = user);
-    });
+    _freshLogin = false;
+    _subscription = widget.authRepository.authStateChanges.listen(_onAuthEvent);
   }
 
   @override
@@ -57,6 +79,6 @@ class _AuthGateState extends State<AuthGate> {
     if (user == null) {
       return AuthScreen(authRepository: widget.authRepository);
     }
-    return widget.builder(context, user);
+    return widget.builder(context, user, _freshLogin);
   }
 }

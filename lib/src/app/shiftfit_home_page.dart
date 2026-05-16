@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as dev;
 
 import 'package:flutter/material.dart';
 
@@ -45,6 +46,7 @@ class ShiftFitHomePage extends StatefulWidget {
     this.initialUserName = 'Moritz',
     this.onSignOut,
     this.sync,
+    this.showWelcome = false,
   });
 
   final MealAnalyzer? mealAnalyzer;
@@ -54,6 +56,11 @@ class ShiftFitHomePage extends StatefulWidget {
   final String initialUserName;
   final Future<void> Function()? onSignOut;
   final FitPilotSync? sync;
+
+  /// True nur bei frischem Login/Register in dieser App-Session.
+  /// Bei Session-Restore (App-Kaltstart mit gueltigem Token) false -
+  /// dann fliegt der User direkt aufs Home ohne Welcome-Phase.
+  final bool showWelcome;
 
   @override
   State<ShiftFitHomePage> createState() => _ShiftFitHomePageState();
@@ -105,6 +112,10 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
     // direkt - tests pumpen einen Frame und erwarten sofort das Home.
     final hasSync = widget.sync != null;
     _profileLoaded = !hasSync;
+    // Im Test/Preview (kein Sync) gehts direkt zum Home. Bei Production
+    // wird IMMER ein Splash gezeigt bis Daten geladen sind, damit kein
+    // Default-Flash sichtbar wird. Die Welcome-Celebration (Check-Icon
+    // + "Willkommen, X") laeuft drinnen nur wenn widget.showWelcome.
     _welcomeFinished = !hasSync;
     if (!hasSync && !_profileReadyCompleter.isCompleted) {
       _profileReadyCompleter.complete();
@@ -179,9 +190,30 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
   Future<T?> _safeLoad<T>(Future<T?> Function() loader) async {
     try {
       return await loader();
-    } catch (_) {
+    } catch (e, s) {
+      dev.log('FitPilot load failed',
+          error: e, stackTrace: s, name: 'fitpilot_sync');
       return null;
     }
+  }
+
+  /// Routes Sync-Fehler aus fire-and-forget Futures in eine sichtbare
+  /// Snackbar. Frueher haben wir die einfach geschluckt - mit dem
+  /// Resultat dass Mahlzeiten "still" verschwanden weil 42501 oder
+  /// Netzwerkfehler unsichtbar blieben.
+  void _reportSyncError(String operation, Object error) {
+    dev.log('$operation failed',
+        error: error, name: 'fitpilot_sync');
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+    messenger.removeCurrentSnackBar();
+    final msg = error.toString();
+    final short = msg.length > 140 ? '${msg.substring(0, 140)}…' : msg;
+    messenger.showSnackBar(SnackBar(
+      duration: const Duration(seconds: 4),
+      content: Text('Sync ($operation): $short'),
+    ));
   }
 
   /// Sammelt das aktuelle Daily-Log und schickt es debounced an
@@ -272,7 +304,9 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
       weightLog = weightLog.add(kg);
       lifetimeStats = lifetimeStats.incrementWeightLogs();
     });
-    widget.sync?.tracking.insertWeight(kg, ts).catchError((_) {});
+    widget.sync?.tracking
+        .insertWeight(kg, ts)
+        .catchError((e) => _reportSyncError('Gewicht', e));
   }
 
   void _resetWater() {
@@ -283,12 +317,16 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
   void _addCaffeine(int mg) {
     final ts = DateTime.now();
     setState(() => caffeineDay = caffeineDay.add(mg));
-    widget.sync?.tracking.insertCaffeine(mg, ts).catchError((_) {});
+    widget.sync?.tracking
+        .insertCaffeine(mg, ts)
+        .catchError((e) => _reportSyncError('Koffein', e));
   }
 
   void _resetCaffeine() {
     setState(() => caffeineDay = caffeineDay.reset());
-    widget.sync?.tracking.resetCaffeineDay(DateTime.now()).catchError((_) {});
+    widget.sync?.tracking
+        .resetCaffeineDay(DateTime.now())
+        .catchError((e) => _reportSyncError('Koffein-Reset', e));
   }
 
   void _addSteps(int amount) {
@@ -321,7 +359,9 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
     final entry = await showSleepLogSheet(context, initial: lastSleep);
     if (entry != null && mounted) {
       setState(() => lastSleep = entry);
-      widget.sync?.tracking.upsertSleep(entry).catchError((_) {});
+      widget.sync?.tracking
+          .upsertSleep(entry)
+          .catchError((e) => _reportSyncError('Schlaf', e));
     }
   }
 
@@ -428,7 +468,9 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         macroProgress = _macroProgressForFoodDate(DateTime.now());
       }
     });
-    widget.sync?.meals.insertLoggedMeal(entry).catchError((_) {});
+    widget.sync?.meals
+        .insertLoggedMeal(entry)
+        .catchError((e) => _reportSyncError('Mahlzeit', e));
   }
 
   void _adjustDailyTotalDelta(int delta) {
@@ -457,7 +499,9 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
     });
     final remoteUpdate = updated;
     if (remoteUpdate != null) {
-      widget.sync?.meals.updateLoggedMeal(remoteUpdate).catchError((_) {});
+      widget.sync?.meals
+          .updateLoggedMeal(remoteUpdate)
+          .catchError((e) => _reportSyncError('Mahlzeit-Update', e));
     }
   }
 
@@ -465,14 +509,18 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
     final id = FavoriteMeal.idFor(result);
     final entry = FavoriteMeal(id: id, result: result, addedAt: DateTime.now());
     favorites = [entry, ...favorites.where((f) => f.id != id)].take(5).toList();
-    widget.sync?.meals.upsertFavorite(entry).catchError((_) {});
+    widget.sync?.meals
+        .upsertFavorite(entry)
+        .catchError((e) => _reportSyncError('Favorit', e));
   }
 
   void _removeFavorite(String id) {
     setState(() {
       favorites = favorites.where((f) => f.id != id).toList();
     });
-    widget.sync?.meals.deleteFavorite(id).catchError((_) {});
+    widget.sync?.meals
+        .deleteFavorite(id)
+        .catchError((e) => _reportSyncError('Favorit-Delete', e));
   }
 
   Future<void> _openSettings() async {
@@ -576,6 +624,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
       return WelcomeScreen(
         firstName: userName,
         profileReady: _profileReadyCompleter.future,
+        celebrateLogin: widget.showWelcome,
         onComplete: () {
           if (mounted) setState(() => _welcomeFinished = true);
         },

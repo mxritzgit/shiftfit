@@ -11,6 +11,7 @@ class WelcomeScreen extends StatefulWidget {
     required this.firstName,
     required this.profileReady,
     required this.onComplete,
+    this.celebrateLogin = false,
   });
 
   /// Vorname fuer die Begruessung. Faellt auf "Pilot" zurueck.
@@ -22,6 +23,12 @@ class WelcomeScreen extends StatefulWidget {
   /// Wird gerufen wenn die Welcome-Animation komplett durchgelaufen ist
   /// und die Page sich zur HomePage weiterklicken soll.
   final VoidCallback onComplete;
+
+  /// True nur bei frischem Login/Register: dann spielt nach dem Load
+  /// noch die Check-Icon + "Willkommen, $firstName"-Animation. Bei
+  /// Session-Restore false -> direkt durchspringen sobald Daten da
+  /// sind (Splash dient nur dazu Default-Flashes zu vermeiden).
+  final bool celebrateLogin;
 
   @override
   State<WelcomeScreen> createState() => _WelcomeScreenState();
@@ -49,6 +56,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
   Future<void> _onProfileReady(void _) async {
     if (!mounted) return;
+    if (!widget.celebrateLogin) {
+      // Session-Restore: kurz ausfaden und direkt zum Home.
+      await _exitController.forward();
+      if (!mounted) return;
+      widget.onComplete();
+      return;
+    }
     setState(() => _showCheck = true);
     await _checkController.forward();
     await Future<void>.delayed(const Duration(milliseconds: 900));
