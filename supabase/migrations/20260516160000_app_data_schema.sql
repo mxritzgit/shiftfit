@@ -336,9 +336,26 @@ create trigger on_auth_user_created_stats
 
 -- ---------------------------------------------------------------------------
 -- 10) Backfill: bereits existierende auth.users-Eintraege (z.B. Test-
---     Accounts aus dem OAuth-Flow) bekommen jetzt nachtraeglich ihre
---     lifetime_stats-Zeile.
+--     Accounts aus dem OAuth-Flow, die VOR der profiles-Migration
+--     angelegt wurden) bekommen nachtraeglich ihre profiles- und
+--     lifetime_stats-Zeile. Idempotent via where-not-exists.
 -- ---------------------------------------------------------------------------
+insert into public.profiles (id, email, display_name)
+select
+  u.id,
+  u.email,
+  coalesce(
+    u.raw_user_meta_data->>'display_name',
+    u.raw_user_meta_data->>'full_name',
+    u.raw_user_meta_data->>'name',
+    u.raw_user_meta_data->>'user_name',
+    split_part(u.email, '@', 1),
+    ''
+  )
+from auth.users u
+left join public.profiles p on p.id = u.id
+where p.id is null;
+
 insert into public.lifetime_stats (user_id)
 select id from auth.users
 on conflict (user_id) do nothing;
