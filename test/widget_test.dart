@@ -23,6 +23,10 @@ void main() {
 
     expect(find.byKey(const ValueKey('screen-auth')), findsOneWidget);
     expect(find.byKey(const ValueKey('auth-hero')), findsOneWidget);
+    expect(find.byKey(const ValueKey('auth-apple-oauth')), findsOneWidget);
+    expect(find.byKey(const ValueKey('auth-google-oauth')), findsOneWidget);
+    expect(find.text('Mit Apple anmelden'), findsOneWidget);
+    expect(find.text('Mit Google anmelden'), findsOneWidget);
     expect(find.text('Einloggen'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('auth-toggle-register')));
@@ -59,6 +63,27 @@ void main() {
       'fitpilot123',
     );
     await tester.tap(find.byKey(const ValueKey('auth-submit')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('screen-today')), findsOneWidget);
+  });
+
+  testWidgets('Auth screen supports OAuth buttons', (WidgetTester tester) async {
+    final authRepository = InMemoryAuthRepository();
+    addTearDown(authRepository.dispose);
+
+    await tester.pumpWidget(ShiftFitApp(authRepository: authRepository));
+    await tester.pump();
+
+    await tester.tap(find.byKey(const ValueKey('auth-google-oauth')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('screen-today')), findsOneWidget);
+
+    await authRepository.signOut();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('auth-apple-oauth')));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('screen-today')), findsOneWidget);

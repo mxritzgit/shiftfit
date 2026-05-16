@@ -3,6 +3,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class FitPilotSupabaseConfig {
   const FitPilotSupabaseConfig._();
 
+  static const String oauthRedirectUrl = 'fitpilot://login-callback/';
+
   static const String url = String.fromEnvironment(
     'SUPABASE_URL',
     defaultValue: 'https://ftoozzvmduptrvrrrshb.supabase.co',

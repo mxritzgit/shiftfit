@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../config/supabase_config.dart';
+
 class FitPilotUser {
   const FitPilotUser({required this.id, this.email, this.displayName});
 
@@ -22,6 +24,20 @@ class FitPilotUser {
   }
 }
 
+enum FitPilotOAuthProvider { apple, google }
+
+extension FitPilotOAuthProviderLabel on FitPilotOAuthProvider {
+  OAuthProvider get supabaseProvider => switch (this) {
+    FitPilotOAuthProvider.apple => OAuthProvider.apple,
+    FitPilotOAuthProvider.google => OAuthProvider.google,
+  };
+
+  String get displayName => switch (this) {
+    FitPilotOAuthProvider.apple => 'Apple',
+    FitPilotOAuthProvider.google => 'Google',
+  };
+}
+
 abstract class AuthRepository {
   FitPilotUser? get currentUser;
   Stream<FitPilotUser?> get authStateChanges;
@@ -31,6 +47,7 @@ abstract class AuthRepository {
     required String password,
     required String displayName,
   });
+  Future<void> signInWithOAuth(FitPilotOAuthProvider provider);
   Future<void> signOut();
 }
 
@@ -72,12 +89,26 @@ class SupabaseAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<void> signInWithOAuth(FitPilotOAuthProvider provider) async {
+    final launched = await _client.auth.signInWithOAuth(
+      provider.supabaseProvider,
+      redirectTo: FitPilotSupabaseConfig.oauthRedirectUrl,
+    );
+    if (!launched) {
+      throw AuthException('${provider.displayName} Login wurde abgebrochen.');
+    }
+  }
+
+  @override
   Future<void> signOut() => _client.auth.signOut();
 
   FitPilotUser? _mapUser(User? user) {
     if (user == null) return null;
     final metadata = user.userMetadata ?? <String, dynamic>{};
-    final rawName = metadata['display_name'] ?? metadata['name'];
+    final rawName = metadata['display_name'] ??
+        metadata['full_name'] ??
+        metadata['name'] ??
+        metadata['user_name'];
     return FitPilotUser(
       id: user.id,
       email: user.email,
@@ -114,6 +145,9 @@ class PreviewAuthRepository implements AuthRepository {
   }) async {}
 
   @override
+  Future<void> signInWithOAuth(FitPilotOAuthProvider provider) async {}
+
+  @override
   Future<void> signOut() async {}
 }
 
@@ -146,6 +180,16 @@ class InMemoryAuthRepository implements AuthRepository {
     required String displayName,
   }) async {
     _user = FitPilotUser(id: 'test-user', email: email, displayName: displayName);
+    _controller.add(_user);
+  }
+
+  @override
+  Future<void> signInWithOAuth(FitPilotOAuthProvider provider) async {
+    _user = FitPilotUser(
+      id: 'oauth-test-user',
+      email: '${provider.displayName.toLowerCase()}@example.com',
+      displayName: '${provider.displayName} Pilot',
+    );
     _controller.add(_user);
   }
 
