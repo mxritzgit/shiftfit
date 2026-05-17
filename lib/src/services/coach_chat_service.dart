@@ -72,12 +72,24 @@ class CoachChatService {
 
   /// Schickt die User-Nachricht an die Edge Function. Bei 429 wird
   /// [CoachQuotaExceeded] geworfen - bei Netzwerk- oder Serverfehlern
-  /// [CoachChatException].
-  Future<CoachChatReply> send(String message) async {
+  /// [CoachChatException]. Optional kann ein komprimiertes Bild als Base64
+  /// mitgeschickt werden; die eigentliche Vision-/Safety-Logik bleibt
+  /// serverseitig in Supabase.
+  Future<CoachChatReply> send(
+    String message, {
+    String? imageBase64,
+    String? imageMimeType,
+  }) async {
     try {
       final res = await _client.functions.invoke(
         'coach-chat',
-        body: {'message': message},
+        body: {
+          'message': message,
+          if (imageBase64 != null && imageBase64.isNotEmpty)
+            'image_base64': imageBase64,
+          if (imageMimeType != null && imageMimeType.isNotEmpty)
+            'image_mime_type': imageMimeType,
+        },
       );
       final status = res.status ?? 0;
       final data = res.data;

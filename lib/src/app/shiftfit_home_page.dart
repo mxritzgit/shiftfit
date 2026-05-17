@@ -708,7 +708,10 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         onProfilePressed: _openProfile,
         profileInitial: _profileInitial,
       ),
-      5 => CoachChatScreen(service: widget.sync?.coachChat),
+      5 => CoachChatScreen(
+        service: widget.sync?.coachChat,
+        userName: userName,
+      ),
       3 => MealAnalysisScreen(
         analyzer: widget.mealAnalyzer,
         productService: widget.productService,

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 /// Eine einzelne Nachricht im Coach-Chat. role ist user|assistant - die
 /// system-Rolle bleibt serverseitig und wird hier nicht modelliert.
 class ChatMessage {
@@ -7,6 +9,8 @@ class ChatMessage {
     required this.content,
     required this.createdAt,
     this.refusal = false,
+    this.imageBytes,
+    this.mediaLabel,
   });
 
   final String id;
@@ -14,6 +18,12 @@ class ChatMessage {
   final String content;
   final DateTime createdAt;
   final bool refusal;
+
+  /// Nur fuer frisch gesendete lokale Nachrichten. Historie aus Supabase
+  /// speichert aktuell bewusst keine Bilddaten, damit die Tabelle schlank und
+  /// privat bleibt.
+  final Uint8List? imageBytes;
+  final String? mediaLabel;
 
   factory ChatMessage.fromRow(Map<String, dynamic> row) {
     final roleRaw = row['role']?.toString() ?? 'assistant';
@@ -33,6 +43,8 @@ class ChatMessage {
       content: content ?? this.content,
       createdAt: createdAt,
       refusal: refusal ?? this.refusal,
+      imageBytes: imageBytes,
+      mediaLabel: mediaLabel,
     );
   }
 }

@@ -22,9 +22,10 @@
 
 const MODEL_ANSWER     = "x-ai/grok-4.3";
 const MODEL_CLASSIFIER = "x-ai/grok-4.3";
-const DAILY_LIMIT      = 5;
-const MAX_INPUT_CHARS  = 1000;
-const HISTORY_LIMIT    = 10;
+const DAILY_LIMIT            = 5;
+const MAX_INPUT_CHARS        = 1000;
+const MAX_IMAGE_BASE64_CHARS = 6_000_000;
+const HISTORY_LIMIT          = 10;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -57,8 +58,8 @@ const BANNED_PATTERNS: { pattern: RegExp; reason: string }[] = [
   { pattern: /\b(ignor(e|iere)\s*(all|alle|deine|previous|vorher|the)\s*(instruction|anweisung|prompt|rule)|system\s*prompt|du\s*bist\s*jetzt|act\s*as|act\s*like|jailbreak|dan\s*mode|developer\s*mode|reveal\s*(your|the)\s*prompt|zeig\s*(mir|uns)?\s*(deinen|den)\s*system)/i, reason: "prompt_injection" },
 ];
 
-function preFilter(message: string): { ok: true } | { ok: false; reason: string } {
-  if (!message || message.trim().length === 0) {
+function preFilter(message: string, hasImage = false): { ok: true } | { ok: false; reason: string } {
+  if (!hasImage && (!message || message.trim().length === 0)) {
     return { ok: false, reason: "empty" };
   }
   if (message.length > MAX_INPUT_CHARS) {
@@ -85,6 +86,13 @@ YOUR SCOPE:
 - Nutrition for athletes: macros, calories, meal timing, hydration, whole foods.
 - Training plans, exercises, technique cues, progression, frequency.
 - Light coach-style smalltalk: greetings ("hi", "hallo", "привет"), thanks, "how are you", "good morning", short check-ins, motivation. Reply warmly in 1-2 sentences and gently invite them to ask about training or nutrition.
+
+VISUAL INPUT RULES:
+- You may analyze images when the user's intent is fitness, body progress, exercise form, nutrition, meals, recovery, or coaching.
+- Be useful but respectful: a flexed arm/biceps, shirtless progress photo, gym form clip frame, meal photo, supplement label, or body-composition check is allowed. Give honest feedback without insults, sexual comments, humiliation, or body-shaming.
+- If an image contains explicit sexual nudity, sexual acts, minors in sexualized context, graphic gore, or content unrelated to fitness/nutrition, politely refuse in the user's language and start with \`__REFUSE__ \`.
+- Do not identify private people or infer sensitive identity attributes. If uncertain, keep the answer general and coach-focused.
+- Never give medical diagnosis from an image; suggest a doctor/physio for pain, injury, rash, swelling, or symptoms.
 
 WHAT YOU DO NOT DO (politely refuse, in the user's language; start with \`__REFUSE__\`):
 1. NO medical diagnoses, medication- or steroid recommendations. If they describe symptoms, point them to a doctor / physio.
@@ -182,12 +190,34 @@ async function classify(
 // Layer 3 - eigentliche Antwort
 // ---------------------------------------------------------------------------
 interface HistoryMessage { role: "user" | "assistant"; content: string }
+type UserContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
+
+function safeImageMimeType(raw: string): string {
+  const mime = raw.toLowerCase().trim();
+  if (["image/jpeg", "image/png", "image/webp"].includes(mime)) return mime;
+  return "image/jpeg";
+}
+
+function makeImageDataUrl(imageBase64: string, imageMimeType: string): string {
+  const clean = imageBase64.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "");
+  return `data:${safeImageMimeType(imageMimeType)};base64,${clean}`;
+}
 
 async function answer(
   apiKey: string,
   history: HistoryMessage[],
   userMessage: string,
+  image?: { base64: string; mimeType: string },
 ): Promise<{ reply: string; refusal: boolean }> {
+  const userContent: string | UserContentPart[] = image
+    ? [
+        { type: "text", text: userMessage },
+        { type: "image_url", image_url: { url: makeImageDataUrl(image.base64, image.mimeType) } },
+      ]
+    : userMessage;
+
   const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -201,7 +231,7 @@ async function answer(
       messages: [
         { role: "system", content: ANSWER_SYSTEM_PROMPT },
         ...history,
-        { role: "user", content: userMessage },
+        { role: "user", content: userContent },
       ],
       temperature: 0.5,
       max_tokens: 600,
@@ -390,13 +420,32 @@ Deno.serve(async (req: Request) => {
   let body: any;
   try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
   const message = typeof body?.message === "string" ? body.message.trim() : "";
+  const imageBase64Raw = typeof body?.image_base64 === "string" ? body.image_base64.trim() : "";
+  const imageBase64 = imageBase64Raw.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "");
+  const imageMimeType = typeof body?.image_mime_type === "string"
+    ? safeImageMimeType(body.image_mime_type)
+    : "image/jpeg";
+  const hasImage = imageBase64.length > 0;
+
+  if (hasImage && imageBase64.length > MAX_IMAGE_BASE64_CHARS) {
+    return json({
+      error: "image_too_large",
+      reply: "Das Bild ist zu gross. Bitte schick ein kleineres oder komprimiertes Bild.",
+      refusal: true,
+      refusal_reason: "image_too_large",
+    }, 413);
+  }
+
+  if (hasImage && !/^[A-Za-z0-9+/=\r\n]+$/.test(imageBase64)) {
+    return json({ error: "Invalid image_base64" }, 400);
+  }
 
   // ---------------------------------------------------------------- LAYER 1
   // Pre-Filter -> kein Quota-Verbrauch, kein LLM-Call. Wir loggen den
   // Versuch in chat_messages aber lassen die Quota komplett unangetastet.
   // Response laesst `remaining` weg, damit der Client seinen Zaehler nicht
   // veraendert (Flutter behandelt fehlendes Feld als "kein Update").
-  const pre = preFilter(message);
+  const pre = preFilter(message, hasImage);
   if (!pre.ok) {
     const reply = refusalForReason(pre.reason);
     await storeMessage(serviceKey, supabaseUrl, {
@@ -417,18 +466,20 @@ Deno.serve(async (req: Request) => {
   // unter Fitness/Ernaehrung faellt. Der LLM-Call selber ist mit max 50
   // Tokens billig genug, dass wir den Missbrauch dafuer in Kauf nehmen
   // (L1 catched die ueblichen Hijack-Versuche eh schon ohne Call).
-  const cls = await classify(openRouterKey, message);
-  if (cls.category === "medical_risk" || cls.category === "off_topic" || cls.category === "injection") {
-    const reply = refusalForReason(cls.category);
-    await storeMessage(serviceKey, supabaseUrl, {
-      user_id: userId, role: "user", content: message,
-      refusal: false,
-    });
-    await storeMessage(serviceKey, supabaseUrl, {
-      user_id: userId, role: "assistant", content: reply,
-      refusal: true, refusal_reason: `classifier_${cls.category}`,
-    });
-    return json({ reply, refusal: true, refusal_reason: cls.category }, 200);
+  if (!hasImage) {
+    const cls = await classify(openRouterKey, message);
+    if (cls.category === "medical_risk" || cls.category === "off_topic" || cls.category === "injection") {
+      const reply = refusalForReason(cls.category);
+      await storeMessage(serviceKey, supabaseUrl, {
+        user_id: userId, role: "user", content: message,
+        refusal: false,
+      });
+      await storeMessage(serviceKey, supabaseUrl, {
+        user_id: userId, role: "assistant", content: reply,
+        refusal: true, refusal_reason: `classifier_${cls.category}`,
+      });
+      return json({ reply, refusal: true, refusal_reason: cls.category }, 200);
+    }
   }
 
   // ---------------------------------------------------------------- LAYER 3
@@ -462,7 +513,12 @@ Deno.serve(async (req: Request) => {
   let reply: string;
   let refusal = false;
   try {
-    const out = await answer(openRouterKey, history, message);
+    const out = await answer(
+      openRouterKey,
+      history,
+      message,
+      hasImage ? { base64: imageBase64, mimeType: imageMimeType } : undefined,
+    );
     reply = out.reply;
     refusal = out.refusal;
   } catch (e) {

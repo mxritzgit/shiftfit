@@ -40,9 +40,13 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>FitPilot braucht Kamerazugriff, damit du Mahlzeiten fotografieren und analysieren kannst.</string>
+	<string>FitPilot braucht Kamerazugriff, damit du Mahlzeiten, Training oder Coach-Bilder aufnehmen und analysieren kannst.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>FitPilot braucht Mikrofonzugriff, damit du deinem Coach Fragen per Sprache stellen kannst.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>FitPilot nutzt Spracherkennung, um deine gesprochenen Coach-Fragen in Text umzuwandeln.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>FitPilot braucht Zugriff auf deine Fotobibliothek, damit du Mahlzeiten aus der Galerie analysieren kannst.</string>
+	<string>FitPilot braucht Zugriff auf deine Fotobibliothek, damit du Mahlzeiten, Training oder Coach-Bilder aus der Galerie analysieren kannst.</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>FitPilot liest deine Schrittzahl aus Apple Health, damit dein Tagesziel automatisch aktualisiert wird.</string>
 	<key>NSHealthUpdateUsageDescription</key>
