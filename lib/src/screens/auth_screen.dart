@@ -5,6 +5,10 @@ import 'package:flutter/material.dart';
 import '../auth/auth_repository.dart';
 import '../theme/app_colors.dart';
 
+/// FitPilot Auth-Screen. Editorial Komposition: Wordmark oben, zentrierte
+/// Eyebrow-Headline mit serif-italic Kontrast-Wort, Underline-Inputs mit
+/// zentriertem Text, Pill-Buttons, mono "ODER"-Divider. Single-Screen mit
+/// _isRegister-Toggle (Form-Logik unveraendert).
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key, required this.authRepository});
 
@@ -13,6 +17,13 @@ class AuthScreen extends StatefulWidget {
   @override
   State<AuthScreen> createState() => _AuthScreenState();
 }
+
+// Lokale Design-Tokens. Nutzen unsere Theme-Farben + ein paar extra
+// Tones (dimmer Placeholder, solid Line) die nur hier auf der Auth-Page
+// gebraucht werden.
+const _line = Color(0xFF232327);
+const _dim = Color(0xFF55555C);
+const _ink = bg; // Text auf Lime-Pill
 
 class _AuthScreenState extends State<AuthScreen> {
   final _nameController = TextEditingController();
@@ -41,7 +52,6 @@ class _AuthScreenState extends State<AuthScreen> {
       _message = null;
       _oauthLoading = provider;
     });
-
     try {
       await widget.authRepository.signInWithOAuth(provider);
     } catch (error) {
@@ -137,51 +147,57 @@ class _AuthScreenState extends State<AuthScreen> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             return SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
               child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight - 36,
-                  maxWidth: 400,
-                ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const SizedBox(height: 12),
-                      const _BrandHeader(),
-                      const SizedBox(height: 36),
-                      _OAuthSection(
-                        oauthLoading: _oauthLoading,
-                        busy: _busy,
-                        onGoogle: () =>
-                            _startOAuth(FitPilotOAuthProvider.google),
-                      ),
-                      const SizedBox(height: 22),
-                      const _OrDivider(),
-                      const SizedBox(height: 22),
-                      _EmailForm(
-                        isRegister: _isRegister,
-                        loading: _loading,
-                        busy: _busy,
-                        passwordVisible: _passwordVisible,
-                        nameController: _nameController,
-                        emailController: _emailController,
-                        passwordController: _passwordController,
-                        error: _error,
-                        message: _message,
-                        onTogglePassword: () => setState(
-                          () => _passwordVisible = !_passwordVisible,
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(28, 16, 28, 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        const _Wordmark(),
+                        const Spacer(),
+                        _HeroHeadline(
+                          eyebrow: _isRegister
+                              ? 'KONTO ERSTELLEN'
+                              : 'WILLKOMMEN ZURÜCK',
+                          lineA: _isRegister ? 'Starte' : 'Bereit',
+                          italic: _isRegister ? 'durch' : 'abzuheben',
+                          lineB: _isRegister ? '.' : '?',
                         ),
-                        onSubmit: _submit,
-                      ),
-                      const SizedBox(height: 18),
-                      _ModeFooter(
-                        isRegister: _isRegister,
-                        onChanged: _setMode,
-                      ),
-                      const SizedBox(height: 6),
-                    ],
+                        const SizedBox(height: 32),
+                        _EmailForm(
+                          isRegister: _isRegister,
+                          loading: _loading,
+                          busy: _busy,
+                          passwordVisible: _passwordVisible,
+                          nameController: _nameController,
+                          emailController: _emailController,
+                          passwordController: _passwordController,
+                          error: _error,
+                          message: _message,
+                          onTogglePassword: () => setState(
+                            () => _passwordVisible = !_passwordVisible,
+                          ),
+                          onSubmit: _submit,
+                        ),
+                        const SizedBox(height: 22),
+                        const _OrDivider(),
+                        const SizedBox(height: 16),
+                        _GoogleButton(
+                          enabled: !_busy,
+                          loading: _oauthLoading == FitPilotOAuthProvider.google,
+                          onTap: () =>
+                              _startOAuth(FitPilotOAuthProvider.google),
+                        ),
+                        const Spacer(),
+                        const SizedBox(height: 16),
+                        _ModeFooter(
+                          isRegister: _isRegister,
+                          onChanged: _setMode,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -193,255 +209,256 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 }
 
-class _BrandHeader extends StatelessWidget {
-  const _BrandHeader();
+// ═════════════════════════════════════════════════════════════════════
+// Wordmark — Paper-Plane Glyph in lime Kreis + Caps-Lock Wordmark
+// ═════════════════════════════════════════════════════════════════════
 
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      key: const ValueKey('auth-hero'),
-      children: [
-        Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            color: lime,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: lime.withValues(alpha: 0.25),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: const Icon(Icons.bolt_rounded, color: bg, size: 32),
-        ),
-        const SizedBox(height: 18),
-        const Text(
-          'FitPilot',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.8,
-            height: 1.0,
-          ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Plan, Kalorien und Fortschritt.\nIn einer App.',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: textMuted,
-            fontSize: 15,
-            height: 1.35,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _OAuthSection extends StatelessWidget {
-  const _OAuthSection({
-    required this.oauthLoading,
-    required this.busy,
-    required this.onGoogle,
-  });
-
-  final FitPilotOAuthProvider? oauthLoading;
-  final bool busy;
-  final VoidCallback onGoogle;
-
-  @override
-  Widget build(BuildContext context) {
-    // Apple Sign-In braucht einen Apple Developer Account ($99/Jahr) -
-    // bis dahin nur Google + E-Mail. Provider-Enum bleibt fuer spaeter
-    // erhalten, der Button taucht hier einfach nicht auf.
-    return _ProviderButton(
-      keyValue: const ValueKey('auth-google-oauth'),
-      label: 'Mit Google anmelden',
-      icon: const _GoogleGLogo(),
-      loading: oauthLoading == FitPilotOAuthProvider.google,
-      enabled: !busy,
-      onTap: onGoogle,
-    );
-  }
-}
-
-class _ProviderButton extends StatelessWidget {
-  const _ProviderButton({
-    required this.keyValue,
-    required this.label,
-    required this.icon,
-    required this.loading,
-    required this.enabled,
-    required this.onTap,
-  });
-
-  final Key keyValue;
-  final String label;
-  final Widget icon;
-  final bool loading;
-  final bool enabled;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Opacity(
-      opacity: enabled ? 1 : 0.55,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: enabled
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.25),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ]
-              : null,
-        ),
-        child: Material(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          child: InkWell(
-            key: keyValue,
-            borderRadius: BorderRadius.circular(12),
-            onTap: enabled ? onTap : null,
-            child: SizedBox(
-              height: 50,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 18),
-                      child: loading
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.black,
-                              ),
-                            )
-                          : icon,
-                    ),
-                  ),
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      color: Color(0xFF111111),
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: -0.1,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GoogleGLogo extends StatelessWidget {
-  const _GoogleGLogo();
-
-  @override
-  Widget build(BuildContext context) {
-    return const SizedBox(
-      width: 20,
-      height: 20,
-      child: CustomPaint(painter: _GoogleGPainter()),
-    );
-  }
-}
-
-class _GoogleGPainter extends CustomPainter {
-  const _GoogleGPainter();
-
-  static const _blue = Color(0xFF4285F4);
-  static const _red = Color(0xFFEA4335);
-  static const _yellow = Color(0xFFFBBC05);
-  static const _green = Color(0xFF34A853);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final r = size.width / 2;
-    final stroke = r * 0.42;
-    final ringRect = Rect.fromCircle(
-      center: Offset(r, r),
-      radius: r - stroke / 2,
-    );
-
-    double rad(double deg) => deg * math.pi / 180;
-
-    final ring = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke
-      ..strokeCap = StrokeCap.butt;
-
-    // 0° = east (3 o'clock), positive = clockwise (Flutter Canvas convention).
-    // Gap from 335° back through 25° (50° gap on the right) - that's where the
-    // inner blue bar exits the ring. Color rotation matches the official mark:
-    //   Green  25° → 95°  (bottom-right quadrant)
-    //   Yellow 95° → 185° (bottom-left)
-    //   Red   185° → 285° (top-left arc)
-    //   Blue  285° → 335° (top-right, ends just above the bar)
-    canvas.drawArc(ringRect, rad(25), rad(70), false, ring..color = _green);
-    canvas.drawArc(ringRect, rad(95), rad(90), false, ring..color = _yellow);
-    canvas.drawArc(ringRect, rad(185), rad(100), false, ring..color = _red);
-    canvas.drawArc(ringRect, rad(285), rad(50), false, ring..color = _blue);
-
-    // Inner horizontal bar, blue, exits through the gap to the right.
-    // Right edge sits flush against the inner ring radius; left edge stops
-    // just past the vertical center to keep the classic G silhouette.
-    final innerR = r - stroke;
-    final barRect = Rect.fromLTRB(
-      r - stroke * 0.15,
-      r - stroke / 2,
-      r + innerR,
-      r + stroke / 2,
-    );
-    canvas.drawRect(barRect, Paint()..color = _blue);
-  }
-
-  @override
-  bool shouldRepaint(covariant _GoogleGPainter oldDelegate) => false;
-}
-
-class _OrDivider extends StatelessWidget {
-  const _OrDivider();
+class _Wordmark extends StatelessWidget {
+  const _Wordmark();
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      children: const [
-        Expanded(child: Divider(color: hairline, height: 1)),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 14),
-          child: Text(
-            'oder per E-Mail',
-            style: TextStyle(
-              color: textMuted,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.2,
-            ),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 18,
+          height: 18,
+          decoration: const BoxDecoration(
+            color: lime,
+            shape: BoxShape.circle,
+          ),
+          child: const CustomPaint(painter: _PaperPlanePainter()),
+        ),
+        const SizedBox(width: 10),
+        const Text(
+          'FITPILOT',
+          style: TextStyle(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.8,
+            color: textPrimary,
           ),
         ),
-        Expanded(child: Divider(color: hairline, height: 1)),
       ],
     );
   }
 }
+
+class _PaperPlanePainter extends CustomPainter {
+  const _PaperPlanePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()
+      ..color = _ink
+      ..style = PaintingStyle.fill;
+    final path = Path()
+      ..moveTo(size.width * 0.18, size.height * 0.55)
+      ..lineTo(size.width * 0.86, size.height * 0.18)
+      ..lineTo(size.width * 0.62, size.height * 0.86)
+      ..lineTo(size.width * 0.50, size.height * 0.62)
+      ..close();
+    canvas.drawPath(path, p);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// Hero — Eyebrow mit Hairlines + serif-italic Kontrast-Wort
+// ═════════════════════════════════════════════════════════════════════
+
+class _HeroHeadline extends StatelessWidget {
+  const _HeroHeadline({
+    required this.eyebrow,
+    required this.lineA,
+    required this.italic,
+    required this.lineB,
+  });
+  final String eyebrow, lineA, italic, lineB;
+
+  @override
+  Widget build(BuildContext context) {
+    const size = 42.0;
+    return Column(
+      key: const ValueKey('auth-hero'),
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(width: 20, height: 1, color: lime),
+            const SizedBox(width: 10),
+            Text(
+              eyebrow,
+              style: const TextStyle(
+                fontFamily: 'Roboto Mono',
+                fontSize: 10,
+                color: lime,
+                letterSpacing: 2,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Container(width: 20, height: 1, color: lime),
+          ],
+        ),
+        const SizedBox(height: 16),
+        RichText(
+          textAlign: TextAlign.center,
+          text: TextSpan(
+            style: const TextStyle(
+              fontSize: size,
+              height: 1.02,
+              letterSpacing: -size * 0.03,
+              fontWeight: FontWeight.w500,
+              color: textPrimary,
+            ),
+            children: [
+              TextSpan(text: '$lineA '),
+              TextSpan(
+                text: italic,
+                style: const TextStyle(
+                  fontFamily: 'Georgia',
+                  fontSize: size,
+                  height: 1.02,
+                  letterSpacing: -size * 0.03,
+                  fontWeight: FontWeight.w400,
+                  fontStyle: FontStyle.italic,
+                  color: textPrimary,
+                ),
+              ),
+              TextSpan(text: lineB),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// Underline-Field — Mono-Label, zentrierter Input, dünner Underline
+// ═════════════════════════════════════════════════════════════════════
+
+class _UnderlineField extends StatefulWidget {
+  const _UnderlineField({
+    required this.fieldKey,
+    required this.label,
+    required this.hint,
+    required this.controller,
+    this.enabled = true,
+    this.obscure = false,
+    this.keyboardType,
+    this.textInputAction,
+    this.autofillHints,
+    this.onSubmitted,
+    this.trailing,
+  });
+
+  final Key fieldKey;
+  final String label;
+  final String hint;
+  final TextEditingController controller;
+  final bool enabled;
+  final bool obscure;
+  final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final Iterable<String>? autofillHints;
+  final ValueChanged<String>? onSubmitted;
+  final Widget? trailing;
+
+  @override
+  State<_UnderlineField> createState() => _UnderlineFieldState();
+}
+
+class _UnderlineFieldState extends State<_UnderlineField> {
+  final _focus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _focus.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                widget.label,
+                style: const TextStyle(
+                  fontFamily: 'Roboto Mono',
+                  fontSize: 9,
+                  color: textMuted,
+                  letterSpacing: 1.6,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            if (widget.trailing != null) widget.trailing!,
+          ],
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          key: widget.fieldKey,
+          controller: widget.controller,
+          focusNode: _focus,
+          enabled: widget.enabled,
+          obscureText: widget.obscure,
+          keyboardType: widget.keyboardType,
+          textInputAction: widget.textInputAction,
+          autofillHints: widget.autofillHints,
+          onSubmitted: widget.onSubmitted,
+          textAlign: TextAlign.center,
+          cursorColor: lime,
+          cursorWidth: 1.5,
+          style: const TextStyle(
+            fontSize: 17,
+            color: textPrimary,
+            fontWeight: FontWeight.w400,
+          ),
+          decoration: InputDecoration(
+            hintText: widget.hint,
+            hintStyle: const TextStyle(
+              fontSize: 17,
+              color: _dim,
+            ),
+            isDense: true,
+            filled: false,
+            contentPadding: const EdgeInsets.only(bottom: 10),
+            enabledBorder: const UnderlineInputBorder(
+              borderSide: BorderSide(color: _line, width: 1),
+            ),
+            focusedBorder: const UnderlineInputBorder(
+              borderSide: BorderSide(color: lime, width: 1),
+            ),
+            disabledBorder: const UnderlineInputBorder(
+              borderSide: BorderSide(color: _line, width: 1),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// Email-Form — Name (nur Register), Email, Password mit Eye-Toggle,
+// Inline Note bei Error/Message, Lime-Pill Submit
+// ═════════════════════════════════════════════════════════════════════
 
 class _EmailForm extends StatelessWidget {
   const _EmailForm({
@@ -477,109 +494,280 @@ class _EmailForm extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AnimatedSize(
-          duration: const Duration(milliseconds: 180),
+          duration: const Duration(milliseconds: 200),
           curve: Curves.easeOutCubic,
           alignment: Alignment.topCenter,
           child: isRegister
               ? Padding(
                   key: const ValueKey('name-field-wrap'),
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: TextField(
-                    key: const ValueKey('auth-name-field'),
+                  padding: const EdgeInsets.only(bottom: 22),
+                  child: _UnderlineField(
+                    fieldKey: const ValueKey('auth-name-field'),
+                    label: 'NAME',
+                    hint: 'Dein Name',
                     controller: nameController,
                     enabled: !busy,
                     textInputAction: TextInputAction.next,
                     autofillHints: const [AutofillHints.name],
-                    decoration: const InputDecoration(
-                      labelText: 'Name',
-                      prefixIcon: Icon(Icons.person_outline_rounded),
-                    ),
                   ),
                 )
               : const SizedBox.shrink(key: ValueKey('no-name-field')),
         ),
-        TextField(
-          key: const ValueKey('auth-email-field'),
+        _UnderlineField(
+          fieldKey: const ValueKey('auth-email-field'),
+          label: 'E-MAIL',
+          hint: 'du@beispiel.de',
           controller: emailController,
           enabled: !busy,
           keyboardType: TextInputType.emailAddress,
           textInputAction: TextInputAction.next,
           autofillHints: const [AutofillHints.email],
-          decoration: const InputDecoration(
-            labelText: 'E-Mail',
-            prefixIcon: Icon(Icons.mail_outline_rounded),
-          ),
         ),
-        const SizedBox(height: 10),
-        TextField(
-          key: const ValueKey('auth-password-field'),
+        const SizedBox(height: 22),
+        _UnderlineField(
+          fieldKey: const ValueKey('auth-password-field'),
+          label: 'PASSWORT',
+          hint: '••••••••',
           controller: passwordController,
           enabled: !busy,
-          obscureText: !passwordVisible,
+          obscure: !passwordVisible,
           textInputAction: TextInputAction.done,
-          onSubmitted: (_) => busy ? null : onSubmit(),
           autofillHints: isRegister
               ? const [AutofillHints.newPassword]
               : const [AutofillHints.password],
-          decoration: InputDecoration(
-            labelText: 'Passwort',
-            prefixIcon: const Icon(Icons.lock_outline_rounded),
-            suffixIcon: IconButton(
-              key: const ValueKey('auth-toggle-password'),
-              onPressed: busy ? null : onTogglePassword,
-              icon: Icon(
+          onSubmitted: (_) => busy ? null : onSubmit(),
+          trailing: GestureDetector(
+            key: const ValueKey('auth-toggle-password'),
+            onTap: busy ? null : onTogglePassword,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: Icon(
                 passwordVisible
                     ? Icons.visibility_off_rounded
                     : Icons.visibility_rounded,
+                size: 16,
                 color: textMuted,
               ),
             ),
           ),
         ),
         if (error != null) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: 16),
           _InlineNote(text: error!, isError: true),
         ],
         if (message != null) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: 16),
           _InlineNote(text: message!, isError: false),
         ],
-        const SizedBox(height: 14),
-        SizedBox(
-          height: 52,
-          child: FilledButton(
-            key: const ValueKey('auth-submit'),
-            style: FilledButton.styleFrom(
-              backgroundColor: lime,
-              foregroundColor: bg,
-              disabledBackgroundColor: lime.withValues(alpha: 0.4),
-              disabledForegroundColor: bg.withValues(alpha: 0.6),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              textStyle: const TextStyle(
-                fontSize: 15.5,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.2,
-              ),
-            ),
-            onPressed: busy ? null : onSubmit,
-            child: loading
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.2,
-                      color: bg,
-                    ),
-                  )
-                : Text(isRegister ? 'Account erstellen' : 'Einloggen'),
-          ),
+        const SizedBox(height: 30),
+        _LimePill(
+          buttonKey: const ValueKey('auth-submit'),
+          label: isRegister ? 'Account erstellen' : 'Einloggen',
+          loading: loading,
+          enabled: !busy,
+          onTap: onSubmit,
         ),
       ],
     );
   }
 }
+
+// ═════════════════════════════════════════════════════════════════════
+// Lime-Pill — Primary CTA, weiches Disabled-Surface
+// ═════════════════════════════════════════════════════════════════════
+
+class _LimePill extends StatelessWidget {
+  const _LimePill({
+    required this.buttonKey,
+    required this.label,
+    required this.loading,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final Key buttonKey;
+  final String label;
+  final bool loading;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final disabled = !enabled;
+    return GestureDetector(
+      key: buttonKey,
+      onTap: disabled ? null : onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 17),
+        decoration: BoxDecoration(
+          color: disabled ? surface : lime,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (loading)
+              const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.2,
+                  color: _ink,
+                ),
+              )
+            else
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: disabled ? textMuted : _ink,
+                  letterSpacing: -0.1,
+                ),
+              ),
+            if (!loading) ...[
+              const SizedBox(width: 8),
+              Icon(
+                Icons.arrow_forward_rounded,
+                size: 17,
+                color: disabled ? textMuted : _ink,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// Google-Button — Outlined Pill mit 4-Farb-G-Glyph
+// ═════════════════════════════════════════════════════════════════════
+
+class _GoogleButton extends StatelessWidget {
+  const _GoogleButton({
+    required this.enabled,
+    required this.loading,
+    required this.onTap,
+  });
+
+  final bool enabled;
+  final bool loading;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      key: const ValueKey('auth-google-oauth'),
+      onTap: enabled ? onTap : null,
+      behavior: HitTestBehavior.opaque,
+      child: Opacity(
+        opacity: enabled ? 1 : 0.55,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 18),
+          decoration: BoxDecoration(
+            border: Border.all(color: _line),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 18,
+                height: 18,
+                child: loading
+                    ? const CircularProgressIndicator(
+                        strokeWidth: 2.2, color: textPrimary)
+                    : const CustomPaint(painter: _GoogleGPainter()),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Mit Google anmelden',
+                style: TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w500,
+                  color: textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GoogleGPainter extends CustomPainter {
+  const _GoogleGPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final r = size.width / 2 - 1;
+    const stroke = 2.6;
+
+    void arc(double startDeg, double sweepDeg, Color color) {
+      final p = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..color = color;
+      canvas.drawArc(
+        Rect.fromCircle(center: Offset(cx, cy), radius: r),
+        startDeg * math.pi / 180,
+        sweepDeg * math.pi / 180,
+        false,
+        p,
+      );
+    }
+
+    arc(-90, 90, const Color(0xFF4285F4));
+    arc(0, 90, const Color(0xFF34A853));
+    arc(90, 90, const Color(0xFFFBBC05));
+    arc(180, 90, const Color(0xFFEA4335));
+
+    final p = Paint()..color = const Color(0xFF4285F4);
+    canvas.drawRect(Rect.fromLTWH(cx, cy - 1.3, r, 2.6), p);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// ODER-Divider — Mono Caps, hauchdünne Lines
+// ═════════════════════════════════════════════════════════════════════
+
+class _OrDivider extends StatelessWidget {
+  const _OrDivider();
+  @override
+  Widget build(BuildContext context) {
+    return Row(children: const [
+      Expanded(child: Divider(color: _line, height: 1)),
+      SizedBox(width: 12),
+      Text(
+        'ODER',
+        style: TextStyle(
+          fontFamily: 'Roboto Mono',
+          fontSize: 9,
+          color: _dim,
+          letterSpacing: 1.8,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      SizedBox(width: 12),
+      Expanded(child: Divider(color: _line, height: 1)),
+    ]);
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// Inline-Note — kleine Status-Zeile fuer Error/Message
+// ═════════════════════════════════════════════════════════════════════
 
 class _InlineNote extends StatelessWidget {
   const _InlineNote({required this.text, required this.isError});
@@ -598,7 +786,7 @@ class _InlineNote extends StatelessWidget {
           isError
               ? Icons.error_outline_rounded
               : Icons.check_circle_outline_rounded,
-          size: 16,
+          size: 14,
           color: color,
         ),
         const SizedBox(width: 8),
@@ -607,9 +795,9 @@ class _InlineNote extends StatelessWidget {
             text,
             style: TextStyle(
               color: color,
-              fontSize: 13,
-              height: 1.35,
-              fontWeight: FontWeight.w600,
+              fontSize: 12.5,
+              height: 1.4,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
@@ -617,6 +805,10 @@ class _InlineNote extends StatelessWidget {
     );
   }
 }
+
+// ═════════════════════════════════════════════════════════════════════
+// Footer — "Schon dabei? Anmelden" mit Underline-Action
+// ═════════════════════════════════════════════════════════════════════
 
 class _ModeFooter extends StatelessWidget {
   const _ModeFooter({required this.isRegister, required this.onChanged});
@@ -626,36 +818,37 @@ class _ModeFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lead = isRegister ? 'Schon registriert?' : 'Noch keinen Account?';
-    final cta = isRegister ? 'Einloggen' : 'Registrieren';
+    final lead = isRegister ? 'Schon dabei?' : 'Neu hier?';
+    final cta = isRegister ? 'Anmelden' : 'Konto erstellen';
     final toggleKey = isRegister
         ? const ValueKey('auth-toggle-login')
         : const ValueKey('auth-toggle-register');
-    return Center(
-      child: InkWell(
-        key: toggleKey,
-        borderRadius: BorderRadius.circular(8),
-        onTap: () => onChanged(!isRegister),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          child: RichText(
-            text: TextSpan(
-              style: const TextStyle(
-                color: textMuted,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-              children: [
-                TextSpan(text: '$lead  '),
-                TextSpan(
-                  text: cta,
-                  style: const TextStyle(
-                    color: lime,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
+    return GestureDetector(
+      key: toggleKey,
+      onTap: () => onChanged(!isRegister),
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: RichText(
+          textAlign: TextAlign.center,
+          text: TextSpan(
+            style: const TextStyle(
+              fontSize: 13.5,
+              color: textMuted,
+              fontWeight: FontWeight.w400,
             ),
+            children: [
+              TextSpan(text: '$lead  '),
+              TextSpan(
+                text: cta,
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  color: textPrimary,
+                  fontWeight: FontWeight.w600,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ],
           ),
         ),
       ),
