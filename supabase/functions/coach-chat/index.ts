@@ -394,11 +394,13 @@ Deno.serve(async (req: Request) => {
   const message = typeof body?.message === "string" ? body.message.trim() : "";
 
   // ---------------------------------------------------------------- LAYER 1
+  // Pre-Filter -> kein Quota-Verbrauch, kein LLM-Call. Wir loggen den
+  // Versuch in chat_messages aber lassen die Quota komplett unangetastet.
+  // Response laesst `remaining` weg, damit der Client seinen Zaehler nicht
+  // veraendert (Flutter behandelt fehlendes Feld als "kein Update").
   const pre = preFilter(message);
   if (!pre.ok) {
     const reply = refusalForReason(pre.reason);
-    // Wir loggen den Versuch, aber zaehlen ihn NICHT gegen die Quota -
-    // sonst kann der User durch Spam-Inputs sein eigenes Limit ruinieren.
     await storeMessage(serviceKey, supabaseUrl, {
       user_id: userId, role: "user", content: message,
       refusal: false,
@@ -407,10 +409,33 @@ Deno.serve(async (req: Request) => {
       user_id: userId, role: "assistant", content: reply,
       refusal: true, refusal_reason: pre.reason,
     });
-    return json({ reply, refusal: true, refusal_reason: pre.reason, remaining: -1 }, 200);
+    return json({ reply, refusal: true, refusal_reason: pre.reason }, 200);
   }
 
-  // 3) Rate-Limit atomar reservieren BEVOR wir externe APIs anfassen.
+  // ---------------------------------------------------------------- LAYER 2
+  // Klassifizierer-Call vor dem Quota-Claim. Off-Topic/Medical-Risk/
+  // Injection refusen wir hier OHNE Quota-Abzug - der User soll keinen
+  // Slot verlieren wenn er eine harmlose Frage stellt die zufaellig nicht
+  // unter Fitness/Ernaehrung faellt. Der LLM-Call selber ist mit max 50
+  // Tokens billig genug, dass wir den Missbrauch dafuer in Kauf nehmen
+  // (L1 catched die ueblichen Hijack-Versuche eh schon ohne Call).
+  const cls = await classify(openRouterKey, message);
+  if (cls.category === "medical_risk" || cls.category === "off_topic" || cls.category === "injection") {
+    const reply = refusalForReason(cls.category);
+    await storeMessage(serviceKey, supabaseUrl, {
+      user_id: userId, role: "user", content: message,
+      refusal: false,
+    });
+    await storeMessage(serviceKey, supabaseUrl, {
+      user_id: userId, role: "assistant", content: reply,
+      refusal: true, refusal_reason: `classifier_${cls.category}`,
+    });
+    return json({ reply, refusal: true, refusal_reason: cls.category }, 200);
+  }
+
+  // ---------------------------------------------------------------- LAYER 3
+  // Erst jetzt wird die Quota reserviert - on-topic Frage, wir machen den
+  // teuren Antwort-Call.
   const claim = await rpcClaimQuota(serviceKey, supabaseUrl, userId);
   if ("error" in claim) {
     if (claim.error === "quota_exceeded") {
@@ -429,23 +454,6 @@ Deno.serve(async (req: Request) => {
     user_id: userId, role: "user", content: message,
   });
 
-  // ---------------------------------------------------------------- LAYER 2
-  const cls = await classify(openRouterKey, message);
-  if (cls.category === "medical_risk" || cls.category === "off_topic" || cls.category === "injection") {
-    const reply = refusalForReason(cls.category);
-    await storeMessage(serviceKey, supabaseUrl, {
-      user_id: userId, role: "assistant", content: reply,
-      refusal: true, refusal_reason: `classifier_${cls.category}`,
-    });
-    return json({
-      reply,
-      refusal: true,
-      refusal_reason: cls.category,
-      remaining: claim.remaining,
-    }, 200);
-  }
-
-  // ---------------------------------------------------------------- LAYER 3
   const history = await loadHistory(serviceKey, supabaseUrl, userId);
   // Letzte Message in history ist bereits die aktuelle user-Message -
   // raus damit, weil wir sie separat an answer() uebergeben.
