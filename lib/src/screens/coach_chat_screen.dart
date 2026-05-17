@@ -8,14 +8,16 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../models/chat_message.dart';
+import '../models/chat_session.dart';
 import '../services/coach_chat_service.dart';
 import '../theme/app_colors.dart';
 
 /// Coach-Chat: Grok-basierter Fitness-/Ernaehrungs-Coach.
 ///
-/// Text, Sprache und Bilder laufen weiter ueber die Supabase Edge Function.
-/// Provider-Secrets bleiben damit serverseitig; der Client schickt nur die
-/// User-Eingabe plus optional komprimiertes Bild.
+/// Design ist bewusst dezent: kleiner zentrierter Titel, gradient Greeting im
+/// Empty State, User-Bubble + Coach-Plain-Text mit Gradient-Dot. Mehrere
+/// Sessions sind ueber das Listen-Icon oben rechts erreichbar; die Quota
+/// liegt hinter dem (i)-Icon oben links.
 class CoachChatScreen extends StatefulWidget {
   const CoachChatScreen({
     super.key,
@@ -40,7 +42,9 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
   final FocusNode _inputFocus = FocusNode();
 
   List<ChatMessage> _messages = const <ChatMessage>[];
+  List<ChatSession> _sessions = const <ChatSession>[];
   ChatQuotaSnapshot _quota = ChatQuotaSnapshot.unknown;
+  String? _activeSessionId;
   bool _loading = true;
   bool _sending = false;
   bool _listening = false;
@@ -49,7 +53,11 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
 
   ImagePicker get _picker => widget.imagePicker ?? ImagePicker();
   bool get _canInteract =>
-      widget.service != null && !_loading && !_sending && _quota.remaining > 0;
+      widget.service != null &&
+      !_loading &&
+      !_sending &&
+      _quota.remaining > 0 &&
+      _activeSessionId != null;
 
   @override
   void initState() {
@@ -77,10 +85,27 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
       });
       return;
     }
-    final history = await svc.loadHistory();
+    final sessions = await svc.loadSessions();
+    String? activeId = sessions.isNotEmpty ? sessions.first.id : null;
+    if (activeId == null) {
+      activeId = await svc.ensureDefaultSession();
+    }
+    if (activeId == null) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = 'Konnte keine Coach-Session laden.';
+      });
+      return;
+    }
+    final history = await svc.loadHistory(activeId);
     final quota = await svc.loadQuotaToday();
+    final refreshedSessions =
+        sessions.isEmpty ? await svc.loadSessions() : sessions;
     if (!mounted) return;
     setState(() {
+      _sessions = refreshedSessions;
+      _activeSessionId = activeId;
       _messages = history;
       _quota = quota;
       _loading = false;
@@ -88,10 +113,67 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToEnd());
   }
 
+  Future<void> _refreshSessions() async {
+    final svc = widget.service;
+    if (svc == null) return;
+    final sessions = await svc.loadSessions();
+    if (!mounted) return;
+    setState(() => _sessions = sessions);
+  }
+
+  Future<void> _switchToSession(String sessionId) async {
+    final svc = widget.service;
+    if (svc == null) return;
+    if (_activeSessionId == sessionId) return;
+    setState(() {
+      _loading = true;
+      _activeSessionId = sessionId;
+      _messages = const <ChatMessage>[];
+    });
+    final history = await svc.loadHistory(sessionId);
+    if (!mounted) return;
+    setState(() {
+      _messages = history;
+      _loading = false;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToEnd());
+  }
+
+  Future<void> _startNewSession() async {
+    final svc = widget.service;
+    if (svc == null) return;
+    HapticFeedback.selectionClick();
+    final id = await svc.createSession();
+    if (id == null) return;
+    await _refreshSessions();
+    if (!mounted) return;
+    setState(() {
+      _activeSessionId = id;
+      _messages = const <ChatMessage>[];
+      _error = null;
+    });
+  }
+
+  Future<void> _deleteSession(String sessionId) async {
+    final svc = widget.service;
+    if (svc == null) return;
+    await svc.deleteSession(sessionId);
+    final wasActive = _activeSessionId == sessionId;
+    await _refreshSessions();
+    if (!mounted) return;
+    if (wasActive) {
+      final fallback =
+          _sessions.isNotEmpty ? _sessions.first.id : await svc.ensureDefaultSession();
+      if (fallback != null) {
+        await _switchToSession(fallback);
+      }
+    }
+  }
+
   void _scrollToEnd() {
     if (!_scroll.hasClients) return;
     _scroll.animateTo(
-      _scroll.position.maxScrollExtent + 180,
+      _scroll.position.maxScrollExtent + 240,
       duration: const Duration(milliseconds: 260),
       curve: Curves.easeOutCubic,
     );
@@ -103,10 +185,11 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
     String? imageMimeType,
   }) async {
     final svc = widget.service;
+    final sessionId = _activeSessionId;
     final typedText = textOverride ?? _input.text;
     final text = typedText.trim();
     final hasImage = imageBytes != null && imageBytes.isNotEmpty;
-    if (svc == null || _sending || (text.isEmpty && !hasImage)) return;
+    if (svc == null || sessionId == null || _sending || (text.isEmpty && !hasImage)) return;
     if (_quota.remaining <= 0) {
       setState(() => _error =
           'Tageslimit erreicht (${_quota.dailyLimit} Coach-Fragen pro Tag). Morgen geht\'s weiter.');
@@ -137,6 +220,7 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
     try {
       final res = await svc.send(
         displayText,
+        sessionId: sessionId,
         imageBase64: hasImage ? base64Encode(imageBytes) : null,
         imageMimeType: hasImage ? (imageMimeType ?? 'image/jpeg') : null,
       );
@@ -161,6 +245,9 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
         _sending = false;
       });
       HapticFeedback.lightImpact();
+      // Sessions im Hintergrund neu laden, damit Auto-Titel / last_message_at
+      // im Sheet aktuell sind, ohne den Send-Flow zu blockieren.
+      unawaited(_refreshSessions());
     } on CoachQuotaExceeded catch (e) {
       if (!mounted) return;
       setState(() {
@@ -271,34 +358,112 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
     }
   }
 
+  void _openSessionsSheet() {
+    HapticFeedback.selectionClick();
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (_) => _SessionsSheet(
+        sessions: _sessions,
+        activeSessionId: _activeSessionId,
+        onNew: () async {
+          Navigator.of(context).pop();
+          await _startNewSession();
+        },
+        onSelect: (id) async {
+          Navigator.of(context).pop();
+          await _switchToSession(id);
+        },
+        onDelete: (id) async {
+          await _deleteSession(id);
+        },
+      ),
+    );
+  }
+
+  void _openQuotaSheet() {
+    HapticFeedback.selectionClick();
+    final remaining = _quota.remaining.clamp(0, _quota.dailyLimit);
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 14),
+                decoration: BoxDecoration(
+                  color: hairline,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const Text(
+              'Coach-Limit',
+              style: TextStyle(
+                color: textPrimary,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '$remaining von ${_quota.dailyLimit} Fragen heute frei. Reset um Mitternacht (UTC).',
+              style: const TextStyle(color: textMuted, fontSize: 13, height: 1.4),
+            ),
+            const SizedBox(height: 14),
+            _QuotaBar(remaining: remaining, total: _quota.dailyLimit),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final svc = widget.service;
     return Column(
       key: const ValueKey('screen-coach'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _CoachHeader(
-          quota: _quota,
-          disabled: svc == null || _loading,
+        _CoachTopBar(
+          onInfoTap: _openQuotaSheet,
+          onSessionsTap: _openSessionsSheet,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 4),
         Expanded(
-          child: _loading
-              ? const Center(
-                  child: SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: lime),
-                  ),
-                )
-              : _messages.isEmpty
-                  ? _EmptyState(name: widget.userName)
-                  : _MessageList(
-                      controller: _scroll,
-                      messages: _messages,
-                      sending: _sending,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            child: _loading
+                ? const Center(
+                    key: ValueKey('coach-loading'),
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: lime),
                     ),
+                  )
+                : _messages.isEmpty
+                    ? _Greeting(name: widget.userName)
+                    : _Conversation(
+                        controller: _scroll,
+                        focus: _inputFocus,
+                        messages: _messages,
+                        sending: _sending,
+                      ),
+          ),
         ),
         if (_error != null) _ErrorBanner(text: _error!),
         const SizedBox(height: 8),
@@ -343,6 +508,10 @@ class CoachSpeechInput {
         );
       }
       throw CoachSpeechException(e.message ?? 'Spracherkennung fehlgeschlagen.');
+    } on MissingPluginException {
+      throw const CoachSpeechException(
+        'Spracherkennung ist auf diesem Geraet gerade nicht verfuegbar.',
+      );
     }
   }
 
@@ -362,107 +531,61 @@ class CoachSpeechException implements Exception {
 }
 
 // ---------------------------------------------------------------------------
-class _CoachHeader extends StatelessWidget {
-  const _CoachHeader({required this.quota, required this.disabled});
+// Top-Bar: kleiner zentrierter Titel + (i) links + Sessions rechts.
+// ---------------------------------------------------------------------------
+class _CoachTopBar extends StatelessWidget {
+  const _CoachTopBar({required this.onInfoTap, required this.onSessionsTap});
 
-  final ChatQuotaSnapshot quota;
-  final bool disabled;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [violet, cyan],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          alignment: Alignment.center,
-          child: const Icon(Icons.auto_awesome_rounded, size: 20, color: bg),
-        ),
-        const SizedBox(width: 12),
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'FitPilot Coach',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.3,
-                ),
-              ),
-              SizedBox(height: 2),
-              Text(
-                'Training, Ernaehrung, Regeneration',
-                style: TextStyle(
-                  color: textMuted,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-        _QuotaBadge(
-          key: const ValueKey('coach-quota'),
-          remaining: quota.remaining,
-          dailyLimit: quota.dailyLimit,
-          disabled: disabled,
-        ),
-      ],
-    );
-  }
-}
-
-class _QuotaBadge extends StatelessWidget {
-  const _QuotaBadge({
-    super.key,
-    required this.remaining,
-    required this.dailyLimit,
-    required this.disabled,
-  });
-
-  final int remaining;
-  final int dailyLimit;
-  final bool disabled;
+  final VoidCallback onInfoTap;
+  final VoidCallback onSessionsTap;
 
   @override
   Widget build(BuildContext context) {
-    final color = disabled
-        ? textMuted
-        : remaining <= 0
-            ? orange
-            : remaining <= 2
-                ? cyan
-                : lime;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+    return SizedBox(
+      height: 48,
+      child: Stack(
         children: [
-          Icon(Icons.flash_on_rounded, size: 14, color: color),
-          const SizedBox(width: 6),
-          Text(
-            '$remaining/$dailyLimit',
-            style: TextStyle(
-              color: color,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
+          const Center(
+            child: Text(
+              'FitPilot Coach',
+              style: TextStyle(
+                color: textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.2,
+              ),
+            ),
+          ),
+          Positioned(
+            left: 4,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: _TopChip(
+                key: const ValueKey('coach-info'),
+                onTap: onInfoTap,
+                child: const Icon(
+                  Icons.info_outline_rounded,
+                  size: 18,
+                  color: textPrimary,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            right: 4,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: _TopChip(
+                key: const ValueKey('coach-sessions-open'),
+                onTap: onSessionsTap,
+                child: const Icon(
+                  Icons.forum_outlined,
+                  size: 18,
+                  color: textPrimary,
+                ),
+              ),
             ),
           ),
         ],
@@ -471,16 +594,38 @@ class _QuotaBadge extends StatelessWidget {
   }
 }
 
+class _TopChip extends StatelessWidget {
+  const _TopChip({super.key, required this.onTap, required this.child});
+
+  final VoidCallback onTap;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: surfaceSoft,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: SizedBox(width: 36, height: 36, child: Center(child: child)),
+      ),
+    );
+  }
+}
+
 // ---------------------------------------------------------------------------
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.name});
+// Greeting: grosses Gradient-Hi auf leerer Session.
+// ---------------------------------------------------------------------------
+class _Greeting extends StatelessWidget {
+  const _Greeting({required this.name});
   final String name;
 
   String get _timeGreeting {
     final h = DateTime.now().hour;
     if (h < 5) return 'Gute Nacht';
     if (h < 11) return 'Guten Morgen';
-    if (h < 17) return 'Guten Tag';
+    if (h < 17) return 'Hallo';
     return 'Guten Abend';
   }
 
@@ -492,66 +637,21 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return Align(
       key: const ValueKey('coach-empty'),
+      alignment: const Alignment(0, -0.2),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _GradientText(
-              '$_timeGreeting, $_firstName',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 34,
-                fontWeight: FontWeight.w600,
-                letterSpacing: -1.0,
-                height: 1.06,
-              ),
-            ),
-            const SizedBox(height: 14),
-            const Text(
-              'Frag per Text, Sprache oder Bild. Ich bleibe bei Fitness, Essen und Recovery.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: textMuted, fontSize: 13.5, height: 1.4),
-            ),
-            const SizedBox(height: 18),
-            const Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _PromptPill('Workout planen'),
-                _PromptPill('Makros checken'),
-                _PromptPill('Form/Bild analysieren'),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PromptPill extends StatelessWidget {
-  const _PromptPill(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: surfaceSoft,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: hairline),
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: textPrimary,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: _GradientText(
+          '$_timeGreeting, $_firstName',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Colors.white, // wird vom ShaderMask ueberschrieben
+            fontSize: 36,
+            fontWeight: FontWeight.w500,
+            letterSpacing: -0.9,
+            height: 1.06,
+          ),
         ),
       ),
     );
@@ -559,11 +659,7 @@ class _PromptPill extends StatelessWidget {
 }
 
 class _GradientText extends StatelessWidget {
-  const _GradientText(
-    this.text, {
-    required this.style,
-    this.textAlign,
-  });
+  const _GradientText(this.text, {required this.style, this.textAlign});
 
   final String text;
   final TextStyle style;
@@ -584,165 +680,193 @@ class _GradientText extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-class _MessageList extends StatelessWidget {
-  const _MessageList({
+// Konversation: User = surfaceSoft Pill, Coach = plain text + gradient dot.
+// ---------------------------------------------------------------------------
+class _Conversation extends StatelessWidget {
+  const _Conversation({
     required this.controller,
+    required this.focus,
     required this.messages,
     required this.sending,
   });
 
   final ScrollController controller;
+  final FocusNode focus;
   final List<ChatMessage> messages;
   final bool sending;
 
   @override
   Widget build(BuildContext context) {
-    return ListView.separated(
+    return GestureDetector(
       key: const ValueKey('coach-message-list'),
-      controller: controller,
-      padding: const EdgeInsets.only(top: 4, bottom: 8),
-      itemCount: messages.length + (sending ? 1 : 0),
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (context, i) {
-        if (i == messages.length) return const _TypingBubble();
-        return _Bubble(message: messages[i]);
-      },
-    );
-  }
-}
-
-class _Bubble extends StatelessWidget {
-  const _Bubble({required this.message});
-  final ChatMessage message;
-
-  @override
-  Widget build(BuildContext context) {
-    final isUser = message.role == ChatRole.user;
-    final bgColor = isUser ? surfaceSoft : surface;
-    final fgColor = textPrimary;
-    final align = isUser ? Alignment.centerRight : Alignment.centerLeft;
-    final imageBytes = message.imageBytes;
-    return Align(
-      alignment: align,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.82,
-        ),
-        child: Container(
-          padding: EdgeInsets.fromLTRB(14, imageBytes == null ? 10 : 8, 14, 12),
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(18),
-              topRight: const Radius.circular(18),
-              bottomLeft: Radius.circular(isUser ? 18 : 5),
-              bottomRight: Radius.circular(isUser ? 5 : 18),
-            ),
-            border: Border.all(
-              color: isUser ? lime.withValues(alpha: 0.18) : hairline,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (imageBytes != null) ...[
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: Image.memory(
-                    imageBytes,
-                    height: 170,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                const SizedBox(height: 10),
-              ],
-              if (!isUser && message.refusal)
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 6),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.info_outline_rounded, size: 12, color: orange),
-                      SizedBox(width: 4),
-                      Text(
-                        'Hinweis',
-                        style: TextStyle(
-                          color: orange,
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.4,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              Text(
-                message.content,
-                style: TextStyle(
-                  color: fgColor,
-                  fontSize: 14,
-                  height: 1.42,
-                  fontWeight: isUser ? FontWeight.w600 : FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
+      onTap: () => focus.unfocus(),
+      behavior: HitTestBehavior.translucent,
+      child: ListView.builder(
+        controller: controller,
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+        itemCount: messages.length + (sending ? 1 : 0),
+        itemBuilder: (context, i) {
+          if (sending && i == messages.length) {
+            return const _ThinkingRow();
+          }
+          return _MessageView(message: messages[i]);
+        },
       ),
     );
   }
 }
 
-class _TypingBubble extends StatefulWidget {
-  const _TypingBubble();
+class _MessageView extends StatelessWidget {
+  const _MessageView({required this.message});
+  final ChatMessage message;
 
   @override
-  State<_TypingBubble> createState() => _TypingBubbleState();
+  Widget build(BuildContext context) {
+    final isUser = message.role == ChatRole.user;
+    final imageBytes = message.imageBytes;
+    if (isUser) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 14),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Flexible(
+              child: Container(
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  imageBytes == null ? 11 : 8,
+                  16,
+                  12,
+                ),
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.78,
+                ),
+                decoration: BoxDecoration(
+                  color: surfaceSoft,
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (imageBytes != null) ...[
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: Image.memory(
+                          imageBytes,
+                          height: 160,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    Text(
+                      message.content,
+                      style: const TextStyle(
+                        color: textPrimary,
+                        fontSize: 15.5,
+                        height: 1.35,
+                        letterSpacing: -0.1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    // Coach: ohne Bubble, mit kleinem Gradient-Dot + Label.
+    return Padding(
+      padding: const EdgeInsets.only(top: 22, bottom: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const _GradientDot(size: 8),
+              const SizedBox(width: 8),
+              const Text(
+                'FitPilot Coach',
+                style: TextStyle(
+                  color: textMuted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.1,
+                ),
+              ),
+              if (message.refusal) ...[
+                const SizedBox(width: 8),
+                const Icon(Icons.info_outline_rounded, size: 12, color: orange),
+                const SizedBox(width: 3),
+                const Text(
+                  'Hinweis',
+                  style: TextStyle(
+                    color: orange,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            message.content,
+            style: const TextStyle(
+              color: textPrimary,
+              fontSize: 15.5,
+              height: 1.45,
+              letterSpacing: -0.1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-class _TypingBubbleState extends State<_TypingBubble>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
+class _ThinkingRow extends StatefulWidget {
+  const _ThinkingRow();
+  @override
+  State<_ThinkingRow> createState() => _ThinkingRowState();
+}
 
+class _ThinkingRowState extends State<_ThinkingRow>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c;
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1100),
-    )..repeat();
+    _c = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1200))
+      ..repeat();
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _c.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-        decoration: BoxDecoration(
-          color: surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: hairline),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const _GradientDot(size: 8),
-            const SizedBox(width: 9),
-            AnimatedBuilder(
-              animation: _controller,
-              builder: (_, __) => Row(
+    return Padding(
+      padding: const EdgeInsets.only(top: 22, bottom: 4),
+      child: Row(
+        children: [
+          const _GradientDot(size: 8),
+          const SizedBox(width: 8),
+          AnimatedBuilder(
+            animation: _c,
+            builder: (_, __) {
+              return Row(
                 mainAxisSize: MainAxisSize.min,
                 children: List.generate(3, (i) {
-                  final phase = (_controller.value + i * 0.18) % 1.0;
+                  final phase = (_c.value + i * 0.18) % 1.0;
                   final t = math.sin(phase * math.pi).abs();
                   return Padding(
                     padding: EdgeInsets.only(right: i == 2 ? 0 : 5),
@@ -756,10 +880,10 @@ class _TypingBubbleState extends State<_TypingBubble>
                     ),
                   );
                 }),
-              ),
-            ),
-          ],
-        ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -768,7 +892,6 @@ class _TypingBubbleState extends State<_TypingBubble>
 class _GradientDot extends StatelessWidget {
   const _GradientDot({this.size = 8});
   final double size;
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -790,7 +913,7 @@ class _ErrorBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(top: 8),
+      margin: const EdgeInsets.fromLTRB(8, 8, 8, 0),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: orange.withValues(alpha: 0.12),
@@ -813,6 +936,9 @@ class _ErrorBanner extends StatelessWidget {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Composer: pill-shaped, Text + (Mic, Foto, Kamera) bzw. Send.
+// ---------------------------------------------------------------------------
 class _Composer extends StatelessWidget {
   const _Composer({
     required this.controller,
@@ -844,36 +970,45 @@ class _Composer extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
+        constraints: const BoxConstraints(minHeight: 52, maxHeight: 160),
+        padding: const EdgeInsets.fromLTRB(20, 4, 6, 4),
         decoration: BoxDecoration(
           color: surface,
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(28),
           border: Border.all(color: hairline),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            const SizedBox(width: 12),
             Expanded(
               child: TextField(
                 key: const ValueKey('coach-input'),
                 controller: controller,
                 focusNode: focus,
                 enabled: enabled,
-                maxLines: 4,
+                maxLines: 5,
                 minLines: 1,
                 textInputAction: TextInputAction.newline,
-                style: const TextStyle(color: textPrimary, fontSize: 14),
-                cursorColor: lime,
+                style: const TextStyle(
+                  color: textPrimary,
+                  fontSize: 15.5,
+                  height: 1.3,
+                  letterSpacing: -0.1,
+                ),
+                cursorColor: violet,
                 decoration: InputDecoration(
                   isCollapsed: true,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 13),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
                   hintText: remaining <= 0
                       ? 'Limit fuer heute erreicht'
                       : listening
                           ? 'Ich hoere zu...'
-                          : 'Frag deinen Coach...',
-                  hintStyle: const TextStyle(color: textMuted, fontSize: 14),
+                          : 'Frag den Coach',
+                  hintStyle: const TextStyle(
+                    color: textMuted,
+                    fontSize: 15.5,
+                    letterSpacing: -0.1,
+                  ),
                   border: InputBorder.none,
                 ),
               ),
@@ -882,28 +1017,28 @@ class _Composer extends StatelessWidget {
             if (!hasText) ...[
               _ComposerIcon(
                 key: const ValueKey('coach-mic'),
-                icon: Icons.mic_rounded,
+                icon: Icons.mic_none_rounded,
                 enabled: enabled,
                 active: listening,
                 onTap: onMic,
               ),
               _ComposerIcon(
                 key: const ValueKey('coach-gallery'),
-                icon: Icons.photo_rounded,
+                icon: Icons.photo_outlined,
                 enabled: enabled,
                 onTap: onGallery,
               ),
               _ComposerIcon(
                 key: const ValueKey('coach-camera'),
-                icon: Icons.photo_camera_rounded,
+                icon: Icons.photo_camera_outlined,
                 enabled: enabled,
                 onTap: onCamera,
               ),
-            ],
-            _SendButton(
-              enabled: enabled && hasText,
-              onTap: onSubmit,
-            ),
+            ] else
+              _SendButton(
+                enabled: enabled,
+                onTap: onSubmit,
+              ),
           ],
         ),
       ),
@@ -927,19 +1062,19 @@ class _ComposerIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? lime : (enabled ? textPrimary : textMuted);
+    final color = active ? violet : (enabled ? textPrimary : textMuted);
     return Padding(
       padding: const EdgeInsets.only(bottom: 2),
       child: Material(
-        color: active ? lime.withValues(alpha: 0.14) : Colors.transparent,
+        color: active ? violet.withValues(alpha: 0.14) : Colors.transparent,
         borderRadius: BorderRadius.circular(22),
         child: InkWell(
           onTap: enabled ? onTap : null,
           borderRadius: BorderRadius.circular(22),
           child: SizedBox(
             width: 38,
-            height: 42,
-            child: Icon(icon, color: color, size: 19),
+            height: 44,
+            child: Icon(icon, color: color, size: 20),
           ),
         ),
       ),
@@ -955,26 +1090,310 @@ class _SendButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(4),
-      child: Material(
-        color: enabled ? lime : surfaceSoft,
-        borderRadius: BorderRadius.circular(22),
-        child: InkWell(
-          key: const ValueKey('coach-send'),
-          onTap: enabled ? onTap : null,
-          borderRadius: BorderRadius.circular(22),
-          child: Container(
-            width: 40,
-            height: 40,
-            alignment: Alignment.center,
-            child: Icon(
-              Icons.arrow_upward_rounded,
-              size: 20,
-              color: enabled ? bg : textMuted,
-            ),
+      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+      child: GestureDetector(
+        key: const ValueKey('coach-send'),
+        onTap: enabled ? onTap : null,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: enabled
+                ? const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [cyan, violet],
+                  )
+                : null,
+            color: enabled ? null : surfaceSoft,
+          ),
+          child: Icon(
+            Icons.arrow_upward_rounded,
+            color: enabled ? Colors.white : textMuted,
+            size: 18,
           ),
         ),
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Sessions-Sheet: Liste aller Konversationen + "Neue Unterhaltung" oben.
+// ---------------------------------------------------------------------------
+class _SessionsSheet extends StatelessWidget {
+  const _SessionsSheet({
+    required this.sessions,
+    required this.activeSessionId,
+    required this.onNew,
+    required this.onSelect,
+    required this.onDelete,
+  });
+
+  final List<ChatSession> sessions;
+  final String? activeSessionId;
+  final VoidCallback onNew;
+  final ValueChanged<String> onSelect;
+  final ValueChanged<String> onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final maxHeight = MediaQuery.of(context).size.height * 0.75;
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: maxHeight),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(0, 10, 0, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: hairline,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Coach-Sessions',
+                        style: TextStyle(
+                          color: textPrimary,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ),
+                    TextButton.icon(
+                      key: const ValueKey('coach-sessions-new'),
+                      onPressed: onNew,
+                      icon: const Icon(Icons.add_rounded, size: 18, color: cyan),
+                      label: const Text(
+                        'Neu',
+                        style: TextStyle(
+                          color: cyan,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        backgroundColor: cyan.withValues(alpha: 0.08),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Flexible(
+                child: sessions.isEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
+                        child: Text(
+                          'Noch keine Unterhaltungen. Stell deinem Coach die erste Frage.',
+                          style: TextStyle(
+                            color: textMuted.withValues(alpha: 0.9),
+                            fontSize: 13.5,
+                            height: 1.4,
+                          ),
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                        shrinkWrap: true,
+                        itemCount: sessions.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 6),
+                        itemBuilder: (context, i) {
+                          final s = sessions[i];
+                          final isActive = s.id == activeSessionId;
+                          return _SessionTile(
+                            session: s,
+                            isActive: isActive,
+                            onTap: () => onSelect(s.id),
+                            onDelete: () => _confirmDelete(context, s),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, ChatSession s) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: surface,
+        title: const Text('Session loeschen?',
+            style: TextStyle(color: textPrimary, fontSize: 16)),
+        content: Text(
+          '"${s.title}" und alle Nachrichten darin werden entfernt.',
+          style: const TextStyle(color: textMuted, fontSize: 13.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Abbrechen', style: TextStyle(color: textMuted)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              onDelete(s.id);
+            },
+            child: const Text('Loeschen', style: TextStyle(color: orange)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SessionTile extends StatelessWidget {
+  const _SessionTile({
+    required this.session,
+    required this.isActive,
+    required this.onTap,
+    required this.onDelete,
+  });
+
+  final ChatSession session;
+  final bool isActive;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: isActive ? surfaceSoft : Colors.transparent,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? cyan.withValues(alpha: 0.14)
+                      : surfaceSoft,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.chat_bubble_outline_rounded,
+                  size: 16,
+                  color: isActive ? cyan : textMuted,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      session.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _humanizeTimestamp(session.lastMessageAt),
+                      style: const TextStyle(color: textMuted, fontSize: 11.5),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: 'Loeschen',
+                onPressed: onDelete,
+                icon: const Icon(Icons.delete_outline_rounded,
+                    size: 18, color: textMuted),
+                visualDensity: VisualDensity.compact,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _humanizeTimestamp(DateTime ts) {
+  final diff = DateTime.now().difference(ts);
+  if (diff.inMinutes < 1) return 'gerade eben';
+  if (diff.inMinutes < 60) return 'vor ${diff.inMinutes} min';
+  if (diff.inHours < 24) return 'vor ${diff.inHours} h';
+  if (diff.inDays < 7) return 'vor ${diff.inDays} Tagen';
+  return '${ts.day.toString().padLeft(2, '0')}.${ts.month.toString().padLeft(2, '0')}.${ts.year}';
+}
+
+// ---------------------------------------------------------------------------
+class _QuotaBar extends StatelessWidget {
+  const _QuotaBar({required this.remaining, required this.total});
+
+  final int remaining;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = total == 0 ? 0.0 : remaining / total;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: Stack(
+            children: [
+              Container(height: 6, color: surfaceSoft),
+              FractionallySizedBox(
+                widthFactor: pct.clamp(0.0, 1.0),
+                child: Container(
+                  height: 6,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(colors: [cyan, violet]),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '$remaining / $total',
+          style: const TextStyle(
+            color: textPrimary,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }

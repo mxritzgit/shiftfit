@@ -5,42 +5,32 @@ import UIKit
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
-  private let speechHandler = FitPilotSpeechHandler()
-
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    if let controller = window?.rootViewController as? FlutterViewController {
-      registerSpeechChannel(messenger: controller.binaryMessenger)
-    }
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
+  // Bei Scene-Lifecycle (UIScene) existiert window?.rootViewController in
+  // didFinishLaunchingWithOptions noch nicht. Stattdessen wird die implizite
+  // FlutterEngine ueber diesen Callback hochgezogen und liefert uns einen
+  // Plugin-Registry-Zugang, mit dem wir den Speech-MethodChannel zuverlaessig
+  // einhaengen koennen.
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
-  }
-
-  private func registerSpeechChannel(messenger: FlutterBinaryMessenger) {
-    let channel = FlutterMethodChannel(name: "fitpilot/speech", binaryMessenger: messenger)
-    channel.setMethodCallHandler { [weak self] call, result in
-      guard let self = self else { return }
-      switch call.method {
-      case "listen":
-        let args = call.arguments as? [String: Any]
-        let localeId = args?["localeId"] as? String ?? "de_DE"
-        self.speechHandler.listen(localeId: localeId, result: result)
-      case "stop":
-        self.speechHandler.stop()
-        result(nil)
-      default:
-        result(FlutterMethodNotImplemented)
-      }
-    }
+    FitPilotSpeechPlugin.register(with: engineBridge.pluginRegistry)
   }
 }
 
-final class FitPilotSpeechHandler: NSObject {
+// ---------------------------------------------------------------------------
+// FitPilotSpeechPlugin: nativer Sprach-Eingabe-Bruecke fuer den Coach-Chat.
+//
+// Holt sich Mikrofon- + Speech-Recognition-Berechtigung (loest die iOS-
+// Permission-Popups aus), startet AVAudioEngine + SFSpeechRecognizer und
+// liefert das erkannte Transkript an Flutter zurueck.
+// ---------------------------------------------------------------------------
+public final class FitPilotSpeechPlugin: NSObject, FlutterPlugin {
   private let audioEngine = AVAudioEngine()
   private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
   private var recognitionTask: SFSpeechRecognitionTask?
@@ -49,7 +39,36 @@ final class FitPilotSpeechHandler: NSObject {
   private var isFinishing = false
   private var tapInstalled = false
 
-  func listen(localeId: String, result: @escaping FlutterResult) {
+  public static func register(with registry: FlutterPluginRegistry) {
+    guard let registrar = registry.registrar(forPlugin: "FitPilotSpeechPlugin") else {
+      return
+    }
+    let channel = FlutterMethodChannel(
+      name: "fitpilot/speech",
+      binaryMessenger: registrar.messenger()
+    )
+    let instance = FitPilotSpeechPlugin()
+    registrar.addMethodCallDelegate(instance, channel: channel)
+  }
+
+  public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    switch call.method {
+    case "listen":
+      let args = call.arguments as? [String: Any]
+      let localeId = args?["localeId"] as? String ?? "de_DE"
+      listen(localeId: localeId, result: result)
+    case "stop":
+      stop()
+      result(nil)
+    case "available":
+      let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "de_DE"))
+      result(recognizer?.isAvailable ?? false)
+    default:
+      result(FlutterMethodNotImplemented)
+    }
+  }
+
+  private func listen(localeId: String, result: @escaping FlutterResult) {
     DispatchQueue.main.async {
       guard self.pendingResult == nil else {
         result(FlutterError(
@@ -66,7 +85,7 @@ final class FitPilotSpeechHandler: NSObject {
     }
   }
 
-  func stop() {
+  private func stop() {
     DispatchQueue.main.async {
       guard self.pendingResult != nil else { return }
       self.finish(success: self.lastTranscription)
@@ -76,32 +95,41 @@ final class FitPilotSpeechHandler: NSObject {
   private func requestSpeechAuthorization(localeId: String) {
     SFSpeechRecognizer.requestAuthorization { status in
       DispatchQueue.main.async {
-        guard status == .authorized else {
-          self.finish(errorCode: "permission_denied", message: "Spracherkennung wurde nicht erlaubt.")
-          return
-        }
-        AVAudioSession.sharedInstance().requestRecordPermission { granted in
-          DispatchQueue.main.async {
-            guard granted else {
-              self.finish(errorCode: "permission_denied", message: "Mikrofon wurde nicht erlaubt.")
-              return
+        switch status {
+        case .authorized:
+          AVAudioSession.sharedInstance().requestRecordPermission { granted in
+            DispatchQueue.main.async {
+              guard granted else {
+                self.finish(errorCode: "permission_denied", message: "Mikrofon wurde nicht erlaubt.")
+                return
+              }
+              self.startRecognition(localeId: localeId)
             }
-            self.startRecognition(localeId: localeId)
           }
+        case .denied, .restricted:
+          self.finish(errorCode: "permission_denied", message: "Spracherkennung wurde nicht erlaubt.")
+        case .notDetermined:
+          self.finish(errorCode: "permission_denied", message: "Spracherkennung muss noch freigegeben werden.")
+        @unknown default:
+          self.finish(errorCode: "permission_denied", message: "Spracherkennung wurde nicht erlaubt.")
         }
       }
     }
   }
 
   private func startRecognition(localeId: String) {
-    guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: localeId)), recognizer.isAvailable else {
+    guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: localeId)) else {
+      finish(errorCode: "unavailable", message: "Spracherkennung ist fuer diese Sprache nicht installiert.")
+      return
+    }
+    guard recognizer.isAvailable else {
       finish(errorCode: "unavailable", message: "Spracherkennung ist gerade nicht verfuegbar.")
       return
     }
 
     do {
       let session = AVAudioSession.sharedInstance()
-      try session.setCategory(.record, mode: .measurement, options: [.duckOthers])
+      try session.setCategory(.playAndRecord, mode: .measurement, options: [.duckOthers, .defaultToSpeaker])
       try session.setActive(true, options: .notifyOthersOnDeactivation)
 
       let request = SFSpeechAudioBufferRecognitionRequest()

@@ -323,8 +323,9 @@ async function loadHistory(
   serviceKey: string,
   supabaseUrl: string,
   userId: string,
+  sessionId: string,
 ): Promise<HistoryMessage[]> {
-  const url = `${supabaseUrl}/rest/v1/chat_messages?user_id=eq.${userId}&role=in.(user,assistant)&order=created_at.desc&limit=${HISTORY_LIMIT}`;
+  const url = `${supabaseUrl}/rest/v1/chat_messages?user_id=eq.${userId}&session_id=eq.${sessionId}&role=in.(user,assistant)&order=created_at.desc&limit=${HISTORY_LIMIT}`;
   const resp = await fetch(url, {
     headers: {
       "Authorization": `Bearer ${serviceKey}`,
@@ -347,6 +348,7 @@ async function storeMessage(
   supabaseUrl: string,
   row: {
     user_id: string;
+    session_id: string;
     role: "user" | "assistant";
     content: string;
     refusal?: boolean;
@@ -363,11 +365,95 @@ async function storeMessage(
     },
     body: JSON.stringify({
       user_id: row.user_id,
+      session_id: row.session_id,
       role: row.role,
       content: row.content,
       refusal: row.refusal ?? false,
       refusal_reason: row.refusal_reason ?? null,
     }),
+  });
+}
+
+async function ensureSession(
+  serviceKey: string,
+  supabaseUrl: string,
+  userId: string,
+  requestedSessionId: string | null,
+): Promise<string | null> {
+  // Wenn der Client eine Session geliefert hat, gegenpruefen das sie wirklich
+  // dem User gehoert. Ueber den service_role-Key wuerde sonst jeder beliebige
+  // Session-Owner umgangen werden koennen.
+  if (requestedSessionId) {
+    const resp = await fetch(
+      `${supabaseUrl}/rest/v1/chat_sessions?id=eq.${requestedSessionId}&user_id=eq.${userId}&select=id`,
+      { headers: { "Authorization": `Bearer ${serviceKey}`, "apikey": serviceKey } },
+    );
+    if (resp.ok) {
+      const data = await resp.json();
+      if (Array.isArray(data) && data.length > 0) return requestedSessionId;
+    }
+    // Fallthrough auf default
+  }
+  const resp = await fetch(`${supabaseUrl}/rest/v1/rpc/ensure_default_chat_session`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${serviceKey}`,
+      "apikey": serviceKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ p_user_id: userId }),
+  });
+  if (!resp.ok) return null;
+  const data = await resp.json();
+  if (typeof data === "string") return data;
+  if (Array.isArray(data) && typeof data[0] === "string") return data[0];
+  return null;
+}
+
+async function touchSession(
+  serviceKey: string,
+  supabaseUrl: string,
+  sessionId: string,
+): Promise<void> {
+  await fetch(`${supabaseUrl}/rest/v1/rpc/touch_chat_session`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${serviceKey}`,
+      "apikey": serviceKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ p_session_id: sessionId }),
+  });
+}
+
+async function maybeAutoTitle(
+  serviceKey: string,
+  supabaseUrl: string,
+  sessionId: string,
+  firstUserMessage: string,
+): Promise<void> {
+  // Auto-Titel nur setzen wenn die Session noch den Default-Titel hat.
+  const check = await fetch(
+    `${supabaseUrl}/rest/v1/chat_sessions?id=eq.${sessionId}&select=title`,
+    { headers: { "Authorization": `Bearer ${serviceKey}`, "apikey": serviceKey } },
+  );
+  if (!check.ok) return;
+  const rows = await check.json();
+  const currentTitle = Array.isArray(rows) && rows[0]?.title ? String(rows[0].title) : "";
+  const isDefault = currentTitle === "Neue Unterhaltung" || currentTitle === "Allgemein" || currentTitle.trim().length === 0;
+  if (!isDefault) return;
+  const trimmed = firstUserMessage.trim().replace(/\s+/g, " ");
+  if (trimmed.length === 0) return;
+  const title = trimmed.length > 40 ? `${trimmed.slice(0, 40)}…` : trimmed;
+  await fetch(`${supabaseUrl}/rest/v1/chat_sessions?id=eq.${sessionId}`, {
+    method: "PATCH",
+    headers: {
+      "Authorization": `Bearer ${serviceKey}`,
+      "apikey": serviceKey,
+      "Content-Type": "application/json",
+      "Prefer": "return=minimal",
+    },
+    body: JSON.stringify({ title, updated_at: new Date().toISOString() }),
   });
 }
 
@@ -426,6 +512,14 @@ Deno.serve(async (req: Request) => {
     ? safeImageMimeType(body.image_mime_type)
     : "image/jpeg";
   const hasImage = imageBase64.length > 0;
+  const requestedSessionId = typeof body?.session_id === "string" && body.session_id.length > 0
+    ? body.session_id
+    : null;
+
+  // Session sicherstellen (vor Pre-Filter, damit auch Refusals der richtigen
+  // Konversation zugeordnet werden).
+  const sessionId = await ensureSession(serviceKey, supabaseUrl, userId, requestedSessionId);
+  if (!sessionId) return json({ error: "session_unavailable" }, 500);
 
   if (hasImage && imageBase64.length > MAX_IMAGE_BASE64_CHARS) {
     return json({
@@ -449,7 +543,7 @@ Deno.serve(async (req: Request) => {
   if (!pre.ok) {
     const reply = refusalForReason(pre.reason);
     await storeMessage(serviceKey, supabaseUrl, {
-      user_id: userId, role: "user", content: message,
+      user_id: userId, session_id: sessionId, role: "user", content: message,
       refusal: false,
     });
     await storeMessage(serviceKey, supabaseUrl, {
@@ -475,10 +569,11 @@ Deno.serve(async (req: Request) => {
         refusal: false,
       });
       await storeMessage(serviceKey, supabaseUrl, {
-        user_id: userId, role: "assistant", content: reply,
+        user_id: userId, session_id: sessionId, role: "assistant", content: reply,
         refusal: true, refusal_reason: `classifier_${cls.category}`,
       });
-      return json({ reply, refusal: true, refusal_reason: cls.category }, 200);
+      await touchSession(serviceKey, supabaseUrl, sessionId);
+      return json({ reply, refusal: true, refusal_reason: cls.category, session_id: sessionId }, 200);
     }
   }
 
@@ -500,10 +595,13 @@ Deno.serve(async (req: Request) => {
 
   // User-Message in die Historie schreiben (zaehlt zur Konversation).
   await storeMessage(serviceKey, supabaseUrl, {
-    user_id: userId, role: "user", content: message,
+    user_id: userId, session_id: sessionId, role: "user", content: message,
   });
+  // Erste echte User-Message in der Session? Dann automatisch als Titel
+  // uebernehmen, damit die Session-Liste nicht nur "Neue Unterhaltung" zeigt.
+  await maybeAutoTitle(serviceKey, supabaseUrl, sessionId, message);
 
-  const history = await loadHistory(serviceKey, supabaseUrl, userId);
+  const history = await loadHistory(serviceKey, supabaseUrl, userId, sessionId);
   // Letzte Message in history ist bereits die aktuelle user-Message -
   // raus damit, weil wir sie separat an answer() uebergeben.
   if (history.length > 0 && history[history.length - 1].role === "user") {
@@ -527,14 +625,16 @@ Deno.serve(async (req: Request) => {
   }
 
   await storeMessage(serviceKey, supabaseUrl, {
-    user_id: userId, role: "assistant", content: reply,
+    user_id: userId, session_id: sessionId, role: "assistant", content: reply,
     refusal, refusal_reason: refusal ? "model_refusal" : null,
   });
+  await touchSession(serviceKey, supabaseUrl, sessionId);
 
   return json({
     reply,
     refusal,
     refusal_reason: refusal ? "model_refusal" : null,
     remaining: claim.remaining,
+    session_id: sessionId,
   }, 200);
 });
