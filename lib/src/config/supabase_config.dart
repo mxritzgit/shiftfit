@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart' show closeInAppWebView;
 
 class FitPilotSupabaseConfig {
   const FitPilotSupabaseConfig._();
@@ -18,5 +19,22 @@ class FitPilotSupabaseConfig {
 
   static Future<void> initialize() async {
     await Supabase.initialize(url: url, anonKey: anonKey);
+    _wireOAuthSheetDismiss();
+  }
+
+  /// SFSafariViewController (iOS) / Chrome Custom Tab (Android) wissen
+  /// nicht von alleine dass der OAuth-Flow durch ist - die Sheet bleibt
+  /// offen bis der User sie manuell schliesst. Hier hoeren wir auf den
+  /// signedIn-Event und dismissen die Sheet sobald die Session da ist.
+  ///
+  /// closeInAppWebView ist ein No-Op wenn gar kein in-app Browser auf
+  /// ist - also unbedenklich bei Session-Restore oder Email/Password-
+  /// Login (wo keine Sheet aufging).
+  static void _wireOAuthSheetDismiss() {
+    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      if (data.event == AuthChangeEvent.signedIn) {
+        closeInAppWebView();
+      }
+    });
   }
 }
