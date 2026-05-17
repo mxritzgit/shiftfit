@@ -96,15 +96,19 @@ class SupabaseAuthRepository implements AuthRepository {
 
   @override
   Future<void> signInWithOAuth(FitPilotOAuthProvider provider) async {
-    // Google blockiert OAuth in embedded Browser-Sheets (Custom Tab /
-    // SFSafariViewController) und liefert dort nur einen weissen Screen.
-    // Mit externalApplication oeffnet sich der echte System-Browser
-    // (Safari/Chrome), nach erfolgreichem Login springt iOS/Android
-    // ueber das fitpilot://login-callback/ Scheme zurueck in die App.
+    // inAppBrowserView oeffnet SFSafariViewController (iOS) bzw. Chrome
+    // Custom Tabs (Android) - ein Sheet das ueber der App liegt und sich
+    // automatisch schliesst sobald das fitpilot://login-callback/ Scheme
+    // greift. Fuehlt sich an wie "in der App geblieben", waehrend die
+    // Cookie- und Auth-Logik des echten System-Browsers benutzt wird.
+    //
+    // Wichtig: kein inAppWebView - das waere ein embedded WKWebView,
+    // den Google explizit fuer OAuth blockt (Account-Hijacking-Policy
+    // seit 2017).
     final launched = await _client.auth.signInWithOAuth(
       provider.supabaseProvider,
       redirectTo: FitPilotSupabaseConfig.oauthRedirectUrl,
-      authScreenLaunchMode: LaunchMode.externalApplication,
+      authScreenLaunchMode: LaunchMode.inAppBrowserView,
     );
     if (!launched) {
       throw AuthException('${provider.displayName} Login wurde abgebrochen.');
