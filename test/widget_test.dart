@@ -217,8 +217,14 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const ValueKey('recipe-add-card')), findsOneWidget);
+    expect(find.byKey(const ValueKey('recipe-add-button')), findsOneWidget);
+    expect(find.byKey(const ValueKey('recipe-meal-picker-lunch')), findsNothing);
 
-    await tester.tap(find.byKey(const ValueKey('recipe-add-lunch')));
+    await tester.tap(find.byKey(const ValueKey('recipe-add-button')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('recipe-meal-picker-sheet')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('recipe-meal-picker-lunch')));
     await tester.pumpAndSettle();
     expect(find.text('590 kcal zu Mittagessen hinzugefügt.'), findsOneWidget);
 

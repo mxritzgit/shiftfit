@@ -447,6 +447,18 @@ class RecipeDetailScreen extends StatelessWidget {
   final FitnessRecipe recipe;
   final void Function(MealAnalysisResult result, MealSlot slot) onAddMeal;
 
+  Future<void> _showMealPicker(BuildContext context) async {
+    final slot = await showModalBottomSheet<MealSlot>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.62),
+      isScrollControlled: true,
+      builder: (sheetContext) => _MealSlotPickerSheet(recipe: recipe),
+    );
+    if (!context.mounted || slot == null) return;
+    _add(context, slot);
+  }
+
   void _add(BuildContext context, MealSlot slot) {
     onAddMeal(recipe.toMealResult(), slot);
     ScaffoldMessenger.of(context).showSnackBar(
@@ -513,7 +525,10 @@ class RecipeDetailScreen extends StatelessWidget {
               const SizedBox(height: 16),
               _NutritionGrid(recipe: recipe),
               const SizedBox(height: 18),
-              _AddToMealCard(onAdd: (slot) => _add(context, slot)),
+              _AddToMealCard(
+                recipe: recipe,
+                onTap: () => _showMealPicker(context),
+              ),
               const SizedBox(height: 18),
               _RecipeInfoSection(title: 'Portion', body: recipe.portion),
               _RecipeInfoSection(title: 'Zutaten', body: recipe.ingredients),
@@ -532,9 +547,99 @@ class RecipeDetailScreen extends StatelessWidget {
 }
 
 class _AddToMealCard extends StatelessWidget {
-  const _AddToMealCard({required this.onAdd});
+  const _AddToMealCard({required this.recipe, required this.onTap});
 
-  final ValueChanged<MealSlot> onAdd;
+  final FitnessRecipe recipe;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const ValueKey('recipe-add-card'),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: lime.withValues(alpha: 0.28)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: lime.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.add_rounded, color: lime, size: 22),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Zum Tracker hinzufügen',
+                      style: TextStyle(
+                        color: textPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${recipe.caloriesKcal} kcal · ${recipe.proteinG} g Protein',
+                      style: const TextStyle(
+                        color: textMuted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton.icon(
+              key: const ValueKey('recipe-add-button'),
+              onPressed: onTap,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: lime,
+                foregroundColor: bg,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
+              label: const Text(
+                'Hinzufügen',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+              ),
+            ),
+          ),
+          const SizedBox(height: 9),
+          const Text(
+            'Danach wählst du Frühstück, Mittagessen, Abendessen oder Snack.',
+            style: TextStyle(color: textMuted, fontSize: 11.5, height: 1.35),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MealSlotPickerSheet extends StatelessWidget {
+  const _MealSlotPickerSheet({required this.recipe});
+
+  final FitnessRecipe recipe;
 
   @override
   Widget build(BuildContext context) {
@@ -544,43 +649,101 @@ class _AddToMealCard extends StatelessWidget {
       MealSlot.dinner,
       MealSlot.snack,
     ];
-    return Container(
-      key: const ValueKey('recipe-add-card'),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: hairline),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Zum Tracker hinzufügen',
-            style: TextStyle(
-              color: textPrimary,
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Nährwerte fließen direkt in Kalorien und Makros ein.',
-            style: TextStyle(color: textMuted, fontSize: 12, height: 1.35),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final slot in slots)
-                _MealSlotButton(
-                  slot: slot,
-                  onTap: () => onAdd(slot),
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        key: const ValueKey('recipe-meal-picker-sheet'),
+        margin: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: hairline),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: hairline,
+                  borderRadius: BorderRadius.circular(999),
                 ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Image.asset(
+                    recipe.imageAsset,
+                    width: 58,
+                    height: 58,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Wann eintragen?',
+                        style: TextStyle(
+                          color: textPrimary,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.45,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        '${recipe.caloriesKcal} kcal · ${recipe.proteinG} g Protein',
+                        style: const TextStyle(
+                          color: textMuted,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            for (var i = 0; i < slots.length; i++) ...[
+              _MealSlotButton(
+                slot: slots[i],
+                onTap: () => Navigator.of(context).pop(slots[i]),
+              ),
+              if (i != slots.length - 1) const SizedBox(height: 9),
             ],
-          ),
-        ],
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: TextButton(
+                key: const ValueKey('recipe-meal-picker-cancel'),
+                onPressed: () => Navigator.of(context).pop(),
+                style: TextButton.styleFrom(
+                  foregroundColor: textMuted,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                ),
+                child: const Text(
+                  'Abbrechen',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -609,29 +772,40 @@ class _MealSlotButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      key: ValueKey('recipe-add-${slot.name}'),
+      key: ValueKey('recipe-meal-picker-${slot.name}'),
       onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
+      borderRadius: BorderRadius.circular(18),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.14),
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(color: color.withValues(alpha: 0.36)),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color, size: 15),
-            const SizedBox(width: 6),
-            Text(
-              slot.label,
-              style: TextStyle(
-                color: color,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.18),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 18),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                slot.label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
+            Icon(Icons.chevron_right_rounded, color: color, size: 20),
           ],
         ),
       ),
