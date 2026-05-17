@@ -82,9 +82,14 @@ class SupabaseAuthRepository implements AuthRepository {
     required String password,
     required String displayName,
   }) async {
+    // emailRedirectTo landet im Confirmation-Mail-Link. Sobald der User
+    // den Confirm-Button drueckt, kehrt Supabase ueber das fitpilot://
+    // Deep-Link-Scheme in die App zurueck - dann ist die Session sofort
+    // gueltig und der AuthGate-Stream feuert wasLoggedOut->loggedIn.
     await _client.auth.signUp(
       email: email.trim(),
       password: password,
+      emailRedirectTo: FitPilotSupabaseConfig.oauthRedirectUrl,
       data: {'display_name': displayName.trim()},
     );
   }

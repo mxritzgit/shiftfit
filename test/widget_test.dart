@@ -23,10 +23,10 @@ void main() {
 
     expect(find.byKey(const ValueKey('screen-auth')), findsOneWidget);
     expect(find.byKey(const ValueKey('auth-hero')), findsOneWidget);
-    expect(find.byKey(const ValueKey('auth-apple-oauth')), findsOneWidget);
     expect(find.byKey(const ValueKey('auth-google-oauth')), findsOneWidget);
-    expect(find.text('Mit Apple anmelden'), findsOneWidget);
+    expect(find.byKey(const ValueKey('auth-apple-oauth')), findsNothing);
     expect(find.text('Mit Google anmelden'), findsOneWidget);
+    expect(find.text('Mit Apple anmelden'), findsNothing);
     expect(find.text('Einloggen'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('auth-toggle-register')));
@@ -76,14 +76,6 @@ void main() {
     await tester.pump();
 
     await tester.tap(find.byKey(const ValueKey('auth-google-oauth')));
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(const ValueKey('screen-today')), findsOneWidget);
-
-    await authRepository.signOut();
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byKey(const ValueKey('auth-apple-oauth')));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('screen-today')), findsOneWidget);

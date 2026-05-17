@@ -84,7 +84,8 @@ class _AuthScreenState extends State<AuthScreen> {
           displayName: name,
         );
         if (!mounted) return;
-        setState(() => _message = 'Account erstellt. Check ggf. dein Postfach.');
+        setState(() => _message =
+            'Bestätigungs-Mail unterwegs an $email. Klick den Link, dann bist du drin.');
       } else {
         await widget.authRepository.signIn(email: email, password: password);
       }
@@ -153,8 +154,6 @@ class _AuthScreenState extends State<AuthScreen> {
                       _OAuthSection(
                         oauthLoading: _oauthLoading,
                         busy: _busy,
-                        onApple: () =>
-                            _startOAuth(FitPilotOAuthProvider.apple),
                         onGoogle: () =>
                             _startOAuth(FitPilotOAuthProvider.google),
                       ),
@@ -248,40 +247,25 @@ class _OAuthSection extends StatelessWidget {
   const _OAuthSection({
     required this.oauthLoading,
     required this.busy,
-    required this.onApple,
     required this.onGoogle,
   });
 
   final FitPilotOAuthProvider? oauthLoading;
   final bool busy;
-  final VoidCallback onApple;
   final VoidCallback onGoogle;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _ProviderButton(
-          keyValue: const ValueKey('auth-apple-oauth'),
-          label: 'Mit Apple anmelden',
-          icon: const Padding(
-            padding: EdgeInsets.only(bottom: 2),
-            child: Icon(Icons.apple, color: Colors.black, size: 22),
-          ),
-          loading: oauthLoading == FitPilotOAuthProvider.apple,
-          enabled: !busy,
-          onTap: onApple,
-        ),
-        const SizedBox(height: 10),
-        _ProviderButton(
-          keyValue: const ValueKey('auth-google-oauth'),
-          label: 'Mit Google anmelden',
-          icon: const _GoogleGLogo(),
-          loading: oauthLoading == FitPilotOAuthProvider.google,
-          enabled: !busy,
-          onTap: onGoogle,
-        ),
-      ],
+    // Apple Sign-In braucht einen Apple Developer Account ($99/Jahr) -
+    // bis dahin nur Google + E-Mail. Provider-Enum bleibt fuer spaeter
+    // erhalten, der Button taucht hier einfach nicht auf.
+    return _ProviderButton(
+      keyValue: const ValueKey('auth-google-oauth'),
+      label: 'Mit Google anmelden',
+      icon: const _GoogleGLogo(),
+      loading: oauthLoading == FitPilotOAuthProvider.google,
+      enabled: !busy,
+      onTap: onGoogle,
     );
   }
 }
