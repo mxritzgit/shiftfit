@@ -30,6 +30,7 @@ class MealAnalysisScreen extends StatelessWidget {
     void Function(MealAnalysisResult, MealSlot)? onAddMeal,
     ValueChanged<int>? onAdjustDailyKcal,
     ValueChanged<String>? onRemoveFavorite,
+    ValueChanged<String>? onRemoveMeal,
   }) : analyzer = analyzer ?? const EdgeFunctionMealAnalyzer(),
        productService = productService ?? const OpenFoodFactsProductService(),
        photoInput = photoInput ?? DeviceMealPhotoInput(),
@@ -37,7 +38,8 @@ class MealAnalysisScreen extends StatelessWidget {
        onDateSelected = onDateSelected ?? _noopDate,
        onAddMeal = onAddMeal ?? _noopAdd,
        onAdjustDailyKcal = onAdjustDailyKcal ?? _noopInt,
-       onRemoveFavorite = onRemoveFavorite ?? _noopString;
+       onRemoveFavorite = onRemoveFavorite ?? _noopString,
+       onRemoveMeal = onRemoveMeal ?? _noopString;
 
   static void _noopAdd(MealAnalysisResult _, MealSlot __) {}
   static void _noopDate(DateTime _) {}
@@ -59,8 +61,15 @@ class MealAnalysisScreen extends StatelessWidget {
   final void Function(MealAnalysisResult, MealSlot) onAddMeal;
   final ValueChanged<int> onAdjustDailyKcal;
   final ValueChanged<String> onRemoveFavorite;
+  final ValueChanged<String> onRemoveMeal;
 
   void _openAddSheet(BuildContext context, MealSlot slot) {
+    // Bereits geloggte Eintraege fuer DIESEN Slot UND das aktuell
+    // angezeigte Datum - das Sheet zeigt sie oben mit X-Button.
+    final existingForSlot = loggedMeals
+        .where((m) =>
+            DateUtils.isSameDay(m.loggedAt, selectedDate) && m.slot == slot)
+        .toList(growable: false);
     showAddMealSheet(
       context,
       slot: slot,
@@ -68,9 +77,11 @@ class MealAnalysisScreen extends StatelessWidget {
       productService: productService,
       photoInput: photoInput,
       favorites: favorites,
+      existingMeals: existingForSlot,
       onAdd: onAddMeal,
       onAdjustDailyKcal: onAdjustDailyKcal,
       onRemoveFavorite: onRemoveFavorite,
+      onRemoveMeal: onRemoveMeal,
     );
   }
 

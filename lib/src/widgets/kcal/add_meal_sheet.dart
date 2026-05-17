@@ -27,6 +27,8 @@ Future<void> showAddMealSheet(
   required void Function(MealAnalysisResult, MealSlot) onAdd,
   required ValueChanged<int> onAdjustDailyKcal,
   required ValueChanged<String> onRemoveFavorite,
+  List<LoggedMeal> existingMeals = const <LoggedMeal>[],
+  ValueChanged<String>? onRemoveMeal,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -40,9 +42,11 @@ Future<void> showAddMealSheet(
         productService: productService,
         photoInput: photoInput,
         favorites: favorites,
+        existingMeals: existingMeals,
         onAdd: onAdd,
         onAdjustDailyKcal: onAdjustDailyKcal,
         onRemoveFavorite: onRemoveFavorite,
+        onRemoveMeal: onRemoveMeal,
       );
     },
   );
@@ -59,6 +63,8 @@ class AddMealSheet extends StatefulWidget {
     required this.onAdd,
     required this.onAdjustDailyKcal,
     required this.onRemoveFavorite,
+    this.existingMeals = const <LoggedMeal>[],
+    this.onRemoveMeal,
   });
 
   final MealSlot slot;
@@ -69,6 +75,14 @@ class AddMealSheet extends StatefulWidget {
   final void Function(MealAnalysisResult, MealSlot) onAdd;
   final ValueChanged<int> onAdjustDailyKcal;
   final ValueChanged<String> onRemoveFavorite;
+
+  /// Bereits geloggte Mahlzeiten fuer DIESEN Slot+Datum - werden oben
+  /// als Liste mit Loesch-X angezeigt.
+  final List<LoggedMeal> existingMeals;
+
+  /// Wird bei X-Tap auf einen existingMeal-Eintrag gerufen. Wenn null,
+  /// wird der X-Button gar nicht angezeigt (read-only).
+  final ValueChanged<String>? onRemoveMeal;
 
   @override
   State<AddMealSheet> createState() => _AddMealSheetState();
@@ -94,6 +108,23 @@ class _AddMealSheetState extends State<AddMealSheet> {
   static const Duration _productSearchRetryDelay =
       Duration(milliseconds: 1500);
   static const int _productSearchMaxAttempts = 6;
+
+  // Lokale Kopie der existingMeals damit X-Tap sofort UI-Feedback gibt
+  // bevor der Parent-Setstate durchlaeuft.
+  late List<LoggedMeal> _existing;
+
+  @override
+  void initState() {
+    super.initState();
+    _existing = List<LoggedMeal>.of(widget.existingMeals);
+  }
+
+  void _removeExisting(String id) {
+    setState(() {
+      _existing = _existing.where((m) => m.id != id).toList();
+    });
+    widget.onRemoveMeal?.call(id);
+  }
 
   @override
   void dispose() {
@@ -448,6 +479,16 @@ class _AddMealSheetState extends State<AddMealSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (_existing.isNotEmpty) ...[
+                      _ExistingMealsList(
+                        meals: _existing,
+                        slot: widget.slot,
+                        onRemove: widget.onRemoveMeal == null
+                            ? null
+                            : _removeExisting,
+                      ),
+                      const SizedBox(height: 18),
+                    ],
                     _buildQuickActions(),
                     const SizedBox(height: 16),
                     _buildSearchField(),
@@ -994,6 +1035,151 @@ class _EmptyHint extends StatelessWidget {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// ExistingMealsList — was schon im Slot drin ist, mit Loesch-X.
+// ─────────────────────────────────────────────────────────────────────
+
+class _ExistingMealsList extends StatelessWidget {
+  const _ExistingMealsList({
+    required this.meals,
+    required this.slot,
+    required this.onRemove,
+  });
+
+  final List<LoggedMeal> meals;
+  final MealSlot slot;
+  final ValueChanged<String>? onRemove;
+
+  Color get _accent => switch (slot) {
+        MealSlot.breakfast => orange,
+        MealSlot.lunch => lime,
+        MealSlot.dinner => pink,
+        MealSlot.snack => cyan,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final totalKcal =
+        meals.fold<int>(0, (sum, m) => sum + m.result.caloriesKcal);
+    return Container(
+      key: const ValueKey('analyse-existing-meals'),
+      decoration: BoxDecoration(
+        color: surfaceSoft,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: hairline),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
+            child: Row(
+              children: [
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: _accent,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Schon hinzugefügt',
+                  style: TextStyle(
+                    color: textMuted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.9,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '$totalKcal kcal',
+                  style: const TextStyle(
+                    color: textPrimary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          for (var i = 0; i < meals.length; i++) ...[
+            if (i > 0)
+              const Divider(
+                color: hairline,
+                height: 1,
+                indent: 14,
+                endIndent: 14,
+              ),
+            _ExistingMealRow(
+              meal: meals[i],
+              onRemove: onRemove,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ExistingMealRow extends StatelessWidget {
+  const _ExistingMealRow({required this.meal, required this.onRemove});
+
+  final LoggedMeal meal;
+  final ValueChanged<String>? onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 8, 6, 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  meal.result.mealName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.1,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${meal.result.caloriesKcal} kcal · ${meal.result.estimatedGrams} g',
+                  style: const TextStyle(
+                    color: textMuted,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (onRemove != null)
+            IconButton(
+              key: ValueKey('analyse-existing-remove-${meal.id}'),
+              iconSize: 18,
+              padding: const EdgeInsets.all(8),
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              onPressed: () => onRemove!(meal.id),
+              icon: const Icon(Icons.close_rounded, color: textMuted),
+              tooltip: 'Entfernen',
+            ),
         ],
       ),
     );

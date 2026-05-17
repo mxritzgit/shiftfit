@@ -473,6 +473,19 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         .catchError((e) => _reportSyncError('Mahlzeit', e));
   }
 
+  void _removeLoggedMeal(String id) {
+    setState(() {
+      loggedMeals = loggedMeals.where((m) => m.id != id).toList();
+      if (_selectedFoodDateIsToday) {
+        dailyConsumedKcal = _consumedKcalForFoodDate(DateTime.now());
+        macroProgress = _macroProgressForFoodDate(DateTime.now());
+      }
+    });
+    widget.sync?.meals
+        .deleteLoggedMeal(id)
+        .catchError((e) => _reportSyncError('Mahlzeit-Delete', e));
+  }
+
   void _adjustDailyTotalDelta(int delta) {
     LoggedMeal? updated;
     setState(() {
@@ -708,6 +721,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
             _addResultToDailyTotal(result, slot: slot),
         onAdjustDailyKcal: _adjustDailyTotalDelta,
         onRemoveFavorite: _removeFavorite,
+        onRemoveMeal: _removeLoggedMeal,
       ),
       _ => TodayDashboard(
         selectedShift: selectedShift,
