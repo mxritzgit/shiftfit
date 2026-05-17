@@ -19,7 +19,9 @@ import UIKit
   // einhaengen koennen.
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
-    FitPilotSpeechPlugin.register(with: engineBridge.pluginRegistry)
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "FitPilotSpeechPlugin") {
+      FitPilotSpeechPlugin.register(with: registrar)
+    }
   }
 }
 
@@ -39,10 +41,7 @@ public final class FitPilotSpeechPlugin: NSObject, FlutterPlugin {
   private var isFinishing = false
   private var tapInstalled = false
 
-  public static func register(with registry: FlutterPluginRegistry) {
-    guard let registrar = registry.registrar(forPlugin: "FitPilotSpeechPlugin") else {
-      return
-    }
+  public static func register(with registrar: FlutterPluginRegistrar) {
     let channel = FlutterMethodChannel(
       name: "fitpilot/speech",
       binaryMessenger: registrar.messenger()
