@@ -1,0 +1,226 @@
+import 'meal_analysis_result.dart';
+
+class FitnessRecipe {
+  const FitnessRecipe({
+    required this.slug,
+    required this.title,
+    required this.description,
+    required this.portion,
+    required this.ingredients,
+    required this.preparation,
+    required this.professionalHint,
+    required this.imageAsset,
+    required this.caloriesKcal,
+    required this.proteinG,
+    required this.carbsG,
+    required this.fatG,
+    required this.estimatedGrams,
+    required this.categories,
+  });
+
+  final String slug;
+  final String title;
+  final String description;
+  final String portion;
+  final String ingredients;
+  final String preparation;
+  final String professionalHint;
+  final String imageAsset;
+  final int caloriesKcal;
+  final int proteinG;
+  final int carbsG;
+  final int fatG;
+  final int estimatedGrams;
+  final List<String> categories;
+
+  double get kcalPer100G => estimatedGrams <= 0 ? 0 : caloriesKcal * 100 / estimatedGrams;
+
+  MealAnalysisResult toMealResult() {
+    return MealAnalysisResult(
+      mealName: title,
+      caloriesKcal: caloriesKcal,
+      estimatedGrams: estimatedGrams,
+      kcalPer100G: kcalPer100G,
+      protein: '$proteinG g',
+      carbs: '$carbsG g',
+      fat: '$fatG g',
+      confidence: 'Rezept',
+      portionNotes: '$portion · $description $professionalHint',
+      sourceLabel: 'FitPilot Rezept',
+      brand: 'FitPilot',
+    );
+  }
+}
+
+const recipeFilters = <String>[
+  'Alle',
+  'High Protein',
+  'Hauptgericht',
+  'Fisch',
+  'Vegetarisch',
+  'Frühstück',
+  'Low Carb',
+];
+
+const fitnessRecipes = <FitnessRecipe>[
+  FitnessRecipe(
+    slug: "hahnchen_mit_reis_and_brokkoli",
+    title: "Hähnchen mit Reis & Brokkoli",
+    description: "Klassischer Lean-Bulk- oder Definitions-Teller mit viel Protein, gut planbaren Kohlenhydraten und Gemüsevolumen.",
+    portion: "1 großer Fitness-Teller / 1 Hauptmahlzeit",
+    ingredients: "- 180 g Hähnchenbrustfilet, roh\n- 75 g Vollkornreis oder Naturreis, roh\n- 220 g Brokkoli, frisch oder TK\n- 8 g Olivenöl\n- 1 TL Zitronensaft\n- 1 kleine Knoblauchzehe, fein gerieben\n- 1/2 TL Paprikapulver edelsüß\n- Salz, schwarzer Pfeffer, Petersilie nach Geschmack",
+    preparation: "1. Reis in leicht gesalzenem Wasser garen, bis er locker und körnig ist. Danach kurz ausdampfen lassen.\n2. Hähnchen mit Zitronensaft, Knoblauch, Paprika, Salz, Pfeffer und der Hälfte des Öls einreiben.\n3. In einer heißen Pfanne oder Grillpfanne 4–5 Minuten pro Seite braten, bis das Fleisch außen goldbraun ist und innen saftig bleibt. Vor dem Anschneiden 3 Minuten ruhen lassen.\n4. Brokkoli dämpfen oder in wenig Wasser garen, dann mit restlichem Öl, Salz und Pfeffer abschmecken.\n5. Alles wie auf dem Bild in drei klaren Bereichen anrichten: Hähnchen geschnitten, Reis als lockere Portion, Brokkoli daneben.",
+    professionalHint: "Für Meal Prep Hähnchen und Reis getrennt vom Brokkoli lagern, damit der Brokkoli beim Aufwärmen nicht zu weich wird.",
+    imageAsset: "assets/recipes/hahnchen_mit_reis_and_brokkoli.png",
+    caloriesKcal: 590,
+    proteinG: 55,
+    carbsG: 62,
+    fatG: 12,
+    estimatedGrams: 483,
+    categories: <String>["High Protein", "Hauptgericht"],
+  ),
+  FitnessRecipe(
+    slug: "lachs_mit_sukartoffel_and_spargel",
+    title: "Lachs mit Süßkartoffel & Spargel",
+    description: "Proteinreicher Teller mit Omega-3-Fetten, komplexen Kohlenhydraten und viel Gemüse.",
+    portion: "1 großer Fitness-Teller / 1 Hauptmahlzeit",
+    ingredients: "- 180 g Lachsfilet\n- 300 g Süßkartoffel, in Spalten\n- 200 g grüner Spargel\n- 10 g Olivenöl\n- 1 TL Zitronensaft\n- 1 TL körniger Senf optional\n- 1/2 TL Knoblauchpulver\n- Salz, Pfeffer, Dill oder Petersilie",
+    preparation: "1. Süßkartoffelspalten mit der Hälfte des Öls, Salz, Pfeffer und Knoblauchpulver mischen. Bei 200 °C Ober-/Unterhitze 25–30 Minuten rösten.\n2. Spargelenden entfernen, Spargel mit etwas Öl, Salz und Pfeffer würzen und für die letzten 10–12 Minuten mit aufs Blech geben.\n3. Lachs trocken tupfen, mit Zitronensaft, Salz, Pfeffer und optional etwas Senf würzen.\n4. Lachs in der Pfanne auf mittlerer Hitze zuerst auf der Hautseite oder Unterseite 4 Minuten braten, wenden und 2–3 Minuten fertig garen.\n5. Auf einem weißen Teller anrichten: Lachs vorne, Süßkartoffeln seitlich, Spargel als grüner Block im Hintergrund.",
+    professionalHint: "Für eine kalorienärmere Version nur 5 g Öl verwenden oder die Süßkartoffelportion auf 220 g reduzieren.",
+    imageAsset: "assets/recipes/lachs_mit_sukartoffel_and_spargel.png",
+    caloriesKcal: 640,
+    proteinG: 43,
+    carbsG: 55,
+    fatG: 29,
+    estimatedGrams: 690,
+    categories: <String>["Fisch", "High Protein"],
+  ),
+  FitnessRecipe(
+    slug: "putensteak_mit_quinoa_and_ofengemuse",
+    title: "Putensteak mit Quinoa & Ofengemüse",
+    description: "Sehr magerer, proteinreicher Teller mit Quinoa und farbigem Gemüse für eine moderne Fitness-App-Optik.",
+    portion: "1 großer Fitness-Teller / 1 Hauptmahlzeit",
+    ingredients: "- 200 g Putenbruststeak, roh\n- 70 g Quinoa, roh\n- 250 g Ofengemüse: Zucchini, Paprika, Karotte\n- 10 g Olivenöl\n- 1 TL Zitronensaft\n- 1/2 TL Paprikapulver\n- 1/2 TL italienische Kräuter\n- Salz, Pfeffer, frische Petersilie",
+    preparation: "1. Quinoa gründlich waschen und mit der doppelten Menge Wasser 12–15 Minuten köcheln lassen. Danach 5 Minuten quellen lassen.\n2. Gemüse in gleichmäßige Stücke schneiden, mit 6 g Olivenöl, Salz, Pfeffer und Kräutern mischen. Bei 200 °C etwa 20–25 Minuten rösten.\n3. Putensteak mit Zitronensaft, Paprika, Salz, Pfeffer und restlichem Öl würzen.\n4. In einer sehr heißen Grillpfanne je nach Dicke 3–5 Minuten pro Seite braten. Kurz ruhen lassen und in Scheiben schneiden.\n5. Quinoa als lockeren Hügel anrichten, Putenstreifen danebenlegen und das Ofengemüse farbig daneben platzieren.",
+    professionalHint: "Pute wird schnell trocken. Nicht zu lange braten und nach dem Garen unbedingt kurz ruhen lassen.",
+    imageAsset: "assets/recipes/putensteak_mit_quinoa_and_ofengemuse.png",
+    caloriesKcal: 610,
+    proteinG: 58,
+    carbsG: 57,
+    fatG: 15,
+    estimatedGrams: 530,
+    categories: <String>["High Protein", "Hauptgericht"],
+  ),
+  FitnessRecipe(
+    slug: "rindersteak_mit_kartoffeln_and_bohnen",
+    title: "Rindersteak mit Kartoffeln & Bohnen",
+    description: "Kräftiger High-Protein-Teller für Nutzer, die eine herzhafte Fitness-Mahlzeit mit Steak möchten.",
+    portion: "1 großer Fitness-Teller / 1 Hauptmahlzeit",
+    ingredients: "- 200 g mageres Rindersteak, z. B. Hüfte oder Rumpsteak\n- 280 g Kartoffeln, festkochend\n- 220 g grüne Bohnen\n- 10 g Olivenöl\n- 1 kleine Knoblauchzehe\n- 1 Zweig Rosmarin oder 1/2 TL getrocknet\n- Salz, Pfeffer, grobe Chiliflocken optional",
+    preparation: "1. Kartoffeln halbieren oder vierteln, mit 6 g Öl, Salz, Pfeffer und Rosmarin mischen. Bei 200 °C 25–30 Minuten rösten.\n2. Bohnen in Salzwasser 5–7 Minuten blanchieren, anschließend kurz in der Pfanne mit Knoblauch und 2 g Öl schwenken.\n3. Steak 30 Minuten vor dem Braten aus dem Kühlschrank nehmen, trocken tupfen und kräftig salzen.\n4. In einer sehr heißen Pfanne mit restlichem Öl je nach Dicke 2–4 Minuten pro Seite braten. Danach pfeffern und 5 Minuten ruhen lassen.\n5. Steak in Scheiben schneiden und mit Kartoffeln und Bohnen sauber getrennt auf dem Teller anrichten.",
+    professionalHint: "Für Definitionsphasen ein mageres Stück wählen und sichtbares Fett entfernen. Für Muskelaufbau kann die Kartoffelportion erhöht werden.",
+    imageAsset: "assets/recipes/rindersteak_mit_kartoffeln_and_bohnen.png",
+    caloriesKcal: 670,
+    proteinG: 52,
+    carbsG: 48,
+    fatG: 28,
+    estimatedGrams: 710,
+    categories: <String>["High Protein", "Hauptgericht"],
+  ),
+  FitnessRecipe(
+    slug: "garnelen_mit_vollkornnudeln_and_zucchini",
+    title: "Garnelen mit Vollkornnudeln & Zucchini",
+    description: "Leichter Pasta-Teller mit viel Protein, ideal als sportliche Alternative zu klassischer Pasta.",
+    portion: "1 großer Fitness-Teller / 1 Hauptmahlzeit",
+    ingredients: "- 200 g Garnelen, geschält und roh oder gegart\n- 85 g Vollkorn-Penne, roh\n- 250 g Zucchini, in Bändern oder Scheiben\n- 8 g Olivenöl\n- 1 Knoblauchzehe, fein gehackt\n- 1 TL Zitronensaft\n- 1 EL gehackte Petersilie\n- Salz, Pfeffer, Chiliflocken optional",
+    preparation: "1. Vollkornnudeln al dente kochen und 50 ml Nudelwasser aufheben.\n2. Zucchini mit einem Sparschäler in Bänder schneiden oder in dünne Scheiben schneiden. Kurz in 3 g Öl anbraten, damit sie bissfest bleiben.\n3. Garnelen trocken tupfen und mit Salz, Pfeffer, Knoblauch und Zitronensaft würzen.\n4. In einer heißen Pfanne mit restlichem Öl 1–2 Minuten pro Seite braten, bis sie rosa und saftig sind. Nicht übergaren.\n5. Nudeln mit etwas Nudelwasser, Petersilie und Gewürzen mischen. Garnelen, Pasta und Zucchini wie im Bild in separaten, appetitlichen Bereichen anrichten.",
+    professionalHint: "Bei gegarten Garnelen nur kurz erhitzen, sonst werden sie gummiartig. Die Zucchini bewusst bissfest lassen.",
+    imageAsset: "assets/recipes/garnelen_mit_vollkornnudeln_and_zucchini.png",
+    caloriesKcal: 560,
+    proteinG: 48,
+    carbsG: 68,
+    fatG: 11,
+    estimatedGrams: 543,
+    categories: <String>["Fisch", "High Protein"],
+  ),
+  FitnessRecipe(
+    slug: "omelett_mit_spinat_and_avocado",
+    title: "Omelett mit Spinat & Avocado",
+    description: "Low-Carb-Frühstück oder Abendessen mit realistischen Portionsgrößen, cremiger Avocado und einem großen Omelett.",
+    portion: "1 großer Fitness-Teller / 1 Hauptmahlzeit",
+    ingredients: "- 3 ganze Eier\n- 150 g Eiklar zusätzlich, für mehr Protein und großes Volumen\n- 80 g frischer Spinat\n- 80 g Avocado, in Scheiben\n- 120 g Cherrytomaten\n- 5 g Olivenöl oder Butter\n- 30 g körniger Frischkäse oder Feta light optional\n- Salz, Pfeffer, Schnittlauch",
+    preparation: "1. Spinat kurz in einer beschichteten Pfanne zusammenfallen lassen, leicht salzen und beiseitestellen.\n2. Eier und Eiklar mit Salz, Pfeffer und Schnittlauch verquirlen.\n3. Öl oder Butter in die Pfanne geben, Eiermasse bei mittlerer Hitze stocken lassen. Nicht zu heiß braten, damit das Omelett saftig bleibt.\n4. Spinat und optional Frischkäse auf eine Hälfte geben, Omelett zusammenklappen und kurz fertig garen.\n5. Mit Avocadoscheiben und halbierten Cherrytomaten auf dem Teller anrichten, sodass es wie auf dem Bild voll und hochwertig wirkt.",
+    professionalHint: "Die Kombination aus 3 Eiern plus Eiklar passt zur sichtbaren Größe des Omeletts und liefert deutlich mehr Protein als ein kleines 1-Ei-Omelett.",
+    imageAsset: "assets/recipes/omelett_mit_spinat_and_avocado.png",
+    caloriesKcal: 620,
+    proteinG: 36,
+    carbsG: 18,
+    fatG: 44,
+    estimatedGrams: 465,
+    categories: <String>["Frühstück", "Low Carb"],
+  ),
+  FitnessRecipe(
+    slug: "thunfisch_mit_couscous_and_gemuse",
+    title: "Thunfisch mit Couscous & Gemüse",
+    description: "Edler Fitness-Teller mit angebratenem Thunfisch, Couscous und buntem Gemüse.",
+    portion: "1 großer Fitness-Teller / 1 Hauptmahlzeit",
+    ingredients: "- 200 g Thunfischsteak, Sushi-Qualität oder sehr frisch\n- 80 g Couscous, roh\n- 250 g Gemüse: Brokkoli, Zucchini, Paprika\n- 8 g Olivenöl\n- 1 TL Zitronensaft\n- 1 TL Sojasauce optional\n- 1 TL Sesam oder Pfefferkruste optional\n- Salz, Pfeffer, Petersilie",
+    preparation: "1. Couscous mit heißer Gemüsebrühe im Verhältnis 1:1,2 übergießen, abdecken und 5–7 Minuten quellen lassen. Danach mit einer Gabel lockern.\n2. Gemüse in einer Pfanne oder im Ofen bissfest garen und mit Salz, Pfeffer und etwas Öl würzen.\n3. Thunfisch trocken tupfen, leicht salzen und optional in Pfeffer oder Sesam wenden.\n4. In einer sehr heißen Pfanne mit wenig Öl pro Seite nur 45–75 Sekunden scharf anbraten, damit die Mitte rosa bleibt.\n5. Kurz ruhen lassen, in gleichmäßige Scheiben schneiden und mit Couscous und buntem Gemüse wie auf dem Bild anrichten.",
+    professionalHint: "Nur sehr frischen Thunfisch verwenden. Wer ihn durchgegart möchte, brät ihn länger, verliert aber die saftige Optik aus dem Bild.",
+    imageAsset: "assets/recipes/thunfisch_mit_couscous_and_gemuse.png",
+    caloriesKcal: 600,
+    proteinG: 56,
+    carbsG: 58,
+    fatG: 15,
+    estimatedGrams: 538,
+    categories: <String>["Fisch", "High Protein"],
+  ),
+  FitnessRecipe(
+    slug: "tofu_mit_reis_and_edamame",
+    title: "Tofu mit Reis & Edamame",
+    description: "Vegetarischer bzw. veganer High-Protein-Teller mit Tofu, Edamame und Reis.",
+    portion: "1 großer Fitness-Teller / 1 Hauptmahlzeit",
+    ingredients: "- 200 g fester Tofu, abgetropft\n- 75 g Reis, roh\n- 150 g Edamame, geschält\n- 8 g Sesamöl oder neutrales Öl\n- 1 EL Sojasauce\n- 1 TL Limettensaft\n- 1 TL Ahornsirup oder Honig optional\n- 1 TL Sesam\n- Frühlingszwiebel, Pfeffer, Chili optional",
+    preparation: "1. Reis garen und ausdampfen lassen, damit er locker bleibt.\n2. Tofu gut trocken pressen und in dicke Scheiben oder Rechtecke schneiden.\n3. Sojasauce, Limettensaft, optional Ahornsirup und etwas Pfeffer verrühren. Tofu darin 10 Minuten marinieren.\n4. Tofu in einer heißen beschichteten Pfanne mit Öl von beiden Seiten goldbraun anbraten.\n5. Edamame 3–5 Minuten in Salzwasser erhitzen und abgießen.\n6. Tofu, Reis und Edamame klar getrennt auf dem Teller anrichten und mit Sesam sowie Frühlingszwiebel toppen.",
+    professionalHint: "Für mehr Protein 250 g Tofu verwenden oder zusätzlich 100 g Skyr/Sojajoghurt-Dip separat einplanen.",
+    imageAsset: "assets/recipes/tofu_mit_reis_and_edamame.png",
+    caloriesKcal: 610,
+    proteinG: 35,
+    carbsG: 78,
+    fatG: 18,
+    estimatedGrams: 433,
+    categories: <String>["Vegetarisch", "High Protein"],
+  ),
+  FitnessRecipe(
+    slug: "hahnchen_mit_sukartoffel_and_bohnen",
+    title: "Hähnchen mit Süßkartoffel & Bohnen",
+    description: "Meal-Prep-tauglicher Teller mit magerem Hähnchen, gerösteter Süßkartoffel und grünen Bohnen.",
+    portion: "1 großer Fitness-Teller / 1 Hauptmahlzeit",
+    ingredients: "- 190 g Hähnchenbrustfilet, roh\n- 300 g Süßkartoffel, gewürfelt\n- 220 g grüne Bohnen\n- 10 g Olivenöl\n- 1/2 TL Paprikapulver\n- 1/2 TL Knoblauchpulver\n- 1 TL Zitronensaft\n- Salz, Pfeffer, Petersilie",
+    preparation: "1. Süßkartoffelwürfel mit 6 g Öl, Paprika, Knoblauchpulver, Salz und Pfeffer mischen. Bei 200 °C 25–30 Minuten rösten.\n2. Bohnen 5–7 Minuten blanchieren und anschließend kurz in der Pfanne schwenken.\n3. Hähnchen mit Zitronensaft, Salz, Pfeffer und etwas Öl würzen.\n4. In der Grillpfanne goldbraun braten, bis es innen gar, aber saftig ist. Danach 3 Minuten ruhen lassen und in Scheiben schneiden.\n5. Alles wie im Bild anrichten: Hähnchen vorne links, Süßkartoffeln als orangefarbener Block, Bohnen rechts.",
+    professionalHint: "Sehr gut für 2–3 Tage Meal Prep geeignet. Beim Aufwärmen etwas Wasser zum Hähnchen geben, damit es saftig bleibt.",
+    imageAsset: "assets/recipes/hahnchen_mit_sukartoffel_and_bohnen.png",
+    caloriesKcal: 620,
+    proteinG: 55,
+    carbsG: 60,
+    fatG: 16,
+    estimatedGrams: 720,
+    categories: <String>["High Protein", "Hauptgericht"],
+  ),
+  FitnessRecipe(
+    slug: "putenballchen_mit_reis_and_gemuse",
+    title: "Putenbällchen mit Reis & Gemüse",
+    description: "Familienfreundliches Fitness-Gericht mit saftigen Putenbällchen, Reis und Gemüse.",
+    portion: "1 großer Fitness-Teller / 1 Hauptmahlzeit",
+    ingredients: "- 220 g Putenhack, möglichst mager\n- 75 g Reis, roh\n- 250 g Gemüse: Brokkoli und Karotten\n- 1 Ei Größe M\n- 20 g Haferflocken, fein\n- 1 kleine Zwiebel, sehr fein gewürfelt\n- 1 TL Senf\n- 8 g Olivenöl\n- Salz, Pfeffer, Paprika, Petersilie",
+    preparation: "1. Reis garen und ausdampfen lassen.\n2. Putenhack mit Ei, Haferflocken, Zwiebel, Senf, Salz, Pfeffer, Paprika und Petersilie mischen. 5–6 gleichmäßige Bällchen formen.\n3. Bällchen in einer Pfanne mit Öl rundherum 8–10 Minuten braten oder bei 200 °C 15–18 Minuten im Ofen garen.\n4. Brokkoli und Karotten dämpfen oder kurz kochen, bis sie bissfest und farbintensiv sind.\n5. Reis hinten auf dem Teller platzieren, Putenbällchen vorne und Gemüse seitlich anrichten, passend zum Bild.",
+    professionalHint: "Haferflocken und Ei sorgen dafür, dass die Bällchen saftig bleiben und nicht auseinanderfallen. Für extra Saftigkeit 1 EL Magerquark in die Masse geben.",
+    imageAsset: "assets/recipes/putenballchen_mit_reis_and_gemuse.png",
+    caloriesKcal: 650,
+    proteinG: 55,
+    carbsG: 65,
+    fatG: 18,
+    estimatedGrams: 573,
+    categories: <String>["High Protein", "Hauptgericht"],
+  ),
+];

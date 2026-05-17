@@ -145,7 +145,7 @@ void main() {
     expect(find.textContaining('Warm-up'), findsWidgets);
   });
 
-  testWidgets('Bottom navigation switches between Heute, Training, Trends and Food', (
+  testWidgets('Bottom navigation switches between Heute, Training, Trends, Food and Rezepte', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ShiftFitApp());
@@ -184,10 +184,61 @@ void main() {
     expect(find.text('Demo-Fotoanalyse'), findsNothing);
     expect(find.text('Demo-Barcode laden'), findsNothing);
 
+    await tester.tap(find.byKey(const ValueKey('nav-Rezepte')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('screen-recipes')), findsOneWidget);
+    expect(find.byKey(const ValueKey('recipes-search-input')), findsOneWidget);
+    expect(find.text('Hähnchen mit Reis & Brokkoli'), findsWidgets);
+    expect(find.text('Lachs mit Süßkartoffel & Spargel'), findsWidgets);
+
     await tester.tap(find.byKey(const ValueKey('nav-Heute')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('screen-today')), findsOneWidget);
     expect(find.text('Hypertrophy Plan'), findsOneWidget);
+  });
+
+  testWidgets('Recipe detail can add a meal into kcal and macro tracker', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const ShiftFitApp());
+
+    await tester.tap(find.byKey(const ValueKey('nav-Rezepte')));
+    await tester.pumpAndSettle();
+
+    final recipeTile = find.byKey(
+      const ValueKey('recipe-tile-hahnchen_mit_reis_and_brokkoli'),
+    );
+    await tester.ensureVisible(recipeTile);
+    await tester.tap(recipeTile);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('recipe-detail-hahnchen_mit_reis_and_brokkoli')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('recipe-add-card')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('recipe-add-lunch')));
+    await tester.pumpAndSettle();
+    expect(find.text('590 kcal zu Mittagessen hinzugefügt.'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('nav-Food')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('analyse-daily-kcal-card')),
+        matching: find.text('590 kcal'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('meal-slot-lunch')));
+    await tester.pumpAndSettle();
+    expect(find.text('Hähnchen mit Reis & Brokkoli'), findsWidgets);
+    expect(find.textContaining('590 kcal'), findsWidgets);
   });
 
   testWidgets('Food tab supports deterministic itemized photo results and daily kcal adding', (

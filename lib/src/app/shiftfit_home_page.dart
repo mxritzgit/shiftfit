@@ -25,6 +25,7 @@ import '../services/open_food_facts_product_service.dart';
 import '../services/uuid.dart';
 import '../screens/meal_analysis_screen.dart';
 import '../screens/profile_screen.dart';
+import '../screens/recipes_screen.dart';
 import '../screens/today_dashboard.dart';
 import '../screens/trends_screen.dart';
 import '../screens/week_planner_screen.dart';
@@ -403,9 +404,9 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
     return _isSameFoodDate(selectedFoodDate, DateTime.now());
   }
 
-  DateTime _timestampForSelectedFoodDate() {
+  DateTime _timestampForFoodDate(DateTime date) {
     final now = DateTime.now();
-    final day = DateUtils.dateOnly(selectedFoodDate);
+    final day = DateUtils.dateOnly(date);
     return DateTime(day.year, day.month, day.day, now.hour, now.minute);
   }
 
@@ -452,18 +453,24 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
     );
   }
 
-  void _addResultToDailyTotal(MealAnalysisResult result, {MealSlot? slot}) {
+  void _addResultToDailyTotal(
+    MealAnalysisResult result, {
+    MealSlot? slot,
+    DateTime? foodDate,
+  }) {
+    final targetDate = DateUtils.dateOnly(foodDate ?? selectedFoodDate);
     final entry = LoggedMeal(
       id: uuidV4(),
       result: result,
-      loggedAt: _timestampForSelectedFoodDate(),
+      loggedAt: _timestampForFoodDate(targetDate),
       forcedSlot: slot,
     );
+    final targetIsToday = _isSameFoodDate(targetDate, DateTime.now());
     setState(() {
       lifetimeStats = lifetimeStats.incrementMeals();
       _rememberFavorite(result);
       loggedMeals = [entry, ...loggedMeals];
-      if (_selectedFoodDateIsToday) {
+      if (targetIsToday) {
         dailyConsumedKcal = _consumedKcalForFoodDate(DateTime.now());
         macroProgress = _macroProgressForFoodDate(DateTime.now());
       }
@@ -722,6 +729,13 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         onAdjustDailyKcal: _adjustDailyTotalDelta,
         onRemoveFavorite: _removeFavorite,
         onRemoveMeal: _removeLoggedMeal,
+      ),
+      4 => RecipesScreen(
+        onAddMeal: (result, slot) => _addResultToDailyTotal(
+          result,
+          slot: slot,
+          foodDate: DateTime.now(),
+        ),
       ),
       _ => TodayDashboard(
         selectedShift: selectedShift,
