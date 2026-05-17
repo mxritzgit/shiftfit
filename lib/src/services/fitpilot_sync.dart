@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'coach_chat_service.dart';
 import 'daily_log_sync.dart';
 import 'meals_sync.dart';
 import 'profile_sync.dart';
@@ -14,6 +15,7 @@ class FitPilotSync {
     required this.meals,
     required this.dailyLog,
     required this.tracking,
+    required this.coachChat,
   });
 
   factory FitPilotSync.forUser(SupabaseClient client, String userId) {
@@ -22,6 +24,7 @@ class FitPilotSync {
       meals: MealsSync(client, userId),
       dailyLog: DailyLogSync(client, userId),
       tracking: TrackingSync(client, userId),
+      coachChat: CoachChatService(client, userId),
     );
   }
 
@@ -29,6 +32,7 @@ class FitPilotSync {
   final MealsSync meals;
   final DailyLogSync dailyLog;
   final TrackingSync tracking;
+  final CoachChatService coachChat;
 
   void dispose() {
     dailyLog.dispose();

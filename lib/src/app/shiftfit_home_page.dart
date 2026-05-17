@@ -23,6 +23,7 @@ import '../services/meal_analyzer.dart';
 import '../services/meal_photo_input.dart';
 import '../services/open_food_facts_product_service.dart';
 import '../services/uuid.dart';
+import '../screens/coach_chat_screen.dart';
 import '../screens/meal_analysis_screen.dart';
 import '../screens/profile_screen.dart';
 import '../screens/recipes_screen.dart';
@@ -651,9 +652,13 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
       );
     }
 
-    final body = selectedTab == 3
+    // Tab 3 (Food), Tab 4 (Rezepte) und Tab 5 (Coach) haben eigene
+    // scroll-faehige Inhalte + fixierte Eingabe-Bereiche - die brauchen
+    // feste Hoehe und keinen aeusseren SingleChildScrollView.
+    final fixedHeightTab = selectedTab == 3 || selectedTab == 4 || selectedTab == 5;
+    final body = fixedHeightTab
         ? Padding(
-            key: const ValueKey('tab-fixed-3'),
+            key: ValueKey('tab-fixed-$selectedTab'),
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
             child: buildSelectedScreen(),
           )
@@ -703,6 +708,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         onProfilePressed: _openProfile,
         profileInitial: _profileInitial,
       ),
+      5 => CoachChatScreen(service: widget.sync?.coachChat),
       3 => MealAnalysisScreen(
         analyzer: widget.mealAnalyzer,
         productService: widget.productService,

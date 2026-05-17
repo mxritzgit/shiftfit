@@ -18,6 +18,7 @@ class ShiftFitBottomNav extends StatelessWidget {
     (Icons.insights_rounded, 'Trends'),
     (Icons.restaurant_rounded, 'Food'),
     (Icons.menu_book_rounded, 'Rezepte'),
+    (Icons.chat_bubble_outline_rounded, 'Coach'),
   ];
 
   @override
