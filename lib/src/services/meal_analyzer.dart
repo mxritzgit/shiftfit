@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../config/supabase_config.dart';
 import '../models/meal_analysis_request.dart';
 import '../models/meal_analysis_result.dart';
@@ -15,93 +17,7 @@ class EdgeFunctionMealAnalyzer implements MealAnalyzer {
   static const String _supabaseUrl = FitPilotSupabaseConfig.url;
   static const String _supabaseAnonKey = FitPilotSupabaseConfig.anonKey;
   static const String _functionPath = '/functions/v1/analyze-meal';
-
-  static const String _basePrompt = '''
-ShiftFit Foto-Kalorienanalyse. Du bist ein präziser Ernährungsschätzer.
-
-STRENGE ITEMIZATION — ABSOLUT PFLICHT:
-- Jedes sichtbar getrennte Lebensmittel ist ein EIGENER Eintrag in items[].
-- Steak + Kartoffeln + Brokkoli = drei items, NIEMALS ein gemeinsamer "Teller".
-- Auch Beilagen, Saucen, Dressings, sichtbares Öl/Butter werden eigene items.
-- Wenn mehrere Stücke desselben Lebensmittels sichtbar sind (z. B. 3 Kartoffeln),
-  fasse sie in EINEM Item mit Gesamtgramm zusammen ("Kartoffeln", grams = Summe).
-- Brot/Burger-Brötchen + Belag/Patty = jeweils eigene items.
-- items[] hat NIEMALS nur einen Eintrag, wenn mehr als ein Lebensmittel sichtbar
-  ist. Bei Zweifel: lieber trennen.
-- "mealName" ist der Sammelname (z. B. "Steak mit Ofenkartoffeln");
-  "items[]" ist die strikte Einzelauflistung.
-
-BEISPIEL — itemization richtig vs. falsch:
-Foto zeigt: ein Steak, mehrere Ofenkartoffeln, eine halbe Tomate.
-
-FALSCH (eine zusammengefasste Mahlzeit):
-{
-  "mealName": "Steak mit Ofenkartoffeln und Tomate",
-  "items": [
-    { "name": "Steak mit Ofenkartoffeln und Tomate", "grams": 550, "caloriesKcal": 820 }
-  ]
-}
-
-FALSCH (gar keine items):
-{
-  "mealName": "Steak mit Ofenkartoffeln und Tomate",
-  "items": []
-}
-
-RICHTIG (drei einzelne Bestandteile):
-{
-  "mealName": "Steak mit Ofenkartoffeln und Tomate",
-  "items": [
-    { "name": "Steak",          "grams": 220, "kcalPer100G": 220, "caloriesKcal": 484 },
-    { "name": "Ofenkartoffeln", "grams": 260, "kcalPer100G": 95,  "caloriesKcal": 247 },
-    { "name": "Tomate",         "grams": 70,  "kcalPer100G": 18,  "caloriesKcal": 13 }
-  ]
-}
-
-GRÖSSEN-LOGIK:
-- Schätze pro Item das tatsächliche GEWICHT in Gramm anhand visueller Anhaltspunkte:
-  Teller (Standard 27 cm), Besteck (Gabel ≈ 20 cm), Hände, Verpackung.
-- Antworte UNTERSCHIEDLICH je nach Foto. Niemals Default-Werte für eine
-  Lebensmittelkategorie wiederholen.
-
-REFERENZ-RANGES (nur als Korridore — exakter Wert kommt aus dem Foto):
-- Apfel: klein ≈ 120 g (~62 kcal), mittel ≈ 180 g (~94 kcal), groß ≈ 250 g (~130 kcal).
-- Banane: klein ≈ 80 g, mittel ≈ 120 g, groß ≈ 180 g.
-- Pasta gekocht: 200 g pro Person Standard, voller Teller 300-400 g.
-- Reis gekocht: 150-250 g pro Portion.
-- Steak: 150-250 g typisch, ein dickes Stück bis 350 g.
-- Hähnchenbrust: 120-180 g pro Stück.
-- Kartoffeln gekocht: 150-250 g pro Portion.
-- Brokkoli/Gemüse: 80-150 g pro Portion.
-- Scheibe Brot: 30-50 g.
-
-JEDES ITEM enthält:
-- name: konkret, deutsch wenn möglich ("Steak", "Kartoffeln", nicht "meat", "carbs")
-- grams: int, aus dem Foto geschätzt
-- kcalPer100G: typischer Wert für DIESE Variante (z. B. Steak medium ~220, Kartoffeln
-  gekocht ~80, Brokkoli ~35)
-- caloriesKcal: int, = grams * kcalPer100G / 100 (rechne korrekt nach)
-
-Falls keinerlei Größenanhaltspunkte erkennbar sind, gib confidence "low" und
-einen konservativen Mittelwert mit klarem Hinweis in explanation.
-
-Ausgabe (strikt JSON, kein Fließtext daneben):
-{
-  "mealName": "Sammelname der Mahlzeit",
-  "caloriesKcal": int (Summe aller items),
-  "estimatedGrams": int (Summe aller items),
-  "kcalPer100G": double (Gesamtmittelwert),
-  "proteinG": int|null,
-  "carbsG": int|null,
-  "fatG": int|null,
-  "confidence": "high"|"medium"|"low",
-  "explanation": "1-2 Sätze mit Größen-Begründung (woran erkannt)",
-  "items": [
-    { "name": "...", "grams": int, "caloriesKcal": int, "kcalPer100G": double },
-    { "name": "...", "grams": int, "caloriesKcal": int, "kcalPer100G": double }
-  ]
-}
-''';
+  static const int _maxImageBytes = 5 * 1000 * 1000;
 
   @override
   Future<MealAnalysisResult> analyze(MealAnalysisRequest request) async {
@@ -109,29 +25,54 @@ Ausgabe (strikt JSON, kein Fließtext daneben):
     if (imageBytes == null || imageBytes.isEmpty) {
       throw const FormatException('No image bytes available for analysis.');
     }
+    if (imageBytes.length > _maxImageBytes) {
+      throw const FormatException(
+        'Das Bild ist zu groß. Bitte ein kleineres Foto auswählen.',
+      );
+    }
 
-    final note = _buildNote(request);
+    final session = Supabase.instance.client.auth.currentSession;
+    final accessToken = session?.accessToken;
+    if (accessToken == null || accessToken.isEmpty) {
+      throw AuthException(
+        'Bitte erneut anmelden, bevor du ein Foto analysierst.',
+      );
+    }
 
-    final client = HttpClient();
+    final freeTextHint = _cleanHint(request.freeTextHint);
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
     try {
       final uri = Uri.parse('$_supabaseUrl$_functionPath');
       final httpRequest = await client.postUrl(uri);
       httpRequest.headers.contentType = ContentType.json;
       httpRequest.headers.set('apikey', _supabaseAnonKey);
-      httpRequest.headers.set('Authorization', 'Bearer $_supabaseAnonKey');
+      httpRequest.headers.set('Authorization', 'Bearer $accessToken');
       httpRequest.write(
         jsonEncode({
           'imageBase64': base64Encode(imageBytes),
-          'note': note,
+          'portionHint': request.portionHint?.name ?? MealPortionHint.normal.name,
+          if (freeTextHint != null) 'freeTextHint': freeTextHint,
         }),
       );
 
       final response = await httpRequest.close();
       final responseBody = await response.transform(utf8.decoder).join();
-      final decoded = jsonDecode(responseBody) as Map<String, dynamic>;
+      final decoded = _decodeResponse(responseBody);
 
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        throw AuthException(
+          'Bitte erneut anmelden, bevor du ein Foto analysierst.',
+        );
+      }
+      if (response.statusCode == 429) {
+        throw const HttpException(
+          'Zu viele Foto-Analysen. Bitte später erneut versuchen.',
+        );
+      }
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw HttpException('Meal analysis failed: $responseBody');
+        final message = decoded['message']?.toString() ??
+            'Meal analysis failed with HTTP ${response.statusCode}.';
+        throw HttpException(message);
       }
 
       final result = decoded['result'];
@@ -145,19 +86,19 @@ Ausgabe (strikt JSON, kein Fließtext daneben):
     }
   }
 
-  String _buildNote(MealAnalysisRequest request) {
-    final hint = request.portionHint;
-    final freeText = request.freeTextHint;
-    final extras = <String>[];
-    if (hint != null && hint != MealPortionHint.normal) {
-      extras.add('Nutzer-Hinweis Portionsgröße: ${hint.label} (${hint.guidance}).');
+  static Map<String, dynamic> _decodeResponse(String body) {
+    if (body.trim().isEmpty) {
+      return const <String, dynamic>{};
     }
-    if (freeText != null && freeText.trim().isNotEmpty) {
-      extras.add('Zusätzlicher Hinweis: ${freeText.trim()}');
-    }
-    if (extras.isEmpty) {
-      return _basePrompt;
-    }
-    return '$_basePrompt\n\nNutzer-Kontext:\n${extras.join('\n')}';
+    final decoded = jsonDecode(body);
+    if (decoded is Map<String, dynamic>) return decoded;
+    if (decoded is Map) return decoded.cast<String, dynamic>();
+    return const <String, dynamic>{};
+  }
+
+  static String? _cleanHint(String? raw) {
+    final trimmed = raw?.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (trimmed == null || trimmed.isEmpty) return null;
+    return trimmed.length <= 400 ? trimmed : trimmed.substring(0, 400);
   }
 }

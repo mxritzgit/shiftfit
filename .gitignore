@@ -14,6 +14,7 @@ supabase/.temp/
 .svn/
 .swiftpm/
 migrate_working_dir/
+supabase/.temp/
 
 # IntelliJ related
 *.iml

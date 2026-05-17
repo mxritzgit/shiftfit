@@ -25,14 +25,35 @@ const MODEL_CLASSIFIER = "x-ai/grok-4.3";
 const DAILY_LIMIT            = 5;
 const MAX_INPUT_CHARS        = 1000;
 const MAX_IMAGE_BASE64_CHARS = 6_000_000;
+const MAX_CONTENT_LENGTH     = 6_250_000;
 const HISTORY_LIMIT          = 10;
+const REQUEST_USER_LIMIT     = 60;
+const REQUEST_IP_LIMIT       = 120;
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+const ALLOWED_ORIGINS = (Deno.env.get("FITPILOT_ALLOWED_ORIGINS") ?? "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+function responseHeaders(req?: Request): Headers {
+  const headers = new Headers({
+    "Cache-Control": "no-store",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Max-Age": "86400",
+  });
+  const origin = req?.headers.get("origin");
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    headers.set("Access-Control-Allow-Origin", origin);
+    headers.set("Vary", "Origin");
+  }
+  return headers;
+}
 
 // ---------------------------------------------------------------------------
 // Layer 1 - deterministischer Pre-Filter
@@ -319,6 +340,51 @@ async function rpcClaimQuota(
   return { used: row?.used ?? 0, remaining: row?.remaining ?? 0 };
 }
 
+async function rpcConsumeEdgeRateLimit(
+  serviceKey: string,
+  supabaseUrl: string,
+  scope: string,
+  subject: string,
+  limit: number,
+  windowSeconds: number,
+): Promise<{ allowed: boolean; remaining: number; resetAt: string; windowSeconds: number } | { error: string }> {
+  const resp = await fetch(`${supabaseUrl}/rest/v1/rpc/consume_edge_rate_limit`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${serviceKey}`,
+      "apikey": serviceKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      p_scope: scope,
+      p_subject: subject,
+      p_limit: limit,
+      p_window_seconds: windowSeconds,
+    }),
+  });
+  if (!resp.ok) {
+    const text = await resp.text();
+    return { error: `edge_rate_limit_failed: ${resp.status} ${text.slice(0, 200)}` };
+  }
+  const data = await resp.json();
+  return {
+    allowed: data?.allowed === true,
+    remaining: Number(data?.remaining ?? 0),
+    resetAt: String(data?.resetAt ?? new Date(Date.now() + windowSeconds * 1000).toISOString()),
+    windowSeconds: Number(data?.windowSeconds ?? windowSeconds),
+  };
+}
+
+function clientIp(req: Request): string {
+  const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  return req.headers.get("cf-connecting-ip") ?? forwarded ?? "unknown";
+}
+
+function retryAfterSeconds(resetAt: string, fallback: number): number {
+  const ms = new Date(resetAt).getTime() - Date.now();
+  return Number.isFinite(ms) ? Math.max(1, Math.ceil(ms / 1000)) : fallback;
+}
+
 async function loadHistory(
   serviceKey: string,
   supabaseUrl: string,
@@ -477,15 +543,15 @@ async function userIdFromJwt(
 // ---------------------------------------------------------------------------
 // HTTP-Handler
 // ---------------------------------------------------------------------------
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+function json(body: unknown, status = 200, extraHeaders: Record<string, string> = {}): Response {
+  const headers = responseHeaders();
+  headers.set("Content-Type", "application/json; charset=utf-8");
+  for (const [key, value] of Object.entries(extraHeaders)) headers.set(key, value);
+  return new Response(JSON.stringify(body), { status, headers });
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: responseHeaders(req) });
   if (req.method !== "POST") {
     return json({ error: "Only POST is allowed" }, 405);
   }
@@ -498,9 +564,48 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Edge function not configured" }, 500);
   }
 
+  const contentLength = Number(req.headers.get("content-length") ?? "0");
+  if (!Number.isFinite(contentLength) || contentLength < 0 || contentLength > MAX_CONTENT_LENGTH) {
+    return json({ error: "payload_too_large" }, 413);
+  }
+
   // 1) User identifizieren
   const userId = await userIdFromJwt(req.headers.get("authorization"), supabaseUrl, anonKey);
   if (!userId) return json({ error: "Unauthorized" }, 401);
+
+  const ipGate = await rpcConsumeEdgeRateLimit(
+    serviceKey,
+    supabaseUrl,
+    "coach-chat:ip",
+    clientIp(req),
+    REQUEST_IP_LIMIT,
+    600,
+  );
+  if ("error" in ipGate) return json({ error: ipGate.error }, 500);
+  if (!ipGate.allowed) {
+    return json(
+      { error: "rate_limited", reply: "Zu viele Coach-Anfragen. Bitte gleich nochmal versuchen." },
+      429,
+      { "Retry-After": String(retryAfterSeconds(ipGate.resetAt, ipGate.windowSeconds)) },
+    );
+  }
+
+  const userGate = await rpcConsumeEdgeRateLimit(
+    serviceKey,
+    supabaseUrl,
+    "coach-chat:user",
+    userId,
+    REQUEST_USER_LIMIT,
+    3600,
+  );
+  if ("error" in userGate) return json({ error: userGate.error }, 500);
+  if (!userGate.allowed) {
+    return json(
+      { error: "rate_limited", reply: "Zu viele Coach-Anfragen. Bitte später erneut versuchen." },
+      429,
+      { "Retry-After": String(retryAfterSeconds(userGate.resetAt, userGate.windowSeconds)) },
+    );
+  }
 
   // 2) Body lesen
   let body: any;
@@ -547,10 +652,11 @@ Deno.serve(async (req: Request) => {
       refusal: false,
     });
     await storeMessage(serviceKey, supabaseUrl, {
-      user_id: userId, role: "assistant", content: reply,
+      user_id: userId, session_id: sessionId, role: "assistant", content: reply,
       refusal: true, refusal_reason: pre.reason,
     });
-    return json({ reply, refusal: true, refusal_reason: pre.reason }, 200);
+    await touchSession(serviceKey, supabaseUrl, sessionId);
+    return json({ reply, refusal: true, refusal_reason: pre.reason, session_id: sessionId }, 200);
   }
 
   // ---------------------------------------------------------------- LAYER 2
