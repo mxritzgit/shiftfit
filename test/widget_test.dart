@@ -346,12 +346,13 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('kcal-product-suggestion-0')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('analyse-result-card')), findsOneWidget);
     expect(find.textContaining('Die Ofenfrische Salami'), findsWidgets);
     expect(find.text('252 kcal'), findsWidgets);
 
-    await tester.ensureVisible(find.byKey(const ValueKey('analyse-add-daily-button')));
-    await tester.tap(find.byKey(const ValueKey('analyse-add-daily-button')));
+    final addButton =
+        find.byKey(const ValueKey('kcal-product-suggestion-add-0'));
+    await tester.ensureVisible(addButton);
+    await tester.tap(addButton);
     await tester.pumpAndSettle();
     expect(
       find.descendant(
@@ -399,8 +400,10 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('kcal-product-suggestion-0')));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byKey(const ValueKey('analyse-add-daily-button')));
-    await tester.tap(find.byKey(const ValueKey('analyse-add-daily-button')));
+    final pastAddButton =
+        find.byKey(const ValueKey('kcal-product-suggestion-add-0'));
+    await tester.ensureVisible(pastAddButton);
+    await tester.tap(pastAddButton);
     await tester.pumpAndSettle();
 
     expect(

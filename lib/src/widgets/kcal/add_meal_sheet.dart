@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,15 +6,15 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../models/favorite_meal.dart';
 import '../../models/logged_meal.dart';
-import '../../models/meal_analysis_request.dart';
 import '../../models/meal_analysis_result.dart';
-import '../../models/meal_component.dart';
 import '../../screens/barcode_scanner_screen.dart';
 import '../../services/meal_analyzer.dart';
 import '../../services/meal_photo_input.dart';
 import '../../services/open_food_facts_product_service.dart';
 import '../../theme/app_colors.dart';
-import '../meal/meal_widgets.dart';
+import 'existing_meals_list.dart';
+import 'meal_analysis_sheet.dart';
+import 'meal_suggestion_item.dart';
 
 Future<void> showAddMealSheet(
   BuildContext context, {
@@ -75,13 +74,7 @@ class AddMealSheet extends StatefulWidget {
   final void Function(MealAnalysisResult, MealSlot) onAdd;
   final ValueChanged<int> onAdjustDailyKcal;
   final ValueChanged<String> onRemoveFavorite;
-
-  /// Bereits geloggte Mahlzeiten fuer DIESEN Slot+Datum - werden oben
-  /// als Liste mit Loesch-X angezeigt.
   final List<LoggedMeal> existingMeals;
-
-  /// Wird bei X-Tap auf einen existingMeal-Eintrag gerufen. Wenn null,
-  /// wird der X-Button gar nicht angezeigt (read-only).
   final ValueChanged<String>? onRemoveMeal;
 
   @override
@@ -89,35 +82,42 @@ class AddMealSheet extends StatefulWidget {
 }
 
 class _AddMealSheetState extends State<AddMealSheet> {
-  Uint8List? selectedImageBytes;
-  MealAnalysisResult? result;
-  bool isLoading = false;
-  bool mealConfirmed = false;
-  bool addedToDailyTotal = false;
-  int? addedCaloriesSnapshot;
-  final TextEditingController searchController = TextEditingController();
-  Timer? productSearchDebounce;
-  int productSearchRequestId = 0;
-  final Map<String, List<ProductSearchResult>> productSearchCache =
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _productSearchDebounce;
+  int _productSearchRequestId = 0;
+  final Map<String, List<ProductSearchResult>> _productSearchCache =
       <String, List<ProductSearchResult>>{};
-  List<ProductSearchResult> productSuggestions = const <ProductSearchResult>[];
-  bool isSearchingProducts = false;
-  String? productSearchMessage;
+  List<ProductSearchResult> _productSuggestions =
+      const <ProductSearchResult>[];
+  bool _isSearchingProducts = false;
+  String? _productSearchMessage;
+
+  String? _expandedItemKey;
+  final Set<String> _justAddedKeys = <String>{};
+
+  late List<LoggedMeal> _existing;
+
   static const Duration _productSearchDebounceDelay =
       Duration(milliseconds: 1000);
   static const Duration _productSearchRetryDelay =
       Duration(milliseconds: 1500);
   static const int _productSearchMaxAttempts = 6;
-
-  // Lokale Kopie der existingMeals damit X-Tap sofort UI-Feedback gibt
-  // bevor der Parent-Setstate durchlaeuft.
-  late List<LoggedMeal> _existing;
+  static const Duration _justAddedFadeDelay = Duration(seconds: 2);
 
   @override
   void initState() {
     super.initState();
     _existing = List<LoggedMeal>.of(widget.existingMeals);
   }
+
+  @override
+  void dispose() {
+    _productSearchDebounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  bool get _searchActive => _searchController.text.trim().length >= 2;
 
   void _removeExisting(String id) {
     setState(() {
@@ -126,132 +126,88 @@ class _AddMealSheetState extends State<AddMealSheet> {
     widget.onRemoveMeal?.call(id);
   }
 
-  @override
-  void dispose() {
-    productSearchDebounce?.cancel();
-    searchController.dispose();
-    super.dispose();
-  }
+  // ─── Suche ────────────────────────────────────────────────────────────
 
-  Future<void> scanBarcode() async {
-    final barcode = await Navigator.of(context).push<String>(
-      MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
-    );
-    if (barcode == null || barcode.trim().isEmpty || !mounted) {
-      return;
-    }
-    await lookupBarcode(barcode.trim());
-  }
-
-  Future<void> lookupBarcode(String barcode) async {
-    setState(() {
-      selectedImageBytes = null;
-      result = null;
-      isLoading = true;
-      mealConfirmed = false;
-      addedToDailyTotal = false;
-      addedCaloriesSnapshot = null;
-    });
-
-    try {
-      final lookupResult = await widget.productService.lookupBarcode(barcode);
-      if (!mounted) return;
-      setState(() {
-        result = lookupResult;
-        isLoading = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Barcode $barcode nicht gefunden oder OpenFoodFacts nicht erreichbar.',
-          ),
-        ),
-      );
-    }
-  }
-
-  void scheduleProductSearch(String value) {
+  void _scheduleProductSearch(String value) {
     final query = value.trim();
-    productSearchDebounce?.cancel();
+    _productSearchDebounce?.cancel();
 
     if (query.length < 2) {
-      productSearchRequestId++;
+      _productSearchRequestId++;
       setState(() {
-        isSearchingProducts = false;
-        productSuggestions = const <ProductSearchResult>[];
-        productSearchMessage = null;
+        _isSearchingProducts = false;
+        _productSuggestions = const <ProductSearchResult>[];
+        _productSearchMessage = null;
       });
       return;
     }
 
-    productSearchDebounce = Timer(
+    // rebuild damit _searchActive umschaltet (Favoriten -> Treffer-Slot).
+    setState(() {});
+    _productSearchDebounce = Timer(
       _productSearchDebounceDelay,
-      () => searchProducts(queryOverride: query, showTransientError: false),
+      () => _searchProducts(queryOverride: query, showTransientError: false),
     );
   }
 
-  Future<void> searchProducts({
+  Future<void> _searchProducts({
     String? queryOverride,
     bool showTransientError = true,
   }) async {
-    productSearchDebounce?.cancel();
-    final query = (queryOverride ?? searchController.text).trim();
+    _productSearchDebounce?.cancel();
+    final query = (queryOverride ?? _searchController.text).trim();
     if (query.length < 2) {
       setState(() {
-        productSuggestions = const <ProductSearchResult>[];
-        productSearchMessage =
-            'Gib mindestens 2 Zeichen ein, z.B. Dr Oetker Salami.';
+        _productSuggestions = const <ProductSearchResult>[];
+        _productSearchMessage = 'Mindestens 2 Zeichen, z.B. Dr Oetker Salami.';
       });
       return;
     }
 
     final cacheKey = _normalizeQuery(query);
-    final cachedSuggestions = productSearchCache[cacheKey];
-    if (cachedSuggestions != null) {
-      productSearchRequestId++;
+    final cached = _productSearchCache[cacheKey];
+    if (cached != null) {
+      _productSearchRequestId++;
       setState(() {
-        productSuggestions = cachedSuggestions;
-        isSearchingProducts = false;
-        productSearchMessage = cachedSuggestions.isEmpty
-            ? 'Keine passenden Produkte gefunden. Versuche Marke + Produktname.'
+        _productSuggestions = cached;
+        _isSearchingProducts = false;
+        _productSearchMessage = cached.isEmpty
+            ? 'Nichts gefunden. Versuche Marke + Produktname.'
             : null;
       });
       return;
     }
 
-    final requestId = ++productSearchRequestId;
+    final requestId = ++_productSearchRequestId;
     setState(() {
-      isSearchingProducts = true;
-      productSearchMessage = null;
+      _isSearchingProducts = true;
+      _productSearchMessage = null;
     });
 
     try {
       final suggestions = await _searchWithRetry(query, requestId);
       if (!mounted) return;
-      if (requestId != productSearchRequestId ||
-          query != searchController.text.trim()) {
+      if (requestId != _productSearchRequestId ||
+          query != _searchController.text.trim()) {
         return;
       }
       setState(() {
-        productSuggestions = suggestions;
-        isSearchingProducts = false;
-        productSearchMessage = suggestions.isEmpty
-            ? 'Keine passenden Produkte gefunden. Versuche Marke + Produktname.'
+        _productSuggestions = suggestions;
+        _isSearchingProducts = false;
+        _productSearchMessage = suggestions.isEmpty
+            ? 'Nichts gefunden. Versuche Marke + Produktname.'
             : null;
       });
     } catch (_) {
       if (!mounted) return;
-      if (requestId != productSearchRequestId ||
-          query != searchController.text.trim()) {
+      if (requestId != _productSearchRequestId ||
+          query != _searchController.text.trim()) {
         return;
       }
       setState(() {
-        isSearchingProducts = false;
-        productSearchMessage = showTransientError
-            ? 'OpenFoodFacts-Suche gerade nicht erreichbar.'
+        _isSearchingProducts = false;
+        _productSearchMessage = showTransientError
+            ? 'OpenFoodFacts gerade nicht erreichbar.'
             : null;
       });
     }
@@ -269,7 +225,7 @@ class _AddMealSheetState extends State<AddMealSheet> {
         final suggestions = await widget.productService.searchProducts(query);
         lastError = null;
         if (suggestions.isNotEmpty) {
-          productSearchCache[_normalizeQuery(query)] = suggestions;
+          _productSearchCache[_normalizeQuery(query)] = suggestions;
           return suggestions;
         }
         lastSuggestions = suggestions;
@@ -278,7 +234,7 @@ class _AddMealSheetState extends State<AddMealSheet> {
       }
 
       if (attempt == _productSearchMaxAttempts - 1 ||
-          requestId != productSearchRequestId) {
+          requestId != _productSearchRequestId) {
         break;
       }
       await Future<void>.delayed(_productSearchRetryDelay);
@@ -288,167 +244,87 @@ class _AddMealSheetState extends State<AddMealSheet> {
     throw lastError;
   }
 
-  static String _normalizeQuery(String query) {
-    return query.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
-  }
+  static String _normalizeQuery(String query) =>
+      query.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
 
-  void selectProduct(ProductSearchResult product) {
-    setState(() {
-      selectedImageBytes = null;
-      result = product.result;
-      mealConfirmed = false;
-      addedToDailyTotal = false;
-      addedCaloriesSnapshot = null;
-      productSearchMessage =
-          '${product.title} ausgewählt. Gramm prüfen und unten hinzufügen.';
-    });
-  }
+  // ─── Foto / Galerie / Barcode ─────────────────────────────────────────
 
-  Future<void> pickAndAnalyze(ImageSource source) async {
+  Future<void> _pickAndAnalyze(ImageSource source) async {
     MealPhotoSelection? selection;
     try {
       selection = await widget.photoInput.pick(source);
     } on PlatformException catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            source == ImageSource.camera
-                ? 'Kamera konnte nicht geöffnet werden. Prüfe die Berechtigung.'
-                : 'Galerie konnte nicht geöffnet werden. Prüfe die Berechtigung.',
-          ),
-        ),
+        SnackBar(content: Text(
+          source == ImageSource.camera
+              ? 'Kamera konnte nicht geöffnet werden. Prüfe die Berechtigung.'
+              : 'Galerie konnte nicht geöffnet werden. Prüfe die Berechtigung.',
+        )),
       );
       return;
     }
+    if (selection == null || !mounted) return;
 
-    if (selection == null) return;
-    await runAnalysis(selection.request, selection.previewBytes);
+    await showMealAnalysisSheet(
+      context,
+      slot: widget.slot,
+      resultFuture: widget.analyzer.analyze(selection.request),
+      previewImage: selection.previewBytes,
+      onAdd: widget.onAdd,
+      onAdjustDailyKcal: widget.onAdjustDailyKcal,
+      failureMessage:
+          'Analyse fehlgeschlagen. Prüfe Internet, Supabase und OpenRouter.',
+    );
   }
 
-  Future<void> runAnalysis(
-    MealAnalysisRequest request,
-    Uint8List? imageBytes,
-  ) async {
-    setState(() {
-      selectedImageBytes = imageBytes;
-      result = null;
-      isLoading = true;
-      mealConfirmed = false;
-      addedToDailyTotal = false;
-      addedCaloriesSnapshot = null;
-    });
+  Future<void> _scanBarcode() async {
+    final barcode = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
+    );
+    final trimmed = barcode?.trim();
+    if (trimmed == null || trimmed.isEmpty || !mounted) return;
 
-    try {
-      final analysisResult = await widget.analyzer.analyze(request);
+    await showMealAnalysisSheet(
+      context,
+      slot: widget.slot,
+      resultFuture: widget.productService.lookupBarcode(trimmed),
+      previewImage: null,
+      onAdd: widget.onAdd,
+      onAdjustDailyKcal: widget.onAdjustDailyKcal,
+      failureMessage:
+          'Barcode $trimmed nicht gefunden oder OpenFoodFacts nicht erreichbar.',
+    );
+  }
+
+  // ─── Hinzufuegen ──────────────────────────────────────────────────────
+
+  void _handleAdd(String itemKey, MealAnalysisResult result) {
+    widget.onAdd(result, widget.slot);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(
+          '${result.caloriesKcal} kcal zu ${widget.slot.label} hinzugefügt.',
+        )),
+      );
+    }
+    setState(() {
+      _expandedItemKey = null;
+      _justAddedKeys.add(itemKey);
+    });
+    Future<void>.delayed(_justAddedFadeDelay).then((_) {
       if (!mounted) return;
-      setState(() {
-        result = analysisResult;
-        isLoading = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Analyse fehlgeschlagen. Prüfe Internet, Supabase und OpenRouter.',
-          ),
-        ),
-      );
-    }
-  }
-
-  void confirmMealEstimate() {
-    setState(() => mealConfirmed = true);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Kalorienschätzung bestätigt.')),
-    );
-  }
-
-  void addCurrentResultToDailyTotal() {
-    final currentResult = result;
-    if (currentResult == null || addedToDailyTotal) return;
-    widget.onAdd(currentResult, widget.slot);
-    setState(() {
-      addedToDailyTotal = true;
-      addedCaloriesSnapshot = currentResult.caloriesKcal;
+      setState(() => _justAddedKeys.remove(itemKey));
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '${currentResult.caloriesKcal} kcal zu ${widget.slot.label} hinzugefügt.',
-        ),
-      ),
-    );
   }
 
-  void pickFavorite(MealAnalysisResult favorite) {
+  void _toggleExpanded(String key) {
     setState(() {
-      selectedImageBytes = null;
-      result = favorite;
-      mealConfirmed = false;
-      addedToDailyTotal = false;
-      addedCaloriesSnapshot = null;
+      _expandedItemKey = _expandedItemKey == key ? null : key;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${favorite.mealName} geladen.')),
-    );
   }
 
-  Future<void> adjustMealPortion() async {
-    final currentResult = result;
-    if (currentResult == null) return;
-
-    final adjustment = await showWeightAdjustmentSheet(context, currentResult);
-    if (!mounted || adjustment == null) return;
-
-    MealAnalysisResult? updated;
-    if (adjustment is int && adjustment > 0) {
-      updated = currentResult.adjustedToGrams(adjustment);
-    } else if (adjustment is List<MealComponent>) {
-      updated = currentResult.adjustedToItems(adjustment);
-    }
-    if (updated == null) return;
-
-    final wasAdded = addedToDailyTotal;
-    final previousAddedCalories = addedCaloriesSnapshot;
-
-    setState(() {
-      result = updated;
-      mealConfirmed = true;
-      if (wasAdded) {
-        addedToDailyTotal = true;
-        addedCaloriesSnapshot = updated!.caloriesKcal;
-      } else {
-        addedToDailyTotal = false;
-        addedCaloriesSnapshot = null;
-      }
-    });
-
-    if (wasAdded && previousAddedCalories != null) {
-      final delta = updated.caloriesKcal - previousAddedCalories;
-      if (delta != 0) {
-        widget.onAdjustDailyKcal(delta);
-      }
-    }
-
-    if (adjustment is int && adjustment > 0) {
-      final message = wasAdded
-          ? 'Portion auf $adjustment g angepasst. Tageswert aktualisiert.'
-          : 'Portion auf $adjustment g angepasst.';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
-    } else if (adjustment is List<MealComponent>) {
-      final message = wasAdded
-          ? 'Bestandteile und Tageswert aktualisiert.'
-          : 'Bestandteile und Gramm angepasst.';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
-    }
-  }
+  // ─── Build ────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -471,78 +347,38 @@ class _AddMealSheetState extends State<AddMealSheet> {
             _SheetHeader(
               slot: widget.slot,
               onClose: () => Navigator.of(context).pop(),
+              onCamera: () => _pickAndAnalyze(ImageSource.camera),
+              onGallery: () => _pickAndAnalyze(ImageSource.gallery),
+              onBarcode: _scanBarcode,
+            ),
+            _SearchBar(
+              controller: _searchController,
+              isSearching: _isSearchingProducts,
+              onChanged: _scheduleProductSearch,
+              onSubmitted: (_) => _searchProducts(),
+              onSearchPressed: _searchProducts,
             ),
             Flexible(
               child: SingleChildScrollView(
                 key: const ValueKey('add-meal-sheet-scroll'),
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (_existing.isNotEmpty) ...[
-                      _ExistingMealsList(
+                      ExistingMealsList(
                         meals: _existing,
                         slot: widget.slot,
                         onRemove: widget.onRemoveMeal == null
                             ? null
                             : _removeExisting,
                       ),
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 16),
                     ],
-                    _buildQuickActions(),
-                    const SizedBox(height: 16),
-                    _buildSearchField(),
-                    if (productSearchMessage != null) ...[
-                      const SizedBox(height: 10),
-                      Text(
-                        productSearchMessage!,
-                        key: const ValueKey('kcal-product-search-message'),
-                        style: const TextStyle(
-                          color: textMuted,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
-                    if (productSuggestions.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      for (var i = 0; i < productSuggestions.length; i++) ...[
-                        _ProductSuggestionTile(
-                          key: ValueKey('kcal-product-suggestion-$i'),
-                          product: productSuggestions[i],
-                          onTap: () => selectProduct(productSuggestions[i]),
-                        ),
-                        if (i != productSuggestions.length - 1)
-                          const SizedBox(height: 8),
-                      ],
-                    ],
-                    if (widget.favorites.isNotEmpty) ...[
-                      const SizedBox(height: 18),
-                      _FavoritesSection(
-                        favorites: widget.favorites,
-                        onPick: pickFavorite,
-                        onRemove: widget.onRemoveFavorite,
-                      ),
-                    ],
-                    const SizedBox(height: 18),
-                    if (selectedImageBytes != null) ...[
-                      MealPreviewCard(imageBytes: selectedImageBytes),
-                      const SizedBox(height: 14),
-                    ],
-                    if (isLoading)
-                      const MealLoadingCard()
-                    else if (result != null)
-                      MealResultCard(
-                        result: result!,
-                        confirmed: mealConfirmed,
-                        addedToDailyTotal: addedToDailyTotal,
-                        onConfirmed: confirmMealEstimate,
-                        onAdjustRequested: adjustMealPortion,
-                        onAddToDailyRequested: addCurrentResultToDailyTotal,
-                      )
+                    if (_searchActive)
+                      _buildSearchResults()
                     else
-                      const _EmptyHint(),
+                      _buildFavorites(),
                   ],
                 ),
               ),
@@ -553,114 +389,91 @@ class _AddMealSheetState extends State<AddMealSheet> {
     );
   }
 
-  Widget _buildQuickActions() {
-    return Row(
+  Widget _buildSearchResults() {
+    if (_isSearchingProducts && _productSuggestions.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2, color: lime),
+          ),
+        ),
+      );
+    }
+    if (_productSuggestions.isEmpty && _productSearchMessage != null) {
+      return _HintBlock(text: _productSearchMessage!);
+    }
+    if (_productSuggestions.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: _SheetActionButton(
-            key: const ValueKey('analyse-camera-button'),
-            icon: Icons.photo_camera_rounded,
-            label: 'Kamera',
-            color: orange,
-            filled: true,
-            onPressed:
-                isLoading ? null : () => pickAndAnalyze(ImageSource.camera),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _SheetActionButton(
-            key: const ValueKey('analyse-gallery-button'),
-            icon: Icons.photo_library_outlined,
-            label: 'Galerie',
-            color: pink,
-            onPressed:
-                isLoading ? null : () => pickAndAnalyze(ImageSource.gallery),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _SheetActionButton(
-            key: const ValueKey('analyse-barcode-button'),
-            icon: Icons.qr_code_scanner_rounded,
-            label: 'Barcode',
-            color: cyan,
-            onPressed: isLoading ? null : scanBarcode,
-          ),
-        ),
+        const _SectionLabel('Suchtreffer'),
+        const SizedBox(height: 8),
+        for (var i = 0; i < _productSuggestions.length; i++) ...[
+          _suggestionItem(i),
+          if (i != _productSuggestions.length - 1) const SizedBox(height: 8),
+        ],
       ],
     );
   }
 
-  Widget _buildSearchField() {
-    return Container(
-      key: const ValueKey('kcal-product-search-card'),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: surfaceSoft,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: hairline),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.search_rounded, size: 18, color: lime),
-              SizedBox(width: 8),
-              Text(
-                'PRODUKTSUCHE',
-                style: TextStyle(
-                  color: textMuted,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            key: const ValueKey('kcal-product-search-input'),
-            controller: searchController,
-            textInputAction: TextInputAction.search,
-            onChanged: scheduleProductSearch,
-            onSubmitted: (_) => searchProducts(),
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-            decoration: InputDecoration(
-              hintText: 'z.B. Dr Oetker Salami',
-              filled: true,
-              fillColor: surface,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: hairline),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: hairline),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: lime),
-              ),
-              suffixIcon: IconButton(
-                key: const ValueKey('kcal-product-search-button'),
-                onPressed: isSearchingProducts ? null : searchProducts,
-                icon: isSearchingProducts
-                    ? const SizedBox(
-                        height: 16,
-                        width: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.arrow_forward_rounded, size: 18),
-              ),
-            ),
-          ),
+  Widget _suggestionItem(int index) {
+    final suggestion = _productSuggestions[index];
+    final key = 'product:${suggestion.code}';
+    return MealSuggestionItem(
+      key: ValueKey('kcal-product-suggestion-$index'),
+      result: suggestion.result,
+      imageUrl: suggestion.imageUrl,
+      fallbackIcon: Icons.fastfood_outlined,
+      accent: lime,
+      expanded: _expandedItemKey == key,
+      justAdded: _justAddedKeys.contains(key),
+      onTap: () => _toggleExpanded(key),
+      onAdd: (result) => _handleAdd(key, result),
+      addButtonKey: ValueKey('kcal-product-suggestion-add-$index'),
+    );
+  }
+
+  Widget _buildFavorites() {
+    if (widget.favorites.isEmpty) {
+      return const _EmptyState();
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionLabel('Letzte Mahlzeiten'),
+        const SizedBox(height: 8),
+        for (var i = 0; i < widget.favorites.length; i++) ...[
+          _favoriteItem(i),
+          if (i != widget.favorites.length - 1) const SizedBox(height: 8),
         ],
-      ),
+      ],
+    );
+  }
+
+  Widget _favoriteItem(int index) {
+    final favorite = widget.favorites[index];
+    final key = 'favorite:${favorite.id}';
+    return MealSuggestionItem(
+      key: ValueKey('favorite-tile-$index'),
+      result: favorite.result,
+      fallbackIcon: Icons.bookmark_outline_rounded,
+      accent: orange,
+      expanded: _expandedItemKey == key,
+      justAdded: _justAddedKeys.contains(key),
+      onTap: () => _toggleExpanded(key),
+      onAdd: (result) => _handleAdd(key, result),
+      onRemove: () => widget.onRemoveFavorite(favorite.id),
+      addButtonKey: ValueKey('favorite-tile-add-$index'),
     );
   }
 }
+
+// ─── Header ─────────────────────────────────────────────────────────────
 
 class _SheetHandle extends StatelessWidget {
   const _SheetHandle();
@@ -682,10 +495,19 @@ class _SheetHandle extends StatelessWidget {
 }
 
 class _SheetHeader extends StatelessWidget {
-  const _SheetHeader({required this.slot, required this.onClose});
+  const _SheetHeader({
+    required this.slot,
+    required this.onClose,
+    required this.onCamera,
+    required this.onGallery,
+    required this.onBarcode,
+  });
 
   final MealSlot slot;
   final VoidCallback onClose;
+  final VoidCallback onCamera;
+  final VoidCallback onGallery;
+  final VoidCallback onBarcode;
 
   Color get _color => switch (slot) {
         MealSlot.breakfast => orange,
@@ -704,7 +526,7 @@ class _SheetHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 8, 12),
+      padding: const EdgeInsets.fromLTRB(20, 4, 6, 10),
       child: Row(
         children: [
           Container(
@@ -718,29 +540,38 @@ class _SheetHeader extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  slot.label,
-                  style: const TextStyle(
-                    color: textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                const SizedBox(height: 1),
-                const Text(
-                  'Mahlzeit hinzufügen',
-                  style: TextStyle(
-                    color: textMuted,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
+            child: Text(
+              slot.label,
+              style: const TextStyle(
+                color: textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
+              ),
             ),
           ),
+          _HeaderIconButton(
+            keyValue: const ValueKey('analyse-camera-button'),
+            icon: Icons.photo_camera_rounded,
+            color: orange,
+            tooltip: 'Foto aufnehmen',
+            onPressed: onCamera,
+          ),
+          _HeaderIconButton(
+            keyValue: const ValueKey('analyse-gallery-button'),
+            icon: Icons.photo_library_outlined,
+            color: pink,
+            tooltip: 'Aus Galerie',
+            onPressed: onGallery,
+          ),
+          _HeaderIconButton(
+            keyValue: const ValueKey('analyse-barcode-button'),
+            icon: Icons.qr_code_scanner_rounded,
+            color: cyan,
+            tooltip: 'Barcode scannen',
+            onPressed: onBarcode,
+          ),
+          const SizedBox(width: 2),
           IconButton(
             key: const ValueKey('add-meal-sheet-close'),
             onPressed: onClose,
@@ -753,435 +584,208 @@ class _SheetHeader extends StatelessWidget {
   }
 }
 
-class _SheetActionButton extends StatelessWidget {
-  const _SheetActionButton({
-    super.key,
+class _HeaderIconButton extends StatelessWidget {
+  const _HeaderIconButton({
+    required this.keyValue,
     required this.icon,
-    required this.label,
     required this.color,
+    required this.tooltip,
     required this.onPressed,
-    this.filled = false,
   });
 
+  final Key keyValue;
   final IconData icon;
-  final String label;
   final Color color;
-  final VoidCallback? onPressed;
-  final bool filled;
+  final String tooltip;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    final foreground = filled ? bg : color;
-    return Opacity(
-      opacity: onPressed == null ? 0.5 : 1,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          height: 64,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-          decoration: BoxDecoration(
-            color: filled ? color : surfaceSoft,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: filled ? color : color.withValues(alpha: 0.32),
-            ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: foreground, size: 20),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: foreground,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ProductSuggestionTile extends StatelessWidget {
-  const _ProductSuggestionTile({
-    super.key,
-    required this.product,
-    required this.onTap,
-  });
-
-  final ProductSearchResult product;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(10),
+    return IconButton(
+      key: keyValue,
+      onPressed: onPressed,
+      tooltip: tooltip,
+      visualDensity: VisualDensity.compact,
+      icon: Container(
+        width: 34,
+        height: 34,
         decoration: BoxDecoration(
-          color: surfaceSoft,
-          borderRadius: BorderRadius.circular(12),
+          color: color.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(10),
         ),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                color: bg,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: product.imageUrl == null
-                  ? const Icon(
-                      Icons.fastfood_outlined,
-                      color: textMuted,
-                      size: 20,
-                    )
-                  : Image.network(
-                      product.imageUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const Icon(
-                        Icons.fastfood_outlined,
-                        color: textMuted,
-                        size: 20,
-                      ),
-                    ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    product.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    product.subtitle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: textMuted,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      height: 1.3,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            const Icon(Icons.add_circle_outline_rounded, color: lime, size: 20),
-          ],
-        ),
+        child: Icon(icon, color: color, size: 17),
       ),
     );
   }
 }
 
-class _FavoritesSection extends StatelessWidget {
-  const _FavoritesSection({
-    required this.favorites,
-    required this.onPick,
-    required this.onRemove,
+// ─── Search bar ─────────────────────────────────────────────────────────
+
+class _SearchBar extends StatelessWidget {
+  const _SearchBar({
+    required this.controller,
+    required this.isSearching,
+    required this.onChanged,
+    required this.onSubmitted,
+    required this.onSearchPressed,
   });
 
-  final List<FavoriteMeal> favorites;
-  final ValueChanged<MealAnalysisResult> onPick;
-  final ValueChanged<String> onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'LETZTE MAHLZEITEN',
-          style: TextStyle(
-            color: textMuted,
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 1.2,
-          ),
-        ),
-        const SizedBox(height: 10),
-        for (var i = 0; i < favorites.length; i++) ...[
-          InkWell(
-            key: ValueKey('favorite-tile-$i'),
-            onTap: () => onPick(favorites[i].result),
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
-              decoration: BoxDecoration(
-                color: surfaceSoft,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: orange.withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.bookmark_outline_rounded,
-                      color: orange,
-                      size: 16,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          favorites[i].result.mealName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${favorites[i].result.caloriesKcal} kcal · '
-                          '${favorites[i].result.estimatedGrams} g',
-                          style: const TextStyle(
-                            color: textMuted,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => onRemove(favorites[i].id),
-                    tooltip: 'Entfernen',
-                    visualDensity: VisualDensity.compact,
-                    icon: const Icon(
-                      Icons.close_rounded,
-                      color: textMuted,
-                      size: 16,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (i != favorites.length - 1) const SizedBox(height: 8),
-        ],
-      ],
-    );
-  }
-}
-
-class _EmptyHint extends StatelessWidget {
-  const _EmptyHint();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: surfaceSoft,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: hairline),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: cyan.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Icons.lightbulb_outline_rounded,
-              color: cyan,
-              size: 18,
-            ),
-          ),
-          const SizedBox(width: 14),
-          const Expanded(
-            child: Text(
-              'Foto knipsen, Barcode scannen oder Produkt suchen — '
-              'das Ergebnis erscheint direkt hier zum Bestätigen.',
-              style: TextStyle(
-                color: textPrimary,
-                fontSize: 13,
-                height: 1.45,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────
-// ExistingMealsList — was schon im Slot drin ist, mit Loesch-X.
-// ─────────────────────────────────────────────────────────────────────
-
-class _ExistingMealsList extends StatelessWidget {
-  const _ExistingMealsList({
-    required this.meals,
-    required this.slot,
-    required this.onRemove,
-  });
-
-  final List<LoggedMeal> meals;
-  final MealSlot slot;
-  final ValueChanged<String>? onRemove;
-
-  Color get _accent => switch (slot) {
-        MealSlot.breakfast => orange,
-        MealSlot.lunch => lime,
-        MealSlot.dinner => pink,
-        MealSlot.snack => cyan,
-      };
-
-  @override
-  Widget build(BuildContext context) {
-    final totalKcal =
-        meals.fold<int>(0, (sum, m) => sum + m.result.caloriesKcal);
-    return Container(
-      key: const ValueKey('analyse-existing-meals'),
-      decoration: BoxDecoration(
-        color: surfaceSoft,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: hairline),
-      ),
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
-            child: Row(
-              children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: _accent,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Schon hinzugefügt',
-                  style: TextStyle(
-                    color: textMuted,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.9,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  '$totalKcal kcal',
-                  style: const TextStyle(
-                    color: textPrimary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          for (var i = 0; i < meals.length; i++) ...[
-            if (i > 0)
-              const Divider(
-                color: hairline,
-                height: 1,
-                indent: 14,
-                endIndent: 14,
-              ),
-            _ExistingMealRow(
-              meal: meals[i],
-              onRemove: onRemove,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _ExistingMealRow extends StatelessWidget {
-  const _ExistingMealRow({required this.meal, required this.onRemove});
-
-  final LoggedMeal meal;
-  final ValueChanged<String>? onRemove;
+  final TextEditingController controller;
+  final bool isSearching;
+  final ValueChanged<String> onChanged;
+  final ValueChanged<String> onSubmitted;
+  final VoidCallback onSearchPressed;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 8, 6, 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  meal.result.mealName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.1,
-                  ),
+      key: const ValueKey('kcal-product-search-card'),
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
+      child: Container(
+        height: 46,
+        decoration: BoxDecoration(
+          color: surfaceSoft,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: hairline),
+        ),
+        child: Row(
+          children: [
+            const SizedBox(width: 12),
+            const Icon(Icons.search_rounded, size: 18, color: textMuted),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextField(
+                key: const ValueKey('kcal-product-search-input'),
+                controller: controller,
+                autofocus: true,
+                onChanged: onChanged,
+                onSubmitted: onSubmitted,
+                textInputAction: TextInputAction.search,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: textPrimary,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  '${meal.result.caloriesKcal} kcal · ${meal.result.estimatedGrams} g',
-                  style: const TextStyle(
+                decoration: const InputDecoration(
+                  hintText: 'Was hast du gegessen?',
+                  hintStyle: TextStyle(
                     color: textMuted,
-                    fontSize: 11.5,
+                    fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
+                  isCollapsed: true,
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(vertical: 14),
                 ),
-              ],
+              ),
+            ),
+            IconButton(
+              key: const ValueKey('kcal-product-search-button'),
+              onPressed: isSearching ? null : onSearchPressed,
+              icon: isSearching
+                  ? const SizedBox(
+                      height: 16,
+                      width: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: lime,
+                      ),
+                    )
+                  : const Icon(Icons.arrow_forward_rounded,
+                      size: 18, color: lime),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Empty / hint / labels ──────────────────────────────────────────────
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text.toUpperCase(),
+      style: const TextStyle(
+        color: textMuted,
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.2,
+      ),
+    );
+  }
+}
+
+class _HintBlock extends StatelessWidget {
+  const _HintBlock({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 18),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: textMuted,
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          height: 1.4,
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 32),
+      child: Column(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: lime.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(Icons.restaurant_outlined, color: lime, size: 24),
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'Suche oben oder scanne einen Barcode',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: textPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          if (onRemove != null)
-            IconButton(
-              key: ValueKey('analyse-existing-remove-${meal.id}'),
-              iconSize: 18,
-              padding: const EdgeInsets.all(8),
-              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              onPressed: () => onRemove!(meal.id),
-              icon: const Icon(Icons.close_rounded, color: textMuted),
-              tooltip: 'Entfernen',
+          const SizedBox(height: 4),
+          const Text(
+            'Eingaben erscheinen direkt in der Liste oben.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: textMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
             ),
+          ),
         ],
       ),
     );
   }
 }
+

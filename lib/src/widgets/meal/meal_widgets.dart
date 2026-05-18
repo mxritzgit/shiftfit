@@ -303,17 +303,13 @@ class MealResultCard extends StatefulWidget {
   const MealResultCard({
     super.key,
     required this.result,
-    required this.confirmed,
     required this.addedToDailyTotal,
-    required this.onConfirmed,
     required this.onAdjustRequested,
     required this.onAddToDailyRequested,
   });
 
   final MealAnalysisResult result;
-  final bool confirmed;
   final bool addedToDailyTotal;
-  final VoidCallback onConfirmed;
   final VoidCallback onAdjustRequested;
   final VoidCallback onAddToDailyRequested;
 
@@ -348,11 +344,6 @@ class _MealResultCardState extends State<MealResultCard> {
               StatusPill(
                 label: result.sourceLabel,
                 color: isBarcode ? cyan : orange,
-              ),
-              const SizedBox(width: 6),
-              StatusPill(
-                label: widget.confirmed ? 'bestätigt' : 'prüfen',
-                color: widget.confirmed ? lime : orange,
               ),
               const Spacer(),
               IconButton(
@@ -404,24 +395,7 @@ class _MealResultCardState extends State<MealResultCard> {
           _PortionLine(result: result),
           if (result.hasItemizedBreakdown) ...[
             const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: FieldLabel(
-                    'BESTANDTEILE · ${result.items.length}',
-                  ),
-                ),
-                const Text(
-                  'einzeln anpassen über "Anpassen"',
-                  style: TextStyle(
-                    color: textMuted,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-              ],
-            ),
+            FieldLabel('BESTANDTEILE · ${result.items.length}'),
             const SizedBox(height: 6),
             _ItemBreakdownList(items: result.items),
           ],
@@ -456,44 +430,45 @@ class _MealResultCardState extends State<MealResultCard> {
           const SizedBox(height: 14),
           Row(
             children: [
-              Expanded(
-                child: FilledButton.icon(
-                  key: const ValueKey('analyse-confirm-button'),
-                  onPressed: widget.confirmed ? null : widget.onConfirmed,
-                  icon: Icon(
-                    widget.confirmed
-                        ? Icons.check_circle_rounded
-                        : Icons.check_rounded,
-                    size: 17,
-                  ),
-                  label: Text(
-                    widget.confirmed ? 'Bestätigt' : 'Bestätigen',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: lime,
-                    foregroundColor: bg,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+              SizedBox(
+                width: 56,
+                child: OutlinedButton(
+                  key: const ValueKey('analyse-adjust-button'),
+                  onPressed: widget.onAdjustRequested,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: textPrimary,
+                    side: const BorderSide(color: hairline),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
+                  child: const Icon(Icons.tune_rounded, size: 18),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: OutlinedButton.icon(
-                  key: const ValueKey('analyse-adjust-button'),
-                  onPressed: widget.onAdjustRequested,
-                  icon: const Icon(Icons.tune_rounded, size: 17),
-                  label: Text(
-                    result.hasItemizedBreakdown ? 'Bestandteile' : 'Anpassen',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                child: FilledButton.icon(
+                  key: const ValueKey('analyse-add-daily-button'),
+                  onPressed: widget.addedToDailyTotal
+                      ? null
+                      : widget.onAddToDailyRequested,
+                  icon: Icon(
+                    widget.addedToDailyTotal
+                        ? Icons.check_circle_rounded
+                        : Icons.add_circle_outline_rounded,
+                    size: 18,
                   ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: textPrimary,
-                    side: const BorderSide(color: hairline),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  label: Text(
+                    widget.addedToDailyTotal
+                        ? 'Zu heute hinzugefügt'
+                        : 'Hinzufügen',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: lime,
+                    foregroundColor: bg,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -501,36 +476,6 @@ class _MealResultCardState extends State<MealResultCard> {
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              key: const ValueKey('analyse-add-daily-button'),
-              onPressed: widget.addedToDailyTotal
-                  ? null
-                  : widget.onAddToDailyRequested,
-              icon: Icon(
-                widget.addedToDailyTotal
-                    ? Icons.check_circle_rounded
-                    : Icons.add_circle_outline_rounded,
-                size: 17,
-              ),
-              label: Text(
-                widget.addedToDailyTotal
-                    ? 'Zu heute hinzugefügt'
-                    : 'Zu heute hinzufügen',
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-              style: FilledButton.styleFrom(
-                backgroundColor: cyan,
-                foregroundColor: bg,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
           ),
         ],
       ),
