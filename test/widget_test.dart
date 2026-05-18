@@ -191,6 +191,10 @@ void main() {
     expect(find.text('Hähnchen mit Reis & Brokkoli'), findsWidgets);
     expect(find.text('Lachs mit Süßkartoffel & Spargel'), findsWidgets);
 
+    await tester.drag(find.byKey(const ValueKey('screen-recipes')), const Offset(0, -700));
+    await tester.pumpAndSettle();
+    expect(find.text('Putenbällchen mit Reis & Gemüse'), findsWidgets);
+
     await tester.tap(find.byKey(const ValueKey('nav-Heute')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('screen-today')), findsOneWidget);

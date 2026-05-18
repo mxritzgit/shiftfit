@@ -52,9 +52,10 @@ class _RecipesScreenState extends State<RecipesScreen> {
     final visibleRecipes = filteredRecipes;
     final recommended = fitnessRecipes.take(4).toList(growable: false);
 
-    return Column(
+    return ListView(
       key: const ValueKey('screen-recipes'),
-      crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.only(bottom: 28),
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       children: [
         const _RecipesHeader(),
         const SizedBox(height: 18),

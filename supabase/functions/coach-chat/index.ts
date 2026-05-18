@@ -671,7 +671,7 @@ Deno.serve(async (req: Request) => {
     if (cls.category === "medical_risk" || cls.category === "off_topic" || cls.category === "injection") {
       const reply = refusalForReason(cls.category);
       await storeMessage(serviceKey, supabaseUrl, {
-        user_id: userId, role: "user", content: message,
+        user_id: userId, session_id: sessionId, role: "user", content: message,
         refusal: false,
       });
       await storeMessage(serviceKey, supabaseUrl, {
