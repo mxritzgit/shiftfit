@@ -294,9 +294,7 @@ void main() {
     expect(find.textContaining('590 kcal'), findsWidgets);
   });
 
-  testWidgetsRobust('Food tab supports deterministic itemized photo results and daily kcal adding', skip:
-    'TODO: erwartet "815 kcal" — Kcal-Tab wurde redesigned (siehe Project-Memory), '
-    'Demo-Analyse-Werte oder Anzeige hat sich geaendert. Pre-existing broken vor CI.', (
+  testWidgetsRobust('Food tab supports deterministic itemized photo results and daily kcal adding', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
