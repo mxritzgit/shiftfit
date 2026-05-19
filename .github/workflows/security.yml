@@ -1,0 +1,102 @@
+name: security
+
+# Statisch + Dependency-Scans. Laeuft bei jedem Push auf main, bei jedem PR
+# gegen main und einmal pro Woche (Montag 06:00 UTC) damit neu publizierte
+# CVEs nicht unentdeckt liegen bleiben.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  flutter-analyze-test:
+    name: Flutter analyze + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: pub get
+        run: flutter pub get
+
+      - name: analyze
+        run: flutter analyze
+
+      # Defines sind im CI Dummies — wir wollen nur dass Code kompiliert
+      # und Widget-Tests laufen, nicht gegen Supabase netzwerken.
+      - name: test
+        run: |
+          flutter test \
+            --dart-define=SUPABASE_URL=https://ci.invalid \
+            --dart-define=SUPABASE_ANON_KEY=ci-dummy-key
+
+  pub-outdated:
+    name: Flutter pub outdated (Info)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      # Info-only — failt den Job nicht. So sehen wir veraltete Deps im
+      # Action-Log ohne dass jeder Patch-Release den Build rot macht.
+      - name: pub outdated
+        run: flutter pub outdated --mode=null-safety || true
+
+  osv-scanner:
+    name: OSV-Scanner (Pub + Deno)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Scannt pubspec.lock (Pub-Ecosystem) und deno.lock falls vorhanden.
+      # SARIF-Upload landet im Security-Tab des Repos.
+      - uses: google/osv-scanner-action/osv-scanner-action@v1.9.1
+        with:
+          scan-args: |-
+            --recursive
+            --skip-git
+            --format=sarif
+            --output=osv-results.sarif
+            ./
+        continue-on-error: true
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: osv-results.sarif
+
+  deno-edge-functions:
+    name: Deno lint + check (Edge Functions)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+      - name: deno lint
+        working-directory: supabase/functions
+        run: deno lint
+      # `deno check` macht statische TypeScript-Pruefung gegen die Imports
+      # ohne die Function tatsaechlich zu deployen.
+      - name: deno check
+        working-directory: supabase/functions
+        run: |
+          for fn in */index.ts; do
+            echo "::group::deno check $fn"
+            deno check "$fn" || exit 1
+            echo "::endgroup::"
+          done

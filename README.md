@@ -101,14 +101,45 @@ Damit die Struktur sauber bleibt:
 
 ## Lokale Entwicklung
 
-Beispiel:
+`SUPABASE_URL` und `SUPABASE_ANON_KEY` werden zur Build-Zeit injiziert,
+nicht aus dem Sourcecode gelesen. Lege dir einmalig deine eigene
+`dart_defines.json` (gitignored) neben `pubspec.yaml`:
+
+```bash
+cp dart_defines.example.json dart_defines.json
+# Werte in dart_defines.json eintragen (Anon-Key aus Supabase-Dashboard)
+```
+
+Danach:
 
 ```bash
 flutter pub get
 flutter analyze
-flutter test
-flutter run
+flutter test --dart-define-from-file=dart_defines.json
+flutter run --dart-define-from-file=dart_defines.json
 ```
+
+Ohne die Defines wirft `FitPilotSupabaseConfig.initialize()` einen
+`StateError` beim App-Start — Absicht, damit ein versehentlicher Build
+ohne Konfiguration nicht still gegen ein falsches Projekt laeuft.
+
+## Security
+
+CI-Checks laufen in `.github/workflows/security.yml`: `flutter analyze`,
+`flutter test`, `flutter pub outdated`, OSV-Scanner gegen `pubspec.lock`
+und `deno lint`/`deno check` fuer die Edge Functions. Zusaetzlich
+wöchentlich (Montag 06:00 UTC) per Cron, damit frisch publizierte CVEs
+nicht unentdeckt liegen.
+
+**Key-Rotation (einmalig nach diesem Commit empfohlen):** Der bisherige
+`SUPABASE_ANON_KEY` stand im Klartext in `lib/src/config/supabase_config.dart`
+und liegt damit weiter in der Git-History. Anon-Key ist kein Secret im
+engeren Sinn (JWT mit `role: anon`, im Client-Bundle ohnehin extrahierbar)
+— rotieren erhoeht trotzdem die Huerde fuer automatisierten Abuse:
+
+1. Supabase-Dashboard → Project Settings → API → "Roll anon key"
+2. Neuen Key in `dart_defines.json` eintragen (lokal)
+3. Falls produktive Builds existieren: neu bauen + ausrollen
 
 ## Test-Hinweis
 
