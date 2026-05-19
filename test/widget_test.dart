@@ -11,21 +11,33 @@ import 'package:shiftfit/src/services/meal_analyzer.dart';
 import 'package:shiftfit/src/services/meal_photo_input.dart';
 import 'package:shiftfit/src/services/open_food_facts_product_service.dart';
 
-// Wrapper um testWidgets der RenderFlex-Overflow-Exceptions schluckt.
-// Die App ist fuer iPhone-Scroll-Container gebaut; im Test-Renderer
-// (Default-Viewport 800x600, kein Scroll-Container ausserhalb der App)
-// overflowen einige Cards. Das sind UI-Warnings, keine Funktional-Bugs.
-// `testWidgets` selbst installiert intern einen FlutterError.onError —
-// deshalb muss der Filter INNERHALB des Test-Bodies gesetzt werden,
-// nicht im setUp (da wuerde testWidgets ihn wieder ueberschreiben).
+// Wrapper um testWidgets fuer das CI-Setup:
+//
+// 1. Pinnt das Test-Viewport auf iPhone 14 portrait (393x852 logical @
+//    DPR 3). Default ist 800x600, das verschiebt Grid-Reihen und macht
+//    Scroll-Drags non-deterministic (z.B. greift `drag(0, -700)` ein
+//    anderes Item als auf dem Device).
+// 2. Schluckt RenderFlex-Overflow-Exceptions — die kommen vom Render-
+//    Pass im Test-Headless-Renderer, auf dem echten Geraet sitzt die
+//    App in Scroll-Containern und overflowt dort nicht.
+//
+// `testWidgets` setzt intern NACH setUp einen eigenen FlutterError.onError
+// und resettet `tester.view` nicht — beides muss daher hier im Test-Body
+// gemacht werden, damit es wirkt.
 void testWidgetsRobust(String description, WidgetTesterCallback callback) {
   testWidgets(description, (tester) async {
+    tester.view.physicalSize = const Size(1179, 2556);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     final prior = FlutterError.onError;
     FlutterError.onError = (details) {
       if (details.exception.toString().contains('overflowed')) return;
       prior?.call(details);
     };
     addTearDown(() => FlutterError.onError = prior);
+
     await callback(tester);
   });
 }
