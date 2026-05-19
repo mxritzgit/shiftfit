@@ -94,6 +94,7 @@ class _AddMealSheetState extends State<AddMealSheet> {
 
   String? _expandedItemKey;
   final Set<String> _justAddedKeys = <String>{};
+  final Map<String, Timer> _justAddedTimers = <String, Timer>{};
 
   late List<LoggedMeal> _existing;
 
@@ -113,6 +114,10 @@ class _AddMealSheetState extends State<AddMealSheet> {
   @override
   void dispose() {
     _productSearchDebounce?.cancel();
+    for (final t in _justAddedTimers.values) {
+      t.cancel();
+    }
+    _justAddedTimers.clear();
     _searchController.dispose();
     super.dispose();
   }
@@ -312,7 +317,9 @@ class _AddMealSheetState extends State<AddMealSheet> {
       _expandedItemKey = null;
       _justAddedKeys.add(itemKey);
     });
-    Future<void>.delayed(_justAddedFadeDelay).then((_) {
+    _justAddedTimers.remove(itemKey)?.cancel();
+    _justAddedTimers[itemKey] = Timer(_justAddedFadeDelay, () {
+      _justAddedTimers.remove(itemKey);
       if (!mounted) return;
       setState(() => _justAddedKeys.remove(itemKey));
     });
