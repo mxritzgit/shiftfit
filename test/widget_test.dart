@@ -11,30 +11,27 @@ import 'package:shiftfit/src/services/meal_analyzer.dart';
 import 'package:shiftfit/src/services/meal_photo_input.dart';
 import 'package:shiftfit/src/services/open_food_facts_product_service.dart';
 
-void main() {
-  // FitPilot ist eine iPhone-App. Default-Test-Viewport (800x600) und
-  // iPhone-Viewports erzeugen je nach Card unterschiedliche RenderFlex-
-  // Overflows ("A RenderFlex overflowed by N pixels"). Auf dem echten
-  // Geraet stehen die Cards in Scroll-Containern, da overflowt nichts —
-  // das sind UI-Warnings, keine Funktional-Bugs. Wir filtern sie aus
-  // damit Widget-Tests gegen Funktionalitaet/Test-Pins laufen, nicht
-  // gegen Layout-Pixel-Genauigkeit.
-  final defaultOnError = FlutterError.onError;
-  setUp(() {
-    FlutterError.onError = (FlutterErrorDetails details) {
-      final summary = details.exceptionAsString();
-      if (summary.contains('A RenderFlex overflowed')) {
-        return; // swallow — wird auf Device nicht passieren
-      }
-      defaultOnError?.call(details);
+// Wrapper um testWidgets der RenderFlex-Overflow-Exceptions schluckt.
+// Die App ist fuer iPhone-Scroll-Container gebaut; im Test-Renderer
+// (Default-Viewport 800x600, kein Scroll-Container ausserhalb der App)
+// overflowen einige Cards. Das sind UI-Warnings, keine Funktional-Bugs.
+// `testWidgets` selbst installiert intern einen FlutterError.onError —
+// deshalb muss der Filter INNERHALB des Test-Bodies gesetzt werden,
+// nicht im setUp (da wuerde testWidgets ihn wieder ueberschreiben).
+void testWidgetsRobust(String description, WidgetTesterCallback callback) {
+  testWidgets(description, (tester) async {
+    final prior = FlutterError.onError;
+    FlutterError.onError = (details) {
+      if (details.exception.toString().contains('overflowed')) return;
+      prior?.call(details);
     };
+    addTearDown(() => FlutterError.onError = prior);
+    await callback(tester);
   });
+}
 
-  tearDown(() {
-    FlutterError.onError = defaultOnError;
-  });
-
-  testWidgets('Auth screen supports register and login flow', (
+void main() {
+  testWidgetsRobust('Auth screen supports register and login flow', (
     WidgetTester tester,
   ) async {
     final authRepository = InMemoryAuthRepository();
@@ -90,7 +87,7 @@ void main() {
     expect(find.byKey(const ValueKey('screen-today')), findsOneWidget);
   });
 
-  testWidgets('Auth screen supports OAuth buttons', (WidgetTester tester) async {
+  testWidgetsRobust('Auth screen supports OAuth buttons', (WidgetTester tester) async {
     final authRepository = InMemoryAuthRepository();
     addTearDown(authRepository.dispose);
 
@@ -103,7 +100,7 @@ void main() {
     expect(find.byKey(const ValueKey('screen-today')), findsOneWidget);
   });
 
-  testWidgets('FitPilot today screen is focused and iOS-polished', (
+  testWidgetsRobust('FitPilot today screen is focused and iOS-polished', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ShiftFitApp());
@@ -130,7 +127,7 @@ void main() {
     expect(find.text('Wochen Split'), findsNothing);
   });
 
-  testWidgets('Check-in updates recommendation for fatigue, endurance and strong strength', (
+  testWidgetsRobust('Check-in updates recommendation for fatigue, endurance and strong strength', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ShiftFitApp());
@@ -156,7 +153,7 @@ void main() {
     expect(find.text('Strength Builder'), findsOneWidget);
   });
 
-  testWidgets('Plan sheet can be opened from today card', (WidgetTester tester) async {
+  testWidgetsRobust('Plan sheet can be opened from today card', (WidgetTester tester) async {
     await tester.pumpWidget(const ShiftFitApp());
 
     await tester.ensureVisible(find.byKey(const ValueKey('today-open-plan')));
@@ -167,7 +164,7 @@ void main() {
     expect(find.textContaining('Warm-up'), findsWidgets);
   });
 
-  testWidgets('Bottom navigation switches between Heute, Training, Trends, Food and Rezepte', (
+  testWidgetsRobust('Bottom navigation switches between Heute, Training, Trends, Food and Rezepte', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ShiftFitApp());
@@ -223,7 +220,7 @@ void main() {
     expect(find.text('Hypertrophy Plan'), findsOneWidget);
   });
 
-  testWidgets('Recipe detail can add a meal into kcal and macro tracker', (
+  testWidgetsRobust('Recipe detail can add a meal into kcal and macro tracker', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ShiftFitApp());
@@ -273,7 +270,7 @@ void main() {
     expect(find.textContaining('590 kcal'), findsWidgets);
   });
 
-  testWidgets('Food tab supports deterministic itemized photo results and daily kcal adding', (
+  testWidgetsRobust('Food tab supports deterministic itemized photo results and daily kcal adding', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -342,7 +339,7 @@ void main() {
     );
   });
 
-  testWidgets('Food tab searches OpenFoodFacts products and adds selected item', (
+  testWidgetsRobust('Food tab searches OpenFoodFacts products and adds selected item', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -385,7 +382,7 @@ void main() {
     );
   });
 
-  testWidgets('Food calendar keeps past days separate from today', (
+  testWidgetsRobust('Food calendar keeps past days separate from today', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -448,7 +445,7 @@ void main() {
     );
   });
 
-  testWidgets('Kcal product search shows suggestions while typing', (
+  testWidgetsRobust('Kcal product search shows suggestions while typing', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -472,7 +469,7 @@ void main() {
     expect(find.textContaining('Dr. Oetker'), findsWidgets);
   });
 
-  testWidgets('Kcal live product search waits through transient failures', (
+  testWidgetsRobust('Kcal live product search waits through transient failures', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -502,7 +499,7 @@ void main() {
     expect(find.text('OpenFoodFacts-Suche gerade nicht erreichbar.'), findsNothing);
   });
 
-  testWidgets('Kcal live product search retries temporary empty results', (
+  testWidgetsRobust('Kcal live product search retries temporary empty results', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -538,7 +535,7 @@ void main() {
     );
   });
 
-  testWidgets('Training tab updates weekly split and summaries', (
+  testWidgetsRobust('Training tab updates weekly split and summaries', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ShiftFitApp());
