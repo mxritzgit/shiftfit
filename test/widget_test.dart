@@ -229,7 +229,11 @@ void main() {
     final putenTile = find.byKey(
       const ValueKey('recipe-tile-putenballchen_mit_reis_and_gemuse'),
     );
-    await tester.ensureVisible(putenTile);
+    await tester.dragUntilVisible(
+      putenTile,
+      find.byKey(const ValueKey('screen-recipes')),
+      const Offset(0, -200),
+    );
     await tester.pumpAndSettle();
     expect(putenTile, findsOneWidget);
     expect(find.text('Putenbällchen mit Reis & Gemüse'), findsWidgets);
