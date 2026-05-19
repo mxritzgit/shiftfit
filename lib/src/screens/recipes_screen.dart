@@ -484,6 +484,7 @@ class RecipeDetailScreen extends StatelessWidget {
               Row(
                 children: [
                   _RoundIconButton(
+                    key: const ValueKey('recipe-detail-back'),
                     icon: Icons.arrow_back_rounded,
                     onTap: () => Navigator.of(context).pop(),
                   ),
@@ -1002,7 +1003,7 @@ class _MacroRow extends StatelessWidget {
 }
 
 class _RoundIconButton extends StatelessWidget {
-  const _RoundIconButton({required this.icon, required this.onTap});
+  const _RoundIconButton({super.key, required this.icon, required this.onTap});
 
   final IconData icon;
   final VoidCallback onTap;

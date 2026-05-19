@@ -244,9 +244,7 @@ void main() {
     expect(find.text('Hypertrophy Plan'), findsOneWidget);
   });
 
-  testWidgetsRobust('Recipe detail can add a meal into kcal and macro tracker', skip:
-    'TODO: CupertinoNavigationBarBackButton nicht gefunden — Detail-Screen wurde '
-    'wohl auf Material-AppBar umgebaut. Pre-existing broken vor CI.', (
+  testWidgetsRobust('Recipe detail can add a meal into kcal and macro tracker', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ShiftFitApp());
@@ -277,7 +275,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('590 kcal zu Mittagessen hinzugefügt.'), findsOneWidget);
 
-    await tester.pageBack();
+    await tester.tap(find.byKey(const ValueKey('recipe-detail-back')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('nav-Food')));
     await tester.pumpAndSettle();
