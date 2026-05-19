@@ -349,6 +349,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('550 g ≈ 815 kcal'), findsOneWidget);
 
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('analyse-save-weight-button')),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('analyse-save-weight-button')));
     await tester.pumpAndSettle();
     expect(find.text('815 kcal'), findsWidgets);
