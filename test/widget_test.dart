@@ -410,9 +410,7 @@ void main() {
     );
   });
 
-  testWidgetsRobust('Food calendar keeps past days separate from today', skip:
-    'TODO: "0 kcal" descendant nicht gefunden — Calendar/Past-Day-Anzeige wurde '
-    'mit Kcal-Redesign veraendert. Pre-existing broken vor CI.', (
+  testWidgetsRobust('Food calendar keeps past days separate from today', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
