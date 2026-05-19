@@ -367,10 +367,7 @@ void main() {
     );
   });
 
-  testWidgetsRobust('Food tab searches OpenFoodFacts products and adds selected item', skip:
-    'TODO: ProductSearch-Card ist mit dem Kcal-Redesign in AddMealSheet gewandert '
-    '(siehe Project-Memory Slot-Tap-Add-Sheet). Test-Selektoren passen nicht mehr. '
-    'Pre-existing broken vor CI.', (
+  testWidgetsRobust('Food tab searches OpenFoodFacts products and adds selected item', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
