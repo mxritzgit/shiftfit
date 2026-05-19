@@ -12,6 +12,24 @@ import 'package:shiftfit/src/services/meal_photo_input.dart';
 import 'package:shiftfit/src/services/open_food_facts_product_service.dart';
 
 void main() {
+  // FitPilot ist eine iPhone-App. Default-Test-Viewport ist 800x600
+  // und zu schmal/quer fuer die Kcal-/Coach-/Recipe-Cards — fuehrt zu
+  // RenderFlex-overflows, die der Framework als Test-Failure wertet.
+  // Pin auf iPhone 14 portrait @3x (entspricht 393x852 logical).
+  setUp(() {
+    final binding = TestWidgetsFlutterBinding.ensureInitialized();
+    final view = binding.platformDispatcher.implicitView!;
+    view.physicalSize = const Size(1179, 2556);
+    view.devicePixelRatio = 3.0;
+  });
+
+  tearDown(() {
+    final view = TestWidgetsFlutterBinding
+        .instance.platformDispatcher.implicitView!;
+    view.resetPhysicalSize();
+    view.resetDevicePixelRatio();
+  });
+
   testWidgets('Auth screen supports register and login flow', (
     WidgetTester tester,
   ) async {
