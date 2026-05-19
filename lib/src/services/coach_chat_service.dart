@@ -194,7 +194,7 @@ class CoachChatService {
             'image_mime_type': imageMimeType,
         },
       );
-      final status = res.status ?? 0;
+      final status = res.status;
       final data = res.data;
       final map = data is Map ? data.cast<String, dynamic>() : <String, dynamic>{};
       if (status == 429 || map['error'] == 'quota_exceeded') {

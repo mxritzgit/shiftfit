@@ -725,7 +725,7 @@ Deno.serve(async (req: Request) => {
     );
     reply = out.reply;
     refusal = out.refusal;
-  } catch (e) {
+  } catch (_e) {
     reply = "Da ging gerade was schief auf meiner Seite - probier es in einer Minute nochmal.";
     refusal = true;
   }

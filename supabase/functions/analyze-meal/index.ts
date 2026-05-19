@@ -306,6 +306,7 @@ function normalizePortionHint(raw: unknown): string {
 
 function sanitizeHint(raw: unknown): string | undefined {
   if (typeof raw !== 'string') return undefined;
+  // deno-lint-ignore no-control-regex -- intentional: strip C0+DEL control chars from user hint
   const collapsed = raw.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
   if (!collapsed) return undefined;
   return collapsed.slice(0, MAX_HINT_CHARS);

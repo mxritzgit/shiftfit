@@ -34,7 +34,6 @@ import '../theme/app_colors.dart';
 import '../widgets/app_shell/shiftfit_bottom_nav.dart';
 import '../widgets/auth/welcome_screen.dart';
 import '../widgets/shared/settings_sheet.dart';
-import '../widgets/today/habits_card.dart';
 import '../widgets/today/mood_card.dart';
 import '../widgets/today/wellness_widgets.dart';
 
