@@ -180,9 +180,7 @@ void main() {
     expect(find.textContaining('Warm-up'), findsWidgets);
   });
 
-  testWidgetsRobust('Bottom navigation switches between Heute, Training, Trends, Food and Rezepte', skip:
-    'TODO: scrollUntilVisible fuer Putenbaellchen — Recipe-Liste wurde erweitert, '
-    'drag(0,-700) reicht nicht mehr bis Index 9. Pre-existing broken vor CI.', (
+  testWidgetsRobust('Bottom navigation switches between Heute, Training, Trends, Food and Rezepte', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ShiftFitApp());
@@ -228,8 +226,12 @@ void main() {
     expect(find.text('Hähnchen mit Reis & Brokkoli'), findsWidgets);
     expect(find.text('Lachs mit Süßkartoffel & Spargel'), findsWidgets);
 
-    await tester.drag(find.byKey(const ValueKey('screen-recipes')), const Offset(0, -700));
+    final putenTile = find.byKey(
+      const ValueKey('recipe-tile-putenballchen_mit_reis_and_gemuse'),
+    );
+    await tester.ensureVisible(putenTile);
     await tester.pumpAndSettle();
+    expect(putenTile, findsOneWidget);
     expect(find.text('Putenbällchen mit Reis & Gemüse'), findsWidgets);
 
     await tester.tap(find.byKey(const ValueKey('nav-Heute')));
