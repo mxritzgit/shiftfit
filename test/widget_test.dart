@@ -27,9 +27,9 @@ import 'package:shiftfit/src/services/open_food_facts_product_service.dart';
 void testWidgetsRobust(
   String description,
   WidgetTesterCallback callback, {
-  Object? skip,
+  String? skip,
 }) {
-  testWidgets(description, skip: skip, (tester) async {
+  testWidgets(description, skip: skip != null, (tester) async {
     tester.view.physicalSize = const Size(1179, 2556);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.resetPhysicalSize);
