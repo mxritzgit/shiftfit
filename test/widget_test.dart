@@ -461,7 +461,14 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.tap(find.byKey(const ValueKey('food-date-chip-0')));
+    // AddMealSheet schliessen, sonst absorbiert die Modal-Barrier den
+    // naechsten Chip-Tap.
+    await tester.tap(find.byKey(const ValueKey('add-meal-sheet-close')));
+    await tester.pumpAndSettle();
+
+    // Heute ist der LETZTE Chip (Index = visiblePastDays = 4); chip-0
+    // waere "Vor 4 Tagen". Test-Intention: zurueck zu Heute switchen.
+    await tester.tap(find.byKey(const ValueKey('food-date-chip-4')));
     await tester.pumpAndSettle();
     expect(find.text('Heute'), findsWidgets);
     expect(
