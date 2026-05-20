@@ -101,27 +101,29 @@ Damit die Struktur sauber bleibt:
 
 ## Lokale Entwicklung
 
-`SUPABASE_URL` und `SUPABASE_ANON_KEY` werden zur Build-Zeit injiziert,
-nicht aus dem Sourcecode gelesen. Lege dir einmalig deine eigene
-`dart_defines.json` (gitignored) neben `pubspec.yaml`:
-
-```bash
-cp dart_defines.example.json dart_defines.json
-# Werte in dart_defines.json eintragen (Anon-Key aus Supabase-Dashboard)
-```
-
-Danach:
+Default ist out-of-the-box lauffaehig: `SUPABASE_URL` und
+`SUPABASE_ANON_KEY` haben einen `defaultValue` in
+`lib/src/config/supabase_config.dart`. Der Anon-Key ist ein public JWT
+mit `role: anon` und damit kein Secret im engeren Sinn (im Client-Bundle
+ohnehin extrahierbar).
 
 ```bash
 flutter pub get
 flutter analyze
-flutter test --dart-define-from-file=dart_defines.json
+flutter test
+flutter run
+```
+
+Override fuer ein anderes Supabase-Projekt (z.B. Staging) ueber eine
+optionale, gitignorete `dart_defines.json`:
+
+```bash
+cp dart_defines.example.json dart_defines.json
+# Werte fuer das Ziel-Projekt eintragen
 flutter run --dart-define-from-file=dart_defines.json
 ```
 
-Ohne die Defines wirft `FitPilotSupabaseConfig.initialize()` einen
-`StateError` beim App-Start — Absicht, damit ein versehentlicher Build
-ohne Konfiguration nicht still gegen ein falsches Projekt laeuft.
+`--dart-define`-Werte ueberschreiben die Source-Defaults.
 
 ## Security
 

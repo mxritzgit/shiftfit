@@ -6,20 +6,23 @@ class FitPilotSupabaseConfig {
 
   static const String oauthRedirectUrl = 'fitpilot://login-callback/';
 
-  // Build-Time-Inject via --dart-define / --dart-define-from-file.
-  // Kein Default im Source — der Anon-Key war frueher hardcoded
-  // und ist damit kompromittiert; siehe dart_defines.example.json.
-  static const String url = String.fromEnvironment('SUPABASE_URL');
+  // Supabase Anon-Key ist by-design im Client-Bundle extrahierbar
+  // (JWT mit role:anon). Defaults im Source sind daher KEIN Secret-Leak
+  // — sie machen `flutter run` ohne extra Flags reproduzierbar moeglich.
+  // Override fuer CI / staging / prod via --dart-define-from-file=dart_defines.json
+  // bleibt unveraendert moeglich, der dart-define hat Vorrang vor dem Default.
+  static const String url = String.fromEnvironment(
+    'SUPABASE_URL',
+    defaultValue: 'https://ftoozzvmduptrvrrrshb.supabase.co',
+  );
 
-  static const String anonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+  static const String anonKey = String.fromEnvironment(
+    'SUPABASE_ANON_KEY',
+    defaultValue:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0b296enZtZHVwdHJ2cnJyc2hiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NDEyOTAsImV4cCI6MjA5MzQxNzI5MH0.5kx8LowjRc8q8uWqJmUGU8ZjCnplSRDC1NGhm-oG7to',
+  );
 
   static Future<void> initialize() async {
-    if (url.isEmpty || anonKey.isEmpty) {
-      throw StateError(
-        'SUPABASE_URL und SUPABASE_ANON_KEY muessen via --dart-define '
-        'gesetzt werden. Siehe dart_defines.example.json und README.md.',
-      );
-    }
     await Supabase.initialize(url: url, anonKey: anonKey);
     _wireOAuthSheetDismiss();
   }
