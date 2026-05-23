@@ -8,6 +8,7 @@ import '../models/user_profile.dart';
 import '../models/weight_log.dart';
 import '../services/health_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/common/lively.dart';
 import '../widgets/profile/profile_widgets.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -86,10 +87,11 @@ class ProfileScreen extends StatelessWidget {
       ),
       body: SafeArea(
         top: false,
-        child: SingleChildScrollView(
-          key: const ValueKey('screen-profile'),
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-          child: Column(
+        child: LivelyEntrance(
+          child: SingleChildScrollView(
+            key: const ValueKey('screen-profile'),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ProfileHero(
@@ -154,6 +156,7 @@ class ProfileScreen extends StatelessWidget {
               const SizedBox(height: 18),
               const _FooterCredit(),
             ],
+          ),
           ),
         ),
       ),

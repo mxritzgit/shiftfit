@@ -34,6 +34,7 @@ import '../screens/week_planner_screen.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_shell/shiftfit_bottom_nav.dart';
 import '../widgets/auth/welcome_screen.dart';
+import '../widgets/common/lively.dart';
 import '../widgets/shared/settings_sheet.dart';
 import '../widgets/today/mood_card.dart';
 import '../widgets/today/wellness_widgets.dart';
@@ -716,7 +717,14 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         selectedIndex: selectedTab,
         onSelected: (index) => setState(() => selectedTab = index),
       ),
-      body: SafeArea(child: body),
+      // Sanfter Auftritt pro Tab-Wechsel — Key auf den Tab gepinnt, damit der
+      // Effekt bei jedem Wechsel (und beim ersten Anzeigen) erneut abspielt.
+      body: SafeArea(
+        child: LivelyEntrance(
+          key: ValueKey('lively-tab-$selectedTab'),
+          child: body,
+        ),
+      ),
     );
   }
 
