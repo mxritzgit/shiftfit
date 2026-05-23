@@ -25,6 +25,7 @@ import '../services/open_food_facts_product_service.dart';
 import '../services/uuid.dart';
 import '../screens/coach_chat_screen.dart';
 import '../screens/meal_analysis_screen.dart';
+import '../screens/onboarding_screen.dart';
 import '../screens/profile_screen.dart';
 import '../screens/recipes_screen.dart';
 import '../screens/today_dashboard.dart';
@@ -95,6 +96,10 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
   final ValueNotifier<int> _profileRefresh = ValueNotifier<int>(0);
   late bool _profileLoaded;
   late bool _welcomeFinished;
+  // Lokales Flag, damit der User nach Abschluss sofort weiterkommt — auch
+  // falls der Supabase-Save kurz hakt (das onboardingCompleted-Flag aus dem
+  // berechneten Profil greift parallel).
+  bool _onboardingDone = false;
   final Completer<void> _profileReadyCompleter = Completer<void>();
 
   int get stepsGoal => profile.dailyStepsGoal;
@@ -638,6 +643,33 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
     );
   }
 
+  /// Onboarding ist Pflicht, sobald ein echter Supabase-Sync existiert und das
+  /// Profil noch nicht durchlaufen wurde. Ohne Sync (Test/Preview) nie.
+  bool get _needsOnboarding =>
+      widget.sync != null && !_onboardingDone && !profile.onboardingCompleted;
+
+  /// Übernimmt das im Onboarding berechnete Profil (Kalorien-/Makro-Ziel +
+  /// onboardingCompleted), persistiert es und lässt den User ins Home. Bei
+  /// Save-Fehler kommt der User trotzdem rein — der nächste Profil-Save fixt
+  /// das Flag, ein Fehler-Snackbar macht das Problem sichtbar.
+  Future<void> _completeOnboarding(UserProfile finished) async {
+    setState(() {
+      profile = finished;
+      _onboardingDone = true;
+    });
+    final sync = widget.sync;
+    if (sync == null) return;
+    try {
+      await sync.profile.save(finished);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Profil-Sync: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_welcomeFinished) {
@@ -648,6 +680,17 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         onComplete: () {
           if (mounted) setState(() => _welcomeFinished = true);
         },
+      );
+    }
+
+    // Verpflichtendes Onboarding: jeder echte User (mit Supabase-Sync) muss es
+    // einmal durchlaufen. Im Test/Preview (sync == null) wird es übersprungen,
+    // damit die bestehenden Widget-Tests direkt auf dem Home landen.
+    if (_needsOnboarding) {
+      return OnboardingScreen(
+        firstName: userName,
+        initialProfile: profile,
+        onComplete: _completeOnboarding,
       );
     }
 

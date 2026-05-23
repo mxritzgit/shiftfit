@@ -84,14 +84,14 @@ class KcalTargets {
 class KcalCalculator {
   const KcalCalculator();
 
-  /// Basis-Lebensstil-Faktor über dem BMR. Deckt Ruheumsatz + Alltag
-  /// (Schlafen, Verdauung, beiläufige Bewegung) ab — bewusst sitzend
-  /// angesetzt, weil die *tatsächlich* gegangenen Schritte separat als
+  /// Fallback-Lebensstil-Faktor über dem BMR, falls kein Aktivitätslevel
+  /// gesetzt ist. Entspricht [ActivityLevel.sedentary] (1.2) — bewusst
+  /// sitzend, weil die *tatsächlich* gegangenen Schritte separat als
   /// "Verbrannt" angerechnet werden (CaloriesOverviewCard).
   ///
-  /// Früher wurde stattdessen das Schritt-*Ziel* in den TDEE gerechnet
-  /// (×1.55 etc.) UND die echten Schritt-kcal nochmal addiert → ~300 kcal
-  /// Doppelzählung. Mit dem festen Basis-Faktor ist das behoben.
+  /// Früher war dies der EINZIGE Faktor; jetzt wählt der User im Onboarding
+  /// sein Aktivitätslevel und der TDEE nutzt dessen PAL ([ActivityLevel]).
+  /// Schritte separat zählen verhindert weiterhin die Doppelzählung.
   static const double baseLifestyleFactor = 1.2;
 
   /// Mifflin-St Jeor basal metabolic rate. For [BiologicalSex.neutral] we
@@ -118,7 +118,7 @@ class KcalCalculator {
       ageYears: profile.ageYears,
       sex: profile.sex,
     );
-    final maintenance = bmr * baseLifestyleFactor;
+    final maintenance = bmr * profile.activityLevel.palFactor;
     final goalAdjusted = maintenance + profile.weightGoal.kcalDelta;
     // Round daily kcal to nearest 50 for nicer-looking numbers.
     final kcal = ((goalAdjusted / 50).round() * 50).clamp(1200, 5000);
@@ -138,5 +138,20 @@ class KcalCalculator {
       maintenanceKcal: maintenance.round(),
       goal: profile.weightGoal,
     );
+  }
+
+  /// Geschätzte Wochen bis zum Wunschgewicht beim aktuell gewählten Tempo.
+  /// Basiert auf der Gewichtsdifferenz und der wöchentlichen Rate des Ziels
+  /// (≈ 7700 kcal pro kg). Liefert null wenn das Ziel „halten" ist, das
+  /// Wunschgewicht schon erreicht ist oder die Richtung nicht zur Differenz
+  /// passt (z.B. Abnehm-Ziel bei bereits niedrigerem Gewicht).
+  int? weeksToGoal(UserProfile profile) {
+    final diffKg = (profile.weightKg - profile.targetWeightKg).abs();
+    if (diffKg == 0) return null;
+    final rate = profile.weightGoal.weeklyRateKg;
+    if (rate <= 0) return null;
+    final needsToLose = profile.targetWeightKg < profile.weightKg;
+    if (needsToLose != profile.weightGoal.isLoss) return null;
+    return (diffKg / rate).ceil();
   }
 }

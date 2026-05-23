@@ -122,5 +122,57 @@ void main() {
       ));
       expect(tiny.kcal, greaterThanOrEqualTo(1200));
     });
+
+    test('activity level scales maintenance via its PAL factor', () {
+      final sedentary =
+          calc.calculate(base.copyWith(activityLevel: ActivityLevel.sedentary));
+      final moderate =
+          calc.calculate(base.copyWith(activityLevel: ActivityLevel.moderate));
+      final athlete =
+          calc.calculate(base.copyWith(activityLevel: ActivityLevel.athlete));
+
+      // 1664.5 BMR × {1.2, 1.55, 1.9}
+      expect(sedentary.maintenanceKcal, 1997);
+      expect(moderate.maintenanceKcal, 2580);
+      expect(athlete.maintenanceKcal, 3163);
+      expect(moderate.kcal, greaterThan(sedentary.kcal));
+      expect(athlete.kcal, greaterThan(moderate.kcal));
+    });
+  });
+
+  group('KcalCalculator.weeksToGoal', () {
+    const calc = KcalCalculator();
+    const base = UserProfile();
+
+    test('projects weeks from weight gap and goal pace', () {
+      // 78 → 68 kg = 10 kg at loseFast (500 kcal/d ≈ 0.4545 kg/Woche).
+      final profile = base.copyWith(
+        targetWeightKg: 68,
+        weightGoal: WeightGoal.loseFast,
+      );
+      expect(calc.weeksToGoal(profile), 22);
+    });
+
+    test('is null when maintaining or already at target', () {
+      expect(calc.weeksToGoal(base.copyWith(weightGoal: WeightGoal.maintain)), isNull);
+      expect(
+        calc.weeksToGoal(base.copyWith(
+          targetWeightKg: 78,
+          weightGoal: WeightGoal.loseFast,
+        )),
+        isNull,
+      );
+    });
+
+    test('is null when target direction contradicts the goal', () {
+      // Ziel über aktuellem Gewicht, aber Abnehm-Ziel gewählt → kein Sinn.
+      expect(
+        calc.weeksToGoal(base.copyWith(
+          targetWeightKg: 90,
+          weightGoal: WeightGoal.loseFast,
+        )),
+        isNull,
+      );
+    });
   });
 }

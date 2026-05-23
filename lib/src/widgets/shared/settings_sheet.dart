@@ -44,7 +44,9 @@ class _SettingsSheetState extends State<_SettingsSheet> {
   late final TextEditingController _protein;
   late final TextEditingController _carbs;
   late final TextEditingController _fat;
+  late final TextEditingController _targetWeight;
   late BiologicalSex _sex;
+  late ActivityLevel _activity;
   late int _sleepGoalMinutes;
   late WeightGoal _goal;
   KcalTargets? _lastSuggestion;
@@ -62,7 +64,9 @@ class _SettingsSheetState extends State<_SettingsSheet> {
     _protein = TextEditingController(text: p.proteinGoalG.toString());
     _carbs = TextEditingController(text: p.carbsGoalG.toString());
     _fat = TextEditingController(text: p.fatGoalG.toString());
+    _targetWeight = TextEditingController(text: p.targetWeightKg.toString());
     _sex = p.sex;
+    _activity = p.activityLevel;
     _sleepGoalMinutes = p.dailySleepGoalMinutes;
     _goal = p.weightGoal;
   }
@@ -78,6 +82,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
     _protein.dispose();
     _carbs.dispose();
     _fat.dispose();
+    _targetWeight.dispose();
     super.dispose();
   }
 
@@ -87,11 +92,16 @@ class _SettingsSheetState extends State<_SettingsSheet> {
 
   UserProfile _buildProfile() {
     final p = widget.initial;
-    return UserProfile(
+    // copyWith statt frischem UserProfile: erhält Felder die der Sheet nicht
+    // anfasst — vor allem onboardingCompleted (sonst würde Speichern den User
+    // beim nächsten Start zurück ins Onboarding werfen).
+    return p.copyWith(
       weightKg: _parseInt(_weight, p.weightKg),
       heightCm: _parseInt(_height, p.heightCm),
       ageYears: _parseInt(_age, p.ageYears),
       sex: _sex,
+      activityLevel: _activity,
+      targetWeightKg: _parseInt(_targetWeight, p.targetWeightKg),
       dailyStepsGoal: _parseInt(_steps, p.dailyStepsGoal),
       dailyKcalGoal: _parseInt(_kcal, p.dailyKcalGoal),
       dailyWaterGoalMl: _parseInt(_water, p.dailyWaterGoalMl),
@@ -219,9 +229,27 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               minutes: _sleepGoalMinutes,
               onChanged: (v) => setState(() => _sleepGoalMinutes = v),
             ),
+            const SizedBox(height: 10),
+            _ActivityField(
+              value: _activity,
+              onChanged: (v) => setState(() => _activity = v),
+            ),
             const SizedBox(height: 18),
             const _SectionLabel('ZIEL'),
             const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _SettingsField(
+                    label: 'Wunschgewicht',
+                    suffix: 'kg',
+                    controller: _targetWeight,
+                    keyValue: const ValueKey('settings-target-weight'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
             _WeightGoalField(
               value: _goal,
               onChanged: (v) => setState(() => _goal = v),
@@ -432,6 +460,89 @@ class _SexField extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ActivityField extends StatelessWidget {
+  const _ActivityField({required this.value, required this.onChanged});
+
+  final ActivityLevel value;
+  final ValueChanged<ActivityLevel> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      key: const ValueKey('settings-activity'),
+      onTap: () async {
+        final picked = await showModalBottomSheet<ActivityLevel>(
+          context: context,
+          backgroundColor: surface,
+          showDragHandle: true,
+          builder: (sheetContext) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final option in ActivityLevel.values)
+                  ListTile(
+                    key: ValueKey('settings-activity-${option.name}'),
+                    title: Text(option.label),
+                    subtitle: Text('${option.description} · ×${option.palFactor}'),
+                    trailing: value == option
+                        ? const Icon(Icons.check_rounded, color: lime)
+                        : null,
+                    onTap: () => Navigator.pop(sheetContext, option),
+                  ),
+              ],
+            ),
+          ),
+        );
+        if (picked != null) onChanged(picked);
+      },
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: surfaceSoft,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: hairline),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Aktivitätslevel',
+                    style: TextStyle(
+                      color: textMuted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    value.label,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              '×${value.palFactor}',
+              style: const TextStyle(
+                color: textMuted,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ],
