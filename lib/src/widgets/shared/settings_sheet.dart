@@ -46,6 +46,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
   late final TextEditingController _fat;
   late BiologicalSex _sex;
   late int _sleepGoalMinutes;
+  late WeightGoal _goal;
   KcalTargets? _lastSuggestion;
 
   @override
@@ -63,6 +64,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
     _fat = TextEditingController(text: p.fatGoalG.toString());
     _sex = p.sex;
     _sleepGoalMinutes = p.dailySleepGoalMinutes;
+    _goal = p.weightGoal;
   }
 
   @override
@@ -97,6 +99,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
       proteinGoalG: _parseInt(_protein, p.proteinGoalG),
       carbsGoalG: _parseInt(_carbs, p.carbsGoalG),
       fatGoalG: _parseInt(_fat, p.fatGoalG),
+      weightGoal: _goal,
     );
   }
 
@@ -215,6 +218,13 @@ class _SettingsSheetState extends State<_SettingsSheet> {
             _SleepGoalField(
               minutes: _sleepGoalMinutes,
               onChanged: (v) => setState(() => _sleepGoalMinutes = v),
+            ),
+            const SizedBox(height: 18),
+            const _SectionLabel('ZIEL'),
+            const SizedBox(height: 8),
+            _WeightGoalField(
+              value: _goal,
+              onChanged: (v) => setState(() => _goal = v),
             ),
             const SizedBox(height: 18),
             _AutoCalcRow(suggestion: _lastSuggestion, onTap: _autoCalc),
@@ -431,6 +441,91 @@ class _SexField extends StatelessWidget {
   }
 }
 
+class _WeightGoalField extends StatelessWidget {
+  const _WeightGoalField({required this.value, required this.onChanged});
+
+  final WeightGoal value;
+  final ValueChanged<WeightGoal> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      key: const ValueKey('settings-weight-goal'),
+      onTap: () async {
+        final picked = await showModalBottomSheet<WeightGoal>(
+          context: context,
+          backgroundColor: surface,
+          showDragHandle: true,
+          builder: (sheetContext) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final option in WeightGoal.values)
+                  ListTile(
+                    key: ValueKey('settings-weight-goal-${option.name}'),
+                    title: Text(option.label),
+                    subtitle: Text('${option.deltaLabel} · ${option.paceLabel}'),
+                    trailing: value == option
+                        ? const Icon(Icons.check_rounded, color: lime)
+                        : null,
+                    onTap: () => Navigator.pop(sheetContext, option),
+                  ),
+              ],
+            ),
+          ),
+        );
+        if (picked != null) onChanged(picked);
+      },
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: surfaceSoft,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: hairline),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Gewichtsziel',
+                    style: TextStyle(
+                      color: textMuted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    value.label,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              value.deltaLabel,
+              style: TextStyle(
+                color: value.kcalDelta == 0
+                    ? textMuted
+                    : (value.kcalDelta < 0 ? lime : orange),
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _SleepGoalField extends StatelessWidget {
   const _SleepGoalField({required this.minutes, required this.onChanged});
 
@@ -498,9 +593,9 @@ class _AutoCalcRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hint = suggestion == null
-        ? 'Berechnet kcal + Makros aus Größe, Gewicht, Alter und Schrittziel. '
-            'Verbrannt nutzt Gewicht + Größe für die tägliche Distanz.'
-        : '${suggestion!.kcal} kcal · BMR ${suggestion!.bmr} · ${suggestion!.activityLabel} (×${suggestion!.activityFactor.toStringAsFixed(2)})';
+        ? 'Berechnet kcal + Makros aus Größe, Gewicht, Alter und Ziel. '
+            'Schritte zählen separat als „Verbrannt" oben drauf.'
+        : '${suggestion!.kcal} kcal · Erhaltung ${suggestion!.maintenanceKcal} · ${suggestion!.goal.label} (${suggestion!.goal.deltaLabel})';
     return InkWell(
       key: const ValueKey('settings-auto-calc'),
       onTap: onTap,

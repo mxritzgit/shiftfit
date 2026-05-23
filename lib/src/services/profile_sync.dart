@@ -18,7 +18,7 @@ class ProfileSync {
       'weight_kg, height_cm, age_years, sex, '
       'daily_steps_goal, daily_kcal_goal, daily_water_goal_ml, '
       'daily_sleep_goal_minutes, '
-      'protein_goal_g, carbs_goal_g, fat_goal_g';
+      'protein_goal_g, carbs_goal_g, fat_goal_g, weight_goal';
 
   Future<UserProfile?> load() async {
     try {
@@ -44,6 +44,7 @@ class ProfileSync {
         proteinGoalG: _toInt(row['protein_goal_g']) ?? 130,
         carbsGoalG: _toInt(row['carbs_goal_g']) ?? 240,
         fatGoalG: _toInt(row['fat_goal_g']) ?? 70,
+        weightGoal: _parseGoal(row['weight_goal']?.toString()),
       );
     } catch (e, stack) {
       dev.log('ProfileSync.load failed', error: e, stackTrace: stack, name: 'profile_sync');
@@ -65,6 +66,7 @@ class ProfileSync {
       'protein_goal_g': profile.proteinGoalG,
       'carbs_goal_g': profile.carbsGoalG,
       'fat_goal_g': profile.fatGoalG,
+      'weight_goal': profile.weightGoal.name,
     };
     try {
       // UPSERT statt UPDATE - faengt den Fall ab dass die Profile-Row
@@ -84,6 +86,14 @@ class ProfileSync {
     return BiologicalSex.values.firstWhere(
       (v) => v.name == raw,
       orElse: () => BiologicalSex.neutral,
+    );
+  }
+
+  static WeightGoal _parseGoal(String? raw) {
+    if (raw == null) return WeightGoal.maintain;
+    return WeightGoal.values.firstWhere(
+      (v) => v.name == raw,
+      orElse: () => WeightGoal.maintain,
     );
   }
 
