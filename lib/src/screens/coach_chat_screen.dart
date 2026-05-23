@@ -161,10 +161,16 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
     await _refreshSessions();
     if (!mounted) return;
     if (wasActive) {
-      final fallback =
-          _sessions.isNotEmpty ? _sessions.first.id : await svc.ensureDefaultSession();
-      if (fallback != null) {
-        await _switchToSession(fallback);
+      if (_sessions.isNotEmpty) {
+        await _switchToSession(_sessions.first.id);
+      } else {
+        // Letzte Session gelöscht: Default neu anlegen UND nachladen, damit
+        // die Liste (und das Sheet) die neue Session zeigt statt leer zu sein.
+        final fallback = await svc.ensureDefaultSession();
+        if (fallback != null) {
+          await _refreshSessions();
+          await _switchToSession(fallback);
+        }
       }
     }
   }
@@ -366,20 +372,28 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
-      builder: (_) => _SessionsSheet(
-        sessions: _sessions,
-        activeSessionId: _activeSessionId,
-        onNew: () async {
-          Navigator.of(context).pop();
-          await _startNewSession();
-        },
-        onSelect: (id) async {
-          Navigator.of(context).pop();
-          await _switchToSession(id);
-        },
-        onDelete: (id) async {
-          await _deleteSession(id);
-        },
+      // StatefulBuilder, damit das Sheet nach einem Delete sofort neu baut:
+      // showModalBottomSheet hängt nicht am setState der Page, deshalb sah man
+      // die gelöschte Session sonst erst nach Schließen + Neuöffnen verschwinden.
+      builder: (_) => StatefulBuilder(
+        builder: (context, setSheetState) => _SessionsSheet(
+          sessions: _sessions,
+          activeSessionId: _activeSessionId,
+          onNew: () async {
+            Navigator.of(context).pop();
+            await _startNewSession();
+          },
+          onSelect: (id) async {
+            Navigator.of(context).pop();
+            await _switchToSession(id);
+          },
+          onDelete: (id) async {
+            await _deleteSession(id);
+            // _sessions wurde in _deleteSession aktualisiert — Sheet mit der
+            // frischen Liste neu zeichnen.
+            if (mounted) setSheetState(() {});
+          },
+        ),
       ),
     );
   }
