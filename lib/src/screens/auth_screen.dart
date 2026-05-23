@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 import '../auth/auth_repository.dart';
 import '../theme/app_colors.dart';
 
-/// FitPilot Auth-Screen. Editorial Komposition: Wordmark oben, zentrierte
-/// Eyebrow-Headline mit serif-italic Kontrast-Wort, Underline-Inputs mit
-/// zentriertem Text, Pill-Buttons, mono "ODER"-Divider. Single-Screen mit
-/// _isRegister-Toggle (Form-Logik unveraendert).
+/// FitPilot Auth-Screen. Cleanes, professionelles Layout in der App-Bildsprache:
+/// Lime-Badge + Wordmark, klare Headline/Subline, links-ausgerichtete Felder
+/// mit Leading-Icon (auf surfaceSoft, abgerundet), Lime-Pill-CTA, Google-OAuth,
+/// Mode-Footer. Single-Screen mit _isRegister-Toggle (Form-Logik unverändert).
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key, required this.authRepository});
 
@@ -18,12 +18,9 @@ class AuthScreen extends StatefulWidget {
   State<AuthScreen> createState() => _AuthScreenState();
 }
 
-// Lokale Design-Tokens. Nutzen unsere Theme-Farben + ein paar extra
-// Tones (dimmer Placeholder, solid Line) die nur hier auf der Auth-Page
-// gebraucht werden.
-const _line = Color(0xFF232327);
+// Lokale Tokens: dimmer Placeholder + Text auf der Lime-Pill.
 const _dim = Color(0xFF55555C);
-const _ink = bg; // Text auf Lime-Pill
+const _ink = bg;
 
 class _AuthScreenState extends State<AuthScreen> {
   final _nameController = TextEditingController();
@@ -144,65 +141,40 @@ class _AuthScreenState extends State<AuthScreen> {
       key: const ValueKey('screen-auth'),
       backgroundColor: bg,
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: IntrinsicHeight(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(28, 16, 28, 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const _Wordmark(),
-                        const Spacer(),
-                        _HeroHeadline(
-                          eyebrow: _isRegister
-                              ? 'KONTO ERSTELLEN'
-                              : 'WILLKOMMEN ZURÜCK',
-                          lineA: _isRegister ? 'Starte' : 'Bereit',
-                          italic: _isRegister ? 'durch' : 'abzuheben',
-                          lineB: _isRegister ? '.' : '?',
-                        ),
-                        const SizedBox(height: 32),
-                        _EmailForm(
-                          isRegister: _isRegister,
-                          loading: _loading,
-                          busy: _busy,
-                          passwordVisible: _passwordVisible,
-                          nameController: _nameController,
-                          emailController: _emailController,
-                          passwordController: _passwordController,
-                          error: _error,
-                          message: _message,
-                          onTogglePassword: () => setState(
-                            () => _passwordVisible = !_passwordVisible,
-                          ),
-                          onSubmit: _submit,
-                        ),
-                        const SizedBox(height: 22),
-                        const _OrDivider(),
-                        const SizedBox(height: 16),
-                        _GoogleButton(
-                          enabled: !_busy,
-                          loading: _oauthLoading == FitPilotOAuthProvider.google,
-                          onTap: () =>
-                              _startOAuth(FitPilotOAuthProvider.google),
-                        ),
-                        const Spacer(),
-                        const SizedBox(height: 16),
-                        _ModeFooter(
-                          isRegister: _isRegister,
-                          onChanged: _setMode,
-                        ),
-                      ],
-                    ),
-                  ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _AuthHero(isRegister: _isRegister),
+              const SizedBox(height: 30),
+              _EmailForm(
+                isRegister: _isRegister,
+                loading: _loading,
+                busy: _busy,
+                passwordVisible: _passwordVisible,
+                nameController: _nameController,
+                emailController: _emailController,
+                passwordController: _passwordController,
+                error: _error,
+                message: _message,
+                onTogglePassword: () => setState(
+                  () => _passwordVisible = !_passwordVisible,
                 ),
+                onSubmit: _submit,
               ),
-            );
-          },
+              const SizedBox(height: 22),
+              const _OrDivider(),
+              const SizedBox(height: 18),
+              _GoogleButton(
+                enabled: !_busy,
+                loading: _oauthLoading == FitPilotOAuthProvider.google,
+                onTap: () => _startOAuth(FitPilotOAuthProvider.google),
+              ),
+              const SizedBox(height: 26),
+              _ModeFooter(isRegister: _isRegister, onChanged: _setMode),
+            ],
+          ),
         ),
       ),
     );
@@ -210,34 +182,77 @@ class _AuthScreenState extends State<AuthScreen> {
 }
 
 // ═════════════════════════════════════════════════════════════════════
-// Wordmark — Paper-Plane Glyph in lime Kreis + Caps-Lock Wordmark
+// Hero — Lime-Badge mit Paper-Plane, Wordmark, Headline + Subline
 // ═════════════════════════════════════════════════════════════════════
 
-class _Wordmark extends StatelessWidget {
-  const _Wordmark();
+class _AuthHero extends StatelessWidget {
+  const _AuthHero({required this.isRegister});
+
+  final bool isRegister;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    return Column(
+      key: const ValueKey('auth-hero'),
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: 18,
-          height: 18,
-          decoration: const BoxDecoration(
-            color: lime,
-            shape: BoxShape.circle,
-          ),
-          child: const CustomPaint(painter: _PaperPlanePainter()),
+        Row(
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: lime,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: lime.withValues(alpha: 0.30),
+                    blurRadius: 22,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: SizedBox(
+                  width: 26,
+                  height: 26,
+                  child: CustomPaint(painter: _PaperPlanePainter()),
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            const Text(
+              'FitPilot',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.4,
+                color: textPrimary,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 10),
-        const Text(
-          'FITPILOT',
-          style: TextStyle(
-            fontSize: 12.5,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.8,
+        const SizedBox(height: 26),
+        Text(
+          isRegister ? 'Konto erstellen' : 'Willkommen zurück',
+          style: const TextStyle(
+            fontSize: 30,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.8,
+            height: 1.05,
             color: textPrimary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          isRegister
+              ? 'Erstelle dein Konto und leg direkt los.'
+              : 'Melde dich an, um weiterzumachen.',
+          style: const TextStyle(
+            color: textMuted,
+            fontSize: 14.5,
+            height: 1.4,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
@@ -267,86 +282,13 @@ class _PaperPlanePainter extends CustomPainter {
 }
 
 // ═════════════════════════════════════════════════════════════════════
-// Hero — Eyebrow mit Hairlines + serif-italic Kontrast-Wort
+// Auth-Field — boxed, links-ausgerichtet, Leading-Icon, Lime-Fokus
 // ═════════════════════════════════════════════════════════════════════
 
-class _HeroHeadline extends StatelessWidget {
-  const _HeroHeadline({
-    required this.eyebrow,
-    required this.lineA,
-    required this.italic,
-    required this.lineB,
-  });
-  final String eyebrow, lineA, italic, lineB;
-
-  @override
-  Widget build(BuildContext context) {
-    const size = 42.0;
-    return Column(
-      key: const ValueKey('auth-hero'),
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(width: 20, height: 1, color: lime),
-            const SizedBox(width: 10),
-            Text(
-              eyebrow,
-              style: const TextStyle(
-                fontFamily: 'Roboto Mono',
-                fontSize: 10,
-                color: lime,
-                letterSpacing: 2,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Container(width: 20, height: 1, color: lime),
-          ],
-        ),
-        const SizedBox(height: 16),
-        RichText(
-          textAlign: TextAlign.center,
-          text: TextSpan(
-            style: const TextStyle(
-              fontSize: size,
-              height: 1.02,
-              letterSpacing: -size * 0.03,
-              fontWeight: FontWeight.w500,
-              color: textPrimary,
-            ),
-            children: [
-              TextSpan(text: '$lineA '),
-              TextSpan(
-                text: italic,
-                style: const TextStyle(
-                  fontFamily: 'Georgia',
-                  fontSize: size,
-                  height: 1.02,
-                  letterSpacing: -size * 0.03,
-                  fontWeight: FontWeight.w400,
-                  fontStyle: FontStyle.italic,
-                  color: textPrimary,
-                ),
-              ),
-              TextSpan(text: lineB),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ═════════════════════════════════════════════════════════════════════
-// Underline-Field — Mono-Label, zentrierter Input, dünner Underline
-// ═════════════════════════════════════════════════════════════════════
-
-class _UnderlineField extends StatefulWidget {
-  const _UnderlineField({
+class _AuthField extends StatefulWidget {
+  const _AuthField({
     required this.fieldKey,
-    required this.label,
+    required this.icon,
     required this.hint,
     required this.controller,
     this.enabled = true,
@@ -359,7 +301,7 @@ class _UnderlineField extends StatefulWidget {
   });
 
   final Key fieldKey;
-  final String label;
+  final IconData icon;
   final String hint;
   final TextEditingController controller;
   final bool enabled;
@@ -371,10 +313,10 @@ class _UnderlineField extends StatefulWidget {
   final Widget? trailing;
 
   @override
-  State<_UnderlineField> createState() => _UnderlineFieldState();
+  State<_AuthField> createState() => _AuthFieldState();
 }
 
-class _UnderlineFieldState extends State<_UnderlineField> {
+class _AuthFieldState extends State<_AuthField> {
   final _focus = FocusNode();
 
   @override
@@ -391,73 +333,62 @@ class _UnderlineFieldState extends State<_UnderlineField> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                widget.label,
-                style: const TextStyle(
-                  fontFamily: 'Roboto Mono',
-                  fontSize: 9,
-                  color: textMuted,
-                  letterSpacing: 1.6,
-                  fontWeight: FontWeight.w500,
+    final focused = _focus.hasFocus;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: surfaceSoft,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: focused ? lime : hairline,
+          width: focused ? 1.4 : 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(widget.icon, size: 19, color: focused ? lime : textMuted),
+          const SizedBox(width: 12),
+          Expanded(
+            child: TextField(
+              key: widget.fieldKey,
+              controller: widget.controller,
+              focusNode: _focus,
+              enabled: widget.enabled,
+              obscureText: widget.obscure,
+              keyboardType: widget.keyboardType,
+              textInputAction: widget.textInputAction,
+              autofillHints: widget.autofillHints,
+              onSubmitted: widget.onSubmitted,
+              cursorColor: lime,
+              cursorWidth: 1.6,
+              style: const TextStyle(
+                fontSize: 15.5,
+                color: textPrimary,
+                fontWeight: FontWeight.w500,
+              ),
+              decoration: InputDecoration(
+                isCollapsed: true,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 17),
+                hintText: widget.hint,
+                hintStyle: const TextStyle(
+                  fontSize: 15.5,
+                  color: _dim,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
             ),
-            if (widget.trailing != null) widget.trailing!,
-          ],
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          key: widget.fieldKey,
-          controller: widget.controller,
-          focusNode: _focus,
-          enabled: widget.enabled,
-          obscureText: widget.obscure,
-          keyboardType: widget.keyboardType,
-          textInputAction: widget.textInputAction,
-          autofillHints: widget.autofillHints,
-          onSubmitted: widget.onSubmitted,
-          textAlign: TextAlign.center,
-          cursorColor: lime,
-          cursorWidth: 1.5,
-          style: const TextStyle(
-            fontSize: 17,
-            color: textPrimary,
-            fontWeight: FontWeight.w400,
           ),
-          decoration: InputDecoration(
-            hintText: widget.hint,
-            hintStyle: const TextStyle(
-              fontSize: 17,
-              color: _dim,
-            ),
-            isDense: true,
-            filled: false,
-            contentPadding: const EdgeInsets.only(bottom: 10),
-            enabledBorder: const UnderlineInputBorder(
-              borderSide: BorderSide(color: _line, width: 1),
-            ),
-            focusedBorder: const UnderlineInputBorder(
-              borderSide: BorderSide(color: lime, width: 1),
-            ),
-            disabledBorder: const UnderlineInputBorder(
-              borderSide: BorderSide(color: _line, width: 1),
-            ),
-          ),
-        ),
-      ],
+          if (widget.trailing != null) widget.trailing!,
+        ],
+      ),
     );
   }
 }
 
 // ═════════════════════════════════════════════════════════════════════
-// Email-Form — Name (nur Register), Email, Password mit Eye-Toggle,
-// Inline Note bei Error/Message, Lime-Pill Submit
+// Email-Form — Name (nur Register), Email, Passwort + Eye, Note, CTA
 // ═════════════════════════════════════════════════════════════════════
 
 class _EmailForm extends StatelessWidget {
@@ -500,10 +431,10 @@ class _EmailForm extends StatelessWidget {
           child: isRegister
               ? Padding(
                   key: const ValueKey('name-field-wrap'),
-                  padding: const EdgeInsets.only(bottom: 22),
-                  child: _UnderlineField(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _AuthField(
                     fieldKey: const ValueKey('auth-name-field'),
-                    label: 'NAME',
+                    icon: Icons.person_outline_rounded,
                     hint: 'Dein Name',
                     controller: nameController,
                     enabled: !busy,
@@ -513,9 +444,9 @@ class _EmailForm extends StatelessWidget {
                 )
               : const SizedBox.shrink(key: ValueKey('no-name-field')),
         ),
-        _UnderlineField(
+        _AuthField(
           fieldKey: const ValueKey('auth-email-field'),
-          label: 'E-MAIL',
+          icon: Icons.alternate_email_rounded,
           hint: 'du@beispiel.de',
           controller: emailController,
           enabled: !busy,
@@ -523,11 +454,11 @@ class _EmailForm extends StatelessWidget {
           textInputAction: TextInputAction.next,
           autofillHints: const [AutofillHints.email],
         ),
-        const SizedBox(height: 22),
-        _UnderlineField(
+        const SizedBox(height: 12),
+        _AuthField(
           fieldKey: const ValueKey('auth-password-field'),
-          label: 'PASSWORT',
-          hint: '••••••••',
+          icon: Icons.lock_outline_rounded,
+          hint: 'Passwort',
           controller: passwordController,
           enabled: !busy,
           obscure: !passwordVisible,
@@ -539,27 +470,42 @@ class _EmailForm extends StatelessWidget {
           trailing: GestureDetector(
             key: const ValueKey('auth-toggle-password'),
             onTap: busy ? null : onTogglePassword,
+            behavior: HitTestBehavior.opaque,
             child: Padding(
               padding: const EdgeInsets.only(left: 8),
               child: Icon(
                 passwordVisible
                     ? Icons.visibility_off_rounded
                     : Icons.visibility_rounded,
-                size: 16,
+                size: 18,
                 color: textMuted,
               ),
             ),
           ),
         ),
+        if (!isRegister) ...[
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              'Mind. 6 Zeichen',
+              style: TextStyle(
+                color: textMuted.withValues(alpha: 0.7),
+                fontSize: 11.5,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
         if (error != null) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           _InlineNote(text: error!, isError: true),
         ],
         if (message != null) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           _InlineNote(text: message!, isError: false),
         ],
-        const SizedBox(height: 30),
+        const SizedBox(height: 22),
         _LimePill(
           buttonKey: const ValueKey('auth-submit'),
           label: isRegister ? 'Account erstellen' : 'Einloggen',
@@ -573,7 +519,7 @@ class _EmailForm extends StatelessWidget {
 }
 
 // ═════════════════════════════════════════════════════════════════════
-// Lime-Pill — Primary CTA, weiches Disabled-Surface
+// Lime-Pill — Primary CTA
 // ═════════════════════════════════════════════════════════════════════
 
 class _LimePill extends StatelessWidget {
@@ -604,7 +550,16 @@ class _LimePill extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 17),
         decoration: BoxDecoration(
           color: disabled ? surface : lime,
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: disabled
+              ? null
+              : [
+                  BoxShadow(
+                    color: lime.withValues(alpha: 0.22),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -618,17 +573,16 @@ class _LimePill extends StatelessWidget {
                   color: _ink,
                 ),
               )
-            else
+            else ...[
               Text(
                 label,
                 style: TextStyle(
                   fontSize: 15,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                   color: disabled ? textMuted : _ink,
                   letterSpacing: -0.1,
                 ),
               ),
-            if (!loading) ...[
               const SizedBox(width: 8),
               Icon(
                 Icons.arrow_forward_rounded,
@@ -670,8 +624,9 @@ class _GoogleButton extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 18),
           decoration: BoxDecoration(
-            border: Border.all(color: _line),
-            borderRadius: BorderRadius.circular(999),
+            color: surfaceSoft,
+            border: Border.all(color: hairline),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -689,7 +644,7 @@ class _GoogleButton extends StatelessWidget {
                 'Mit Google anmelden',
                 style: TextStyle(
                   fontSize: 14.5,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
                   color: textPrimary,
                 ),
               ),
@@ -739,34 +694,33 @@ class _GoogleGPainter extends CustomPainter {
 }
 
 // ═════════════════════════════════════════════════════════════════════
-// ODER-Divider — Mono Caps, hauchdünne Lines
+// ODER-Divider
 // ═════════════════════════════════════════════════════════════════════
 
 class _OrDivider extends StatelessWidget {
   const _OrDivider();
   @override
   Widget build(BuildContext context) {
-    return Row(children: const [
-      Expanded(child: Divider(color: _line, height: 1)),
-      SizedBox(width: 12),
+    return Row(children: [
+      const Expanded(child: Divider(color: hairline, height: 1)),
+      const SizedBox(width: 12),
       Text(
         'ODER',
         style: TextStyle(
-          fontFamily: 'Roboto Mono',
-          fontSize: 9,
-          color: _dim,
-          letterSpacing: 1.8,
-          fontWeight: FontWeight.w500,
+          fontSize: 11,
+          color: textMuted.withValues(alpha: 0.8),
+          letterSpacing: 1.6,
+          fontWeight: FontWeight.w600,
         ),
       ),
-      SizedBox(width: 12),
-      Expanded(child: Divider(color: _line, height: 1)),
+      const SizedBox(width: 12),
+      const Expanded(child: Divider(color: hairline, height: 1)),
     ]);
   }
 }
 
 // ═════════════════════════════════════════════════════════════════════
-// Inline-Note — kleine Status-Zeile fuer Error/Message
+// Inline-Note — Status-Zeile für Error/Message
 // ═════════════════════════════════════════════════════════════════════
 
 class _InlineNote extends StatelessWidget {
@@ -778,36 +732,44 @@ class _InlineNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = isError ? orange : lime;
-    return Row(
+    return Container(
       key: ValueKey(isError ? 'auth-error' : 'auth-message'),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          isError
-              ? Icons.error_outline_rounded
-              : Icons.check_circle_outline_rounded,
-          size: 14,
-          color: color,
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(
-              color: color,
-              fontSize: 12.5,
-              height: 1.4,
-              fontWeight: FontWeight.w500,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.30)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            isError
+                ? Icons.error_outline_rounded
+                : Icons.check_circle_outline_rounded,
+            size: 15,
+            color: color,
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: color,
+                fontSize: 12.5,
+                height: 1.4,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
 // ═════════════════════════════════════════════════════════════════════
-// Footer — "Schon dabei? Anmelden" mit Underline-Action
+// Footer — Mode-Toggle
 // ═════════════════════════════════════════════════════════════════════
 
 class _ModeFooter extends StatelessWidget {
@@ -843,9 +805,8 @@ class _ModeFooter extends StatelessWidget {
                 text: cta,
                 style: const TextStyle(
                   fontSize: 13.5,
-                  color: textPrimary,
-                  fontWeight: FontWeight.w600,
-                  decoration: TextDecoration.underline,
+                  color: lime,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
