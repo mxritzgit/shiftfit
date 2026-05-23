@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 import '../auth/auth_repository.dart';
 import '../theme/app_colors.dart';
 
-/// FitPilot Auth-Screen. Cleanes, professionelles Layout in der App-Bildsprache:
-/// Lime-Badge + Wordmark, klare Headline/Subline, links-ausgerichtete Felder
-/// mit Leading-Icon (auf surfaceSoft, abgerundet), Lime-Pill-CTA, Google-OAuth,
-/// Mode-Footer. Single-Screen mit _isRegister-Toggle (Form-Logik unverändert).
+/// FitPilot Auth-Screen — „Cockpit/Ascent"-Konzept: immersiver Gradient-Hero
+/// mit Lime-Glow und aufsteigender Flugbahn (Wortspiel FitPilot), darunter ein
+/// erhabenes Form-Sheet mit Segmented-Control (Login | Registrieren), klaren
+/// Feldern und Lime-CTA. Single-Screen; Form-Logik unverändert.
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key, required this.authRepository});
 
@@ -18,9 +18,8 @@ class AuthScreen extends StatefulWidget {
   State<AuthScreen> createState() => _AuthScreenState();
 }
 
-// Lokale Tokens: dimmer Placeholder + Text auf der Lime-Pill.
-const _dim = Color(0xFF55555C);
-const _ink = bg;
+const _dim = Color(0xFF5A5B63);
+const _ink = bg; // Text auf Lime
 
 class _AuthScreenState extends State<AuthScreen> {
   final _nameController = TextEditingController();
@@ -128,6 +127,7 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   void _setMode(bool register) {
+    if (register == _isRegister) return;
     setState(() {
       _isRegister = register;
       _error = null;
@@ -137,44 +137,65 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenH = MediaQuery.sizeOf(context).height;
+    final heroH = (screenH * 0.36).clamp(280.0, 420.0);
+    final insets = MediaQuery.viewInsetsOf(context).bottom;
+
     return Scaffold(
       key: const ValueKey('screen-auth'),
       backgroundColor: bg,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _AuthHero(isRegister: _isRegister),
-              const SizedBox(height: 30),
-              _EmailForm(
-                isRegister: _isRegister,
-                loading: _loading,
-                busy: _busy,
-                passwordVisible: _passwordVisible,
-                nameController: _nameController,
-                emailController: _emailController,
-                passwordController: _passwordController,
-                error: _error,
-                message: _message,
-                onTogglePassword: () => setState(
-                  () => _passwordVisible = !_passwordVisible,
+      body: SingleChildScrollView(
+        padding: EdgeInsets.only(bottom: insets),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _Hero(height: heroH, isRegister: _isRegister),
+            Transform.translate(
+              offset: const Offset(0, -26),
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: surface,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+                  border: Border(
+                    top: BorderSide(color: hairline),
+                    left: BorderSide(color: hairline),
+                    right: BorderSide(color: hairline),
+                  ),
                 ),
-                onSubmit: _submit,
+                padding: const EdgeInsets.fromLTRB(24, 22, 24, 28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _SegmentedMode(isRegister: _isRegister, onChanged: _setMode),
+                    const SizedBox(height: 24),
+                    _EmailForm(
+                      isRegister: _isRegister,
+                      loading: _loading,
+                      busy: _busy,
+                      passwordVisible: _passwordVisible,
+                      nameController: _nameController,
+                      emailController: _emailController,
+                      passwordController: _passwordController,
+                      error: _error,
+                      message: _message,
+                      onTogglePassword: () => setState(
+                        () => _passwordVisible = !_passwordVisible,
+                      ),
+                      onSubmit: _submit,
+                    ),
+                    const SizedBox(height: 20),
+                    const _OrDivider(),
+                    const SizedBox(height: 16),
+                    _GoogleButton(
+                      enabled: !_busy,
+                      loading: _oauthLoading == FitPilotOAuthProvider.google,
+                      onTap: () => _startOAuth(FitPilotOAuthProvider.google),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 22),
-              const _OrDivider(),
-              const SizedBox(height: 18),
-              _GoogleButton(
-                enabled: !_busy,
-                loading: _oauthLoading == FitPilotOAuthProvider.google,
-                onTap: () => _startOAuth(FitPilotOAuthProvider.google),
-              ),
-              const SizedBox(height: 26),
-              _ModeFooter(isRegister: _isRegister, onChanged: _setMode),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -182,82 +203,202 @@ class _AuthScreenState extends State<AuthScreen> {
 }
 
 // ═════════════════════════════════════════════════════════════════════
-// Hero — Lime-Badge mit Paper-Plane, Wordmark, Headline + Subline
+// Hero — Gradient + Lime-Glow + aufsteigende Flugbahn + Brand/Headline
 // ═════════════════════════════════════════════════════════════════════
 
-class _AuthHero extends StatelessWidget {
-  const _AuthHero({required this.isRegister});
+class _Hero extends StatelessWidget {
+  const _Hero({required this.height, required this.isRegister});
 
+  final double height;
   final bool isRegister;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return SizedBox(
       key: const ValueKey('auth-hero'),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 52,
-              height: 52,
+      height: height,
+      width: double.infinity,
+      child: Stack(
+        children: [
+          // Basis-Gradient
+          const Positioned.fill(
+            child: DecoratedBox(
               decoration: BoxDecoration(
-                color: lime,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: lime.withValues(alpha: 0.30),
-                    blurRadius: 22,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: const Center(
-                child: SizedBox(
-                  width: 26,
-                  height: 26,
-                  child: CustomPaint(painter: _PaperPlanePainter()),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF161B22), Color(0xFF0E1116), bg],
+                  stops: [0, 0.55, 1],
                 ),
               ),
             ),
-            const SizedBox(width: 14),
-            const Text(
-              'FitPilot',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.4,
-                color: textPrimary,
+          ),
+          // Lime-Glow oben rechts
+          Positioned(
+            top: -90,
+            right: -70,
+            child: _GlowBlob(color: lime, size: 280, alpha: 0.20),
+          ),
+          // kühler Akzent unten links
+          Positioned(
+            bottom: -60,
+            left: -80,
+            child: _GlowBlob(color: cyan, size: 220, alpha: 0.10),
+          ),
+          // aufsteigende Flugbahn
+          const Positioned.fill(
+            child: CustomPaint(painter: _FlightPathPainter()),
+          ),
+          // Inhalt
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(28, 22, 28, 40),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: lime,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: lime.withValues(alpha: 0.45),
+                              blurRadius: 18,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: const Center(
+                          child: SizedBox(
+                            width: 19,
+                            height: 19,
+                            child: CustomPaint(painter: _PaperPlanePainter()),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 11),
+                      const Text(
+                        'FITPILOT',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 2.4,
+                          color: textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  Text(
+                    isRegister ? 'KONTO ERSTELLEN' : 'WILLKOMMEN AN BORD',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      letterSpacing: 2.2,
+                      fontWeight: FontWeight.w700,
+                      color: lime,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    isRegister ? 'Bereit zum\nAbheben?' : 'Zurück im\nCockpit.',
+                    style: const TextStyle(
+                      fontSize: 36,
+                      height: 1.02,
+                      letterSpacing: -1.2,
+                      fontWeight: FontWeight.w800,
+                      color: textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    isRegister
+                        ? 'Erstell dein Konto und starte durch.'
+                        : 'Melde dich an und mach da weiter, wo du warst.',
+                    style: const TextStyle(
+                      color: textMuted,
+                      fontSize: 14,
+                      height: 1.4,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-        const SizedBox(height: 26),
-        Text(
-          isRegister ? 'Konto erstellen' : 'Willkommen zurück',
-          style: const TextStyle(
-            fontSize: 30,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.8,
-            height: 1.05,
-            color: textPrimary,
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          isRegister
-              ? 'Erstelle dein Konto und leg direkt los.'
-              : 'Melde dich an, um weiterzumachen.',
-          style: const TextStyle(
-            color: textMuted,
-            fontSize: 14.5,
-            height: 1.4,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
+}
+
+class _GlowBlob extends StatelessWidget {
+  const _GlowBlob({required this.color, required this.size, required this.alpha});
+
+  final Color color;
+  final double size;
+  final double alpha;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: [color.withValues(alpha: alpha), color.withValues(alpha: 0)],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FlightPathPainter extends CustomPainter {
+  const _FlightPathPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final start = Offset(size.width * 0.04, size.height * 0.92);
+    final end = Offset(size.width * 0.82, size.height * 0.30);
+    final ctrl = Offset(size.width * 0.34, size.height * 0.40);
+
+    final path = Path()
+      ..moveTo(start.dx, start.dy)
+      ..quadraticBezierTo(ctrl.dx, ctrl.dy, end.dx, end.dy);
+
+    // weicher Schein
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 6
+        ..strokeCap = StrokeCap.round
+        ..color = lime.withValues(alpha: 0.06),
+    );
+    // feine Linie
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.6
+        ..strokeCap = StrokeCap.round
+        ..color = lime.withValues(alpha: 0.40),
+    );
+
+    // Wegpunkt am Ende
+    canvas.drawCircle(end, 9, Paint()..color = lime.withValues(alpha: 0.16));
+    canvas.drawCircle(end, 3.4, Paint()..color = lime);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _PaperPlanePainter extends CustomPainter {
@@ -282,113 +423,90 @@ class _PaperPlanePainter extends CustomPainter {
 }
 
 // ═════════════════════════════════════════════════════════════════════
-// Auth-Field — boxed, links-ausgerichtet, Leading-Icon, Lime-Fokus
+// Segmented-Control — Login | Registrieren
 // ═════════════════════════════════════════════════════════════════════
 
-class _AuthField extends StatefulWidget {
-  const _AuthField({
-    required this.fieldKey,
-    required this.icon,
-    required this.hint,
-    required this.controller,
-    this.enabled = true,
-    this.obscure = false,
-    this.keyboardType,
-    this.textInputAction,
-    this.autofillHints,
-    this.onSubmitted,
-    this.trailing,
-  });
+class _SegmentedMode extends StatelessWidget {
+  const _SegmentedMode({required this.isRegister, required this.onChanged});
 
-  final Key fieldKey;
-  final IconData icon;
-  final String hint;
-  final TextEditingController controller;
-  final bool enabled;
-  final bool obscure;
-  final TextInputType? keyboardType;
-  final TextInputAction? textInputAction;
-  final Iterable<String>? autofillHints;
-  final ValueChanged<String>? onSubmitted;
-  final Widget? trailing;
-
-  @override
-  State<_AuthField> createState() => _AuthFieldState();
-}
-
-class _AuthFieldState extends State<_AuthField> {
-  final _focus = FocusNode();
-
-  @override
-  void initState() {
-    super.initState();
-    _focus.addListener(() => setState(() {}));
-  }
-
-  @override
-  void dispose() {
-    _focus.dispose();
-    super.dispose();
-  }
+  final bool isRegister;
+  final ValueChanged<bool> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    final focused = _focus.hasFocus;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 160),
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+    return Container(
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: surfaceSoft,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: focused ? lime : hairline,
-          width: focused ? 1.4 : 1,
-        ),
+        border: Border.all(color: hairline),
       ),
       child: Row(
         children: [
-          Icon(widget.icon, size: 19, color: focused ? lime : textMuted),
-          const SizedBox(width: 12),
-          Expanded(
-            child: TextField(
-              key: widget.fieldKey,
-              controller: widget.controller,
-              focusNode: _focus,
-              enabled: widget.enabled,
-              obscureText: widget.obscure,
-              keyboardType: widget.keyboardType,
-              textInputAction: widget.textInputAction,
-              autofillHints: widget.autofillHints,
-              onSubmitted: widget.onSubmitted,
-              cursorColor: lime,
-              cursorWidth: 1.6,
-              style: const TextStyle(
-                fontSize: 15.5,
-                color: textPrimary,
-                fontWeight: FontWeight.w500,
-              ),
-              decoration: InputDecoration(
-                isCollapsed: true,
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 17),
-                hintText: widget.hint,
-                hintStyle: const TextStyle(
-                  fontSize: 15.5,
-                  color: _dim,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-            ),
+          _Segment(
+            segmentKey: const ValueKey('auth-toggle-login'),
+            label: 'Login',
+            selected: !isRegister,
+            onTap: () => onChanged(false),
           ),
-          if (widget.trailing != null) widget.trailing!,
+          _Segment(
+            segmentKey: const ValueKey('auth-toggle-register'),
+            label: 'Registrieren',
+            selected: isRegister,
+            onTap: () => onChanged(true),
+          ),
         ],
       ),
     );
   }
 }
 
+class _Segment extends StatelessWidget {
+  const _Segment({
+    required this.segmentKey,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final Key segmentKey;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        key: segmentKey,
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(vertical: 11),
+          decoration: BoxDecoration(
+            color: selected ? lime : Colors.transparent,
+            borderRadius: BorderRadius.circular(11),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w700,
+              color: selected ? _ink : textMuted,
+              letterSpacing: -0.1,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ═════════════════════════════════════════════════════════════════════
-// Email-Form — Name (nur Register), Email, Passwort + Eye, Note, CTA
+// Email-Form
 // ═════════════════════════════════════════════════════════════════════
 
 class _EmailForm extends StatelessWidget {
@@ -435,6 +553,7 @@ class _EmailForm extends StatelessWidget {
                   child: _AuthField(
                     fieldKey: const ValueKey('auth-name-field'),
                     icon: Icons.person_outline_rounded,
+                    label: 'Name',
                     hint: 'Dein Name',
                     controller: nameController,
                     enabled: !busy,
@@ -447,6 +566,7 @@ class _EmailForm extends StatelessWidget {
         _AuthField(
           fieldKey: const ValueKey('auth-email-field'),
           icon: Icons.alternate_email_rounded,
+          label: 'E-Mail',
           hint: 'du@beispiel.de',
           controller: emailController,
           enabled: !busy,
@@ -458,7 +578,8 @@ class _EmailForm extends StatelessWidget {
         _AuthField(
           fieldKey: const ValueKey('auth-password-field'),
           icon: Icons.lock_outline_rounded,
-          hint: 'Passwort',
+          label: 'Passwort',
+          hint: 'Mind. 6 Zeichen',
           controller: passwordController,
           enabled: !busy,
           obscure: !passwordVisible,
@@ -483,20 +604,6 @@ class _EmailForm extends StatelessWidget {
             ),
           ),
         ),
-        if (!isRegister) ...[
-          const SizedBox(height: 10),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              'Mind. 6 Zeichen',
-              style: TextStyle(
-                color: textMuted.withValues(alpha: 0.7),
-                fontSize: 11.5,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
         if (error != null) ...[
           const SizedBox(height: 14),
           _InlineNote(text: error!, isError: true),
@@ -512,6 +619,129 @@ class _EmailForm extends StatelessWidget {
           loading: loading,
           enabled: !busy,
           onTap: onSubmit,
+        ),
+      ],
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// Auth-Field — Label + boxed Input mit Leading-Icon, Lime-Fokus
+// ═════════════════════════════════════════════════════════════════════
+
+class _AuthField extends StatefulWidget {
+  const _AuthField({
+    required this.fieldKey,
+    required this.icon,
+    required this.label,
+    required this.hint,
+    required this.controller,
+    this.enabled = true,
+    this.obscure = false,
+    this.keyboardType,
+    this.textInputAction,
+    this.autofillHints,
+    this.onSubmitted,
+    this.trailing,
+  });
+
+  final Key fieldKey;
+  final IconData icon;
+  final String label;
+  final String hint;
+  final TextEditingController controller;
+  final bool enabled;
+  final bool obscure;
+  final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final Iterable<String>? autofillHints;
+  final ValueChanged<String>? onSubmitted;
+  final Widget? trailing;
+
+  @override
+  State<_AuthField> createState() => _AuthFieldState();
+}
+
+class _AuthFieldState extends State<_AuthField> {
+  final _focus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _focus.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final focused = _focus.hasFocus;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.label.toUpperCase(),
+          style: const TextStyle(
+            fontSize: 10,
+            letterSpacing: 1.2,
+            color: textMuted,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 7),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: focused ? lime : hairline,
+              width: focused ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(widget.icon, size: 19, color: focused ? lime : textMuted),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  key: widget.fieldKey,
+                  controller: widget.controller,
+                  focusNode: _focus,
+                  enabled: widget.enabled,
+                  obscureText: widget.obscure,
+                  keyboardType: widget.keyboardType,
+                  textInputAction: widget.textInputAction,
+                  autofillHints: widget.autofillHints,
+                  onSubmitted: widget.onSubmitted,
+                  cursorColor: lime,
+                  cursorWidth: 1.6,
+                  style: const TextStyle(
+                    fontSize: 15.5,
+                    color: textPrimary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  decoration: InputDecoration(
+                    isCollapsed: true,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                    hintText: widget.hint,
+                    hintStyle: const TextStyle(
+                      fontSize: 15.5,
+                      color: _dim,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ),
+              ),
+              if (widget.trailing != null) widget.trailing!,
+            ],
+          ),
         ),
       ],
     );
@@ -549,15 +779,15 @@ class _LimePill extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 17),
         decoration: BoxDecoration(
-          color: disabled ? surface : lime,
+          color: disabled ? surfaceSoft : lime,
           borderRadius: BorderRadius.circular(16),
           boxShadow: disabled
               ? null
               : [
                   BoxShadow(
-                    color: lime.withValues(alpha: 0.22),
-                    blurRadius: 18,
-                    offset: const Offset(0, 6),
+                    color: lime.withValues(alpha: 0.28),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
                   ),
                 ],
         ),
@@ -568,10 +798,7 @@ class _LimePill extends StatelessWidget {
               const SizedBox(
                 width: 18,
                 height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.2,
-                  color: _ink,
-                ),
+                child: CircularProgressIndicator(strokeWidth: 2.2, color: _ink),
               )
             else ...[
               Text(
@@ -598,7 +825,7 @@ class _LimePill extends StatelessWidget {
 }
 
 // ═════════════════════════════════════════════════════════════════════
-// Google-Button — Outlined Pill mit 4-Farb-G-Glyph
+// Google-Button
 // ═════════════════════════════════════════════════════════════════════
 
 class _GoogleButton extends StatelessWidget {
@@ -624,7 +851,7 @@ class _GoogleButton extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 18),
           decoration: BoxDecoration(
-            color: surfaceSoft,
+            color: bg,
             border: Border.all(color: hairline),
             borderRadius: BorderRadius.circular(16),
           ),
@@ -720,7 +947,7 @@ class _OrDivider extends StatelessWidget {
 }
 
 // ═════════════════════════════════════════════════════════════════════
-// Inline-Note — Status-Zeile für Error/Message
+// Inline-Note
 // ═════════════════════════════════════════════════════════════════════
 
 class _InlineNote extends StatelessWidget {
@@ -763,55 +990,6 @@ class _InlineNote extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ═════════════════════════════════════════════════════════════════════
-// Footer — Mode-Toggle
-// ═════════════════════════════════════════════════════════════════════
-
-class _ModeFooter extends StatelessWidget {
-  const _ModeFooter({required this.isRegister, required this.onChanged});
-
-  final bool isRegister;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final lead = isRegister ? 'Schon dabei?' : 'Neu hier?';
-    final cta = isRegister ? 'Anmelden' : 'Konto erstellen';
-    final toggleKey = isRegister
-        ? const ValueKey('auth-toggle-login')
-        : const ValueKey('auth-toggle-register');
-    return GestureDetector(
-      key: toggleKey,
-      onTap: () => onChanged(!isRegister),
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: RichText(
-          textAlign: TextAlign.center,
-          text: TextSpan(
-            style: const TextStyle(
-              fontSize: 13.5,
-              color: textMuted,
-              fontWeight: FontWeight.w400,
-            ),
-            children: [
-              TextSpan(text: '$lead  '),
-              TextSpan(
-                text: cta,
-                style: const TextStyle(
-                  fontSize: 13.5,
-                  color: lime,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
