@@ -63,8 +63,8 @@ void main() {
     expect(find.byKey(const ValueKey('onboarding-step-target')), findsOneWidget);
     await next();
 
-    // Tempo: ambitioniert (loseFast)
-    await tester.tap(find.byKey(const ValueKey('onboarding-pace-fast')));
+    // Tempo: −1 kg/Woche (ambitioniert)
+    await tester.tap(find.byKey(const ValueKey('onboarding-pace-lose1kg')));
     await tester.pumpAndSettle();
     await next();
 
@@ -84,13 +84,13 @@ void main() {
     // Auswahl wurde übernommen.
     expect(result.sex, BiologicalSex.male);
     expect(result.activityLevel, ActivityLevel.moderate);
-    expect(result.weightGoal, WeightGoal.loseFast);
+    expect(result.weightGoal, WeightGoal.lose1kg);
     expect(result.targetWeightKg, 73); // 78 − 5
     expect(result.onboardingCompleted, isTrue);
 
     // Berechnetes Tagesziel: BMR(male,78,178,30)=1747.5 × 1.55 = 2708.6
-    // − 500 (loseFast) = 2208.6 → auf 50 gerundet = 2200.
-    expect(result.dailyKcalGoal, 2200);
+    // − 1100 (−1 kg/Woche) = 1608.6 → auf 50 gerundet = 1600.
+    expect(result.dailyKcalGoal, 1600);
     expect(result.proteinGoalG, greaterThan(0));
     expect(result.carbsGoalG, greaterThan(0));
     expect(result.fatGoalG, greaterThan(0));

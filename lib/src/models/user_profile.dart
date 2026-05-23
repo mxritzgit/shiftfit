@@ -41,51 +41,84 @@ extension ActivityLevelInfo on ActivityLevel {
       };
 }
 
-/// Gewichtsziel des Users. Bestimmt den kcal-Auf-/Abschlag auf den
-/// Erhaltungsbedarf (BMR × Aktivitäts-PAL). Schritte werden davon getrennt
-/// als "Verbrannt" angerechnet — siehe [KcalCalculator].
-enum WeightGoal { loseFast, loseSteady, maintain, gainSteady, gainFast }
+/// Gewichtsziel des Users — als wöchentliche Rate gedacht (kg/Woche). Bestimmt
+/// den kcal-Auf-/Abschlag auf den Erhaltungsbedarf (BMR × Aktivitäts-PAL).
+/// Schritte werden davon getrennt als "Verbrannt" angerechnet — siehe
+/// [KcalCalculator]. Annahme: ~7700 kcal pro kg → 1100 kcal/Tag ≙ 1 kg/Woche.
+enum WeightGoal {
+  lose1kg,
+  lose075kg,
+  lose05kg,
+  lose025kg,
+  maintain,
+  gain025kg,
+  gain05kg,
+}
+
+/// Abnehm-Tempi von sanft bis ambitioniert (für Picker-Reihenfolge).
+const List<WeightGoal> lossPaceGoals = <WeightGoal>[
+  WeightGoal.lose025kg,
+  WeightGoal.lose05kg,
+  WeightGoal.lose075kg,
+  WeightGoal.lose1kg,
+];
+
+/// Zunehm-Tempi von sanft bis ambitioniert.
+const List<WeightGoal> gainPaceGoals = <WeightGoal>[
+  WeightGoal.gain025kg,
+  WeightGoal.gain05kg,
+];
 
 extension WeightGoalInfo on WeightGoal {
-  String get label => switch (this) {
-        WeightGoal.loseFast => 'Abnehmen (schnell)',
-        WeightGoal.loseSteady => 'Abnehmen',
-        WeightGoal.maintain => 'Gewicht halten',
-        WeightGoal.gainSteady => 'Zunehmen',
-        WeightGoal.gainFast => 'Zunehmen (schnell)',
-      };
-
-  /// kcal-Delta auf den Erhaltungsbedarf. Annahme ~7700 kcal pro kg.
+  /// kcal-Delta auf den Erhaltungsbedarf (1100 kcal/Tag ≙ 1 kg/Woche).
   int get kcalDelta => switch (this) {
-        WeightGoal.loseFast => -500,
-        WeightGoal.loseSteady => -300,
+        WeightGoal.lose1kg => -1100,
+        WeightGoal.lose075kg => -825,
+        WeightGoal.lose05kg => -550,
+        WeightGoal.lose025kg => -275,
         WeightGoal.maintain => 0,
-        WeightGoal.gainSteady => 300,
-        WeightGoal.gainFast => 500,
+        WeightGoal.gain025kg => 275,
+        WeightGoal.gain05kg => 550,
       };
-
-  /// Erwartetes Tempo fürs UI-Hint.
-  String get paceLabel => switch (this) {
-        WeightGoal.loseFast => '~0,5 kg/Woche',
-        WeightGoal.loseSteady => '~0,3 kg/Woche',
-        WeightGoal.maintain => 'Gewicht stabil',
-        WeightGoal.gainSteady => '~0,3 kg/Woche',
-        WeightGoal.gainFast => '~0,5 kg/Woche',
-      };
-
-  /// Erwartete kg-Veränderung pro Woche (≈ 7700 kcal pro kg Körpermasse).
-  /// Vorzeichenlos — die Richtung steckt in [isLoss]/[isGain].
-  double get weeklyRateKg => kcalDelta.abs() * 7 / 7700;
 
   bool get isLoss => kcalDelta < 0;
   bool get isGain => kcalDelta > 0;
 
-  /// Vorzeichenbehaftetes Delta-Label, z.B. "−500 kcal" / "±0".
+  /// Wöchentliche kg-Veränderung (≈ 7700 kcal pro kg). Vorzeichenlos.
+  double get weeklyRateKg => kcalDelta.abs() * 7 / 7700;
+
+  /// Richtungs-Label ohne Tempo.
+  String get label {
+    if (kcalDelta == 0) return 'Gewicht halten';
+    return isGain ? 'Zunehmen' : 'Abnehmen';
+  }
+
+  /// Vorzeichenbehaftetes Tempo, z.B. "−1 kg/Woche", "+0,5 kg/Woche".
+  String get paceLabel {
+    if (kcalDelta == 0) return 'Gewicht stabil';
+    final sign = isGain ? '+' : '−';
+    return '$sign${_formatRateKg(weeklyRateKg)} kg/Woche';
+  }
+
+  /// Kombiniertes Menü-Label, z.B. "Abnehmen · −1 kg/Woche".
+  String get menuLabel =>
+      kcalDelta == 0 ? 'Gewicht halten' : '$label · $paceLabel';
+
+  /// Vorzeichenbehaftetes Delta-Label, z.B. "−1100 kcal" / "±0".
   String get deltaLabel {
     if (kcalDelta == 0) return '±0';
     final sign = kcalDelta > 0 ? '+' : '−';
     return '$sign${kcalDelta.abs()} kcal';
   }
+}
+
+/// Formatiert eine kg-Rate deutsch: 1.0 → "1", 0.5 → "0,5", 0.75 → "0,75".
+String _formatRateKg(double kg) {
+  if (kg == kg.roundToDouble()) return kg.toStringAsFixed(0);
+  return kg
+      .toStringAsFixed(2)
+      .replaceAll(RegExp(r'0+$'), '')
+      .replaceAll('.', ',');
 }
 
 class UserProfile {

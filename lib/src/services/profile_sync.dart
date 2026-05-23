@@ -108,6 +108,18 @@ class ProfileSync {
 
   static WeightGoal _parseGoal(String? raw) {
     if (raw == null) return WeightGoal.maintain;
+    // Bestands-Werte aus dem alten Tempo-Schema auf die kg/Woche-Raten mappen,
+    // damit bereits onboardete User ihr Ziel nicht verlieren.
+    switch (raw) {
+      case 'loseFast':
+        return WeightGoal.lose05kg;
+      case 'loseSteady':
+        return WeightGoal.lose025kg;
+      case 'gainFast':
+        return WeightGoal.gain05kg;
+      case 'gainSteady':
+        return WeightGoal.gain025kg;
+    }
     return WeightGoal.values.firstWhere(
       (v) => v.name == raw,
       orElse: () => WeightGoal.maintain,

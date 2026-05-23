@@ -103,14 +103,28 @@ void main() {
 
     test('weight goal applies its kcal delta on top of maintenance', () {
       final maintain = calc.calculate(base.copyWith(weightGoal: WeightGoal.maintain));
-      final loseFast = calc.calculate(base.copyWith(weightGoal: WeightGoal.loseFast));
-      final gainFast = calc.calculate(base.copyWith(weightGoal: WeightGoal.gainFast));
+      final lose = calc.calculate(base.copyWith(weightGoal: WeightGoal.lose05kg));
+      final gain = calc.calculate(base.copyWith(weightGoal: WeightGoal.gain05kg));
 
-      expect(loseFast.kcal, maintain.kcal - 500);
-      expect(gainFast.kcal, maintain.kcal + 500);
+      expect(lose.kcal, maintain.kcal - 550); // −0,5 kg/Woche
+      expect(gain.kcal, maintain.kcal + 550); // +0,5 kg/Woche
       // Erhaltungsbedarf bleibt unabhängig vom Ziel gleich.
-      expect(loseFast.maintenanceKcal, maintain.maintenanceKcal);
-      expect(gainFast.maintenanceKcal, maintain.maintenanceKcal);
+      expect(lose.maintenanceKcal, maintain.maintenanceKcal);
+      expect(gain.maintenanceKcal, maintain.maintenanceKcal);
+    });
+
+    test('aggressive -1 kg/week applies the full 1100 kcal deficit', () {
+      const heavy = UserProfile(
+        weightKg: 110,
+        heightCm: 185,
+        ageYears: 30,
+        sex: BiologicalSex.male,
+        activityLevel: ActivityLevel.moderate,
+      );
+      final maintain = calc.calculate(heavy.copyWith(weightGoal: WeightGoal.maintain));
+      final lose1kg = calc.calculate(heavy.copyWith(weightGoal: WeightGoal.lose1kg));
+      expect(WeightGoal.lose1kg.weeklyRateKg, 1.0);
+      expect(lose1kg.kcal, maintain.kcal - 1100);
     });
 
     test('clamps daily kcal into a sane range', () {
@@ -118,7 +132,7 @@ void main() {
         weightKg: 35,
         heightCm: 140,
         ageYears: 80,
-        weightGoal: WeightGoal.loseFast,
+        weightGoal: WeightGoal.lose1kg,
       ));
       expect(tiny.kcal, greaterThanOrEqualTo(1200));
     });
@@ -145,12 +159,21 @@ void main() {
     const base = UserProfile();
 
     test('projects weeks from weight gap and goal pace', () {
-      // 78 → 68 kg = 10 kg at loseFast (500 kcal/d ≈ 0.4545 kg/Woche).
+      // 78 → 68 kg = 10 kg bei −0,5 kg/Woche → 20 Wochen.
       final profile = base.copyWith(
         targetWeightKg: 68,
-        weightGoal: WeightGoal.loseFast,
+        weightGoal: WeightGoal.lose05kg,
       );
-      expect(calc.weeksToGoal(profile), 22);
+      expect(calc.weeksToGoal(profile), 20);
+
+      // Bei −1 kg/Woche entsprechend halb so lang.
+      expect(
+        calc.weeksToGoal(base.copyWith(
+          targetWeightKg: 68,
+          weightGoal: WeightGoal.lose1kg,
+        )),
+        10,
+      );
     });
 
     test('is null when maintaining or already at target', () {
@@ -158,7 +181,7 @@ void main() {
       expect(
         calc.weeksToGoal(base.copyWith(
           targetWeightKg: 78,
-          weightGoal: WeightGoal.loseFast,
+          weightGoal: WeightGoal.lose05kg,
         )),
         isNull,
       );
@@ -169,7 +192,7 @@ void main() {
       expect(
         calc.weeksToGoal(base.copyWith(
           targetWeightKg: 90,
-          weightGoal: WeightGoal.loseFast,
+          weightGoal: WeightGoal.lose05kg,
         )),
         isNull,
       );

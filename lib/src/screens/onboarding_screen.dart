@@ -33,8 +33,6 @@ class OnboardingScreen extends StatefulWidget {
 
 enum _GoalDirection { lose, maintain, gain }
 
-enum _Pace { steady, fast }
-
 enum _Step { intro, sex, age, height, weight, activity, goal, target, pace, summary }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
@@ -45,7 +43,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   late ActivityLevel _activity;
   late _GoalDirection _direction;
   late int _target;
-  _Pace _pace = _Pace.steady;
+  // Getrennte Tempo-Auswahl je Richtung, damit Hin-/Herwechseln nichts verliert.
+  WeightGoal _losePace = WeightGoal.lose05kg;
+  WeightGoal _gainPace = WeightGoal.gain025kg;
   int _index = 0;
 
   @override
@@ -57,15 +57,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     _height = p.heightCm.clamp(120, 220).toInt();
     _weight = p.weightKg.clamp(40, 200).toInt();
     _activity = p.activityLevel;
-    _direction = switch (p.weightGoal) {
-      WeightGoal.loseFast || WeightGoal.loseSteady => _GoalDirection.lose,
-      WeightGoal.gainFast || WeightGoal.gainSteady => _GoalDirection.gain,
-      WeightGoal.maintain => _GoalDirection.maintain,
-    };
-    _pace = switch (p.weightGoal) {
-      WeightGoal.loseFast || WeightGoal.gainFast => _Pace.fast,
-      _ => _Pace.steady,
-    };
+    if (p.weightGoal.isLoss) {
+      _direction = _GoalDirection.lose;
+      _losePace = p.weightGoal;
+    } else if (p.weightGoal.isGain) {
+      _direction = _GoalDirection.gain;
+      _gainPace = p.weightGoal;
+    } else {
+      _direction = _GoalDirection.maintain;
+    }
     _target = p.targetWeightKg.clamp(40, 200).toInt();
   }
 
@@ -87,10 +87,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   WeightGoal get _weightGoal => switch (_direction) {
         _GoalDirection.maintain => WeightGoal.maintain,
-        _GoalDirection.lose =>
-          _pace == _Pace.fast ? WeightGoal.loseFast : WeightGoal.loseSteady,
-        _GoalDirection.gain =>
-          _pace == _Pace.fast ? WeightGoal.gainFast : WeightGoal.gainSteady,
+        _GoalDirection.lose => _losePace,
+        _GoalDirection.gain => _gainPace,
       };
 
   /// Wunschgewicht passend zur Richtung begrenzen, damit es nie der aktuellen
@@ -299,11 +297,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
       _Step.pace => _StepFrame(
           title: 'Welches Tempo?',
-          subtitle: 'Schneller heißt größeres tägliches Defizit.',
+          subtitle: _direction == _GoalDirection.lose
+              ? 'Wie schnell willst du abnehmen?'
+              : 'Wie schnell willst du aufbauen?',
           child: _PacePicker(
-            direction: _direction,
-            value: _pace,
-            onChanged: (v) => setState(() => _pace = v),
+            options: _direction == _GoalDirection.lose
+                ? lossPaceGoals
+                : gainPaceGoals,
+            value: _direction == _GoalDirection.lose ? _losePace : _gainPace,
+            onChanged: (v) => setState(() {
+              if (_direction == _GoalDirection.lose) {
+                _losePace = v;
+              } else {
+                _gainPace = v;
+              }
+            }),
           ),
         ),
       _Step.summary => _SummaryStep(
@@ -646,42 +654,38 @@ class _GoalPicker extends StatelessWidget {
 
 class _PacePicker extends StatelessWidget {
   const _PacePicker({
-    required this.direction,
+    required this.options,
     required this.value,
     required this.onChanged,
   });
 
-  final _GoalDirection direction;
-  final _Pace value;
-  final ValueChanged<_Pace> onChanged;
+  final List<WeightGoal> options;
+  final WeightGoal value;
+  final ValueChanged<WeightGoal> onChanged;
+
+  static const _paceNames = {
+    WeightGoal.lose025kg: 'Sanft',
+    WeightGoal.lose05kg: 'Moderat',
+    WeightGoal.lose075kg: 'Zügig',
+    WeightGoal.lose1kg: 'Ambitioniert',
+    WeightGoal.gain025kg: 'Sanft',
+    WeightGoal.gain05kg: 'Ambitioniert',
+  };
 
   @override
   Widget build(BuildContext context) {
-    final steadyGoal = direction == _GoalDirection.lose
-        ? WeightGoal.loseSteady
-        : WeightGoal.gainSteady;
-    final fastGoal = direction == _GoalDirection.lose
-        ? WeightGoal.loseFast
-        : WeightGoal.gainFast;
     return Column(
       children: [
-        _RowCard(
-          keyValue: const ValueKey('onboarding-pace-steady'),
-          selected: value == _Pace.steady,
-          onTap: () => onChanged(_Pace.steady),
-          title: 'Moderat',
-          subtitle: 'Nachhaltig · ${steadyGoal.paceLabel}',
-          trailing: steadyGoal.deltaLabel,
-        ),
-        const SizedBox(height: 10),
-        _RowCard(
-          keyValue: const ValueKey('onboarding-pace-fast'),
-          selected: value == _Pace.fast,
-          onTap: () => onChanged(_Pace.fast),
-          title: 'Ambitioniert',
-          subtitle: 'Schneller · ${fastGoal.paceLabel}',
-          trailing: fastGoal.deltaLabel,
-        ),
+        for (final goal in options) ...[
+          _RowCard(
+            keyValue: ValueKey('onboarding-pace-${goal.name}'),
+            selected: value == goal,
+            onTap: () => onChanged(goal),
+            title: '${_paceNames[goal] ?? 'Tempo'} · ${goal.paceLabel}',
+            subtitle: '${goal.deltaLabel} / Tag',
+          ),
+          if (goal != options.last) const SizedBox(height: 10),
+        ],
       ],
     );
   }
@@ -1109,7 +1113,7 @@ class _SummaryStep extends StatelessWidget {
               ),
               const _BreakdownDivider(),
               _BreakdownRow(
-                label: 'Ziel-Anpassung · ${goal.label}',
+                label: 'Ziel · ${goal.paceLabel}',
                 value: goal.deltaLabel,
                 highlight: goal.kcalDelta != 0,
                 positive: goal.kcalDelta > 0,

@@ -99,6 +99,8 @@ class ProfileScreen extends StatelessWidget {
                 workoutStreak: workoutStreak,
               ),
               const SizedBox(height: 14),
+              GoalPlanCard(profile: profile, onEdit: onEditProfile),
+              const SizedBox(height: 14),
               BodyStatsCard(
                 profile: profile,
                 log: weightLog,

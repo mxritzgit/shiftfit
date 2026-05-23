@@ -568,20 +568,36 @@ class _WeightGoalField extends StatelessWidget {
           backgroundColor: surface,
           showDragHandle: true,
           builder: (sheetContext) => SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final option in WeightGoal.values)
-                  ListTile(
-                    key: ValueKey('settings-weight-goal-${option.name}'),
-                    title: Text(option.label),
-                    subtitle: Text('${option.deltaLabel} · ${option.paceLabel}'),
-                    trailing: value == option
-                        ? const Icon(Icons.check_rounded, color: lime)
-                        : null,
-                    onTap: () => Navigator.pop(sheetContext, option),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(20, 6, 20, 10),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Gewichtsziel & Tempo',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ),
                   ),
-              ],
+                  for (final option in WeightGoal.values)
+                    ListTile(
+                      key: ValueKey('settings-weight-goal-${option.name}'),
+                      title: Text(option.menuLabel),
+                      subtitle: Text(option.deltaLabel),
+                      trailing: value == option
+                          ? const Icon(Icons.check_rounded, color: lime)
+                          : null,
+                      onTap: () => Navigator.pop(sheetContext, option),
+                    ),
+                ],
+              ),
             ),
           ),
         );
@@ -621,7 +637,7 @@ class _WeightGoalField extends StatelessWidget {
               ),
             ),
             Text(
-              value.deltaLabel,
+              value.paceLabel,
               style: TextStyle(
                 color: value.kcalDelta == 0
                     ? textMuted
