@@ -49,7 +49,12 @@ class _SettingsSheetState extends State<_SettingsSheet> {
   late ActivityLevel _activity;
   late int _sleepGoalMinutes;
   late WeightGoal _goal;
-  KcalTargets? _lastSuggestion;
+
+  /// True wenn der User kcal/Makros von Hand übersteuert hat. Standardmäßig
+  /// rechnen wir live aus Körper + Aktivität + Ziel — nur wenn die
+  /// gespeicherten Werte davon abweichen (oder der User den Schalter umlegt),
+  /// bleiben manuelle Werte erhalten.
+  late bool _manualEnergy;
 
   @override
   void initState() {
@@ -69,6 +74,12 @@ class _SettingsSheetState extends State<_SettingsSheet> {
     _activity = p.activityLevel;
     _sleepGoalMinutes = p.dailySleepGoalMinutes;
     _goal = p.weightGoal;
+
+    final computed = const KcalCalculator().calculate(p);
+    _manualEnergy = p.dailyKcalGoal != computed.kcal ||
+        p.proteinGoalG != computed.proteinG ||
+        p.carbsGoalG != computed.carbsG ||
+        p.fatGoalG != computed.fatG;
   }
 
   @override
@@ -90,11 +101,10 @@ class _SettingsSheetState extends State<_SettingsSheet> {
     return int.tryParse(c.text.trim()) ?? fallback;
   }
 
-  UserProfile _buildProfile() {
+  /// Profil nur mit den kalorien-relevanten Feldern — Basis für die
+  /// Live-Berechnung (Energie-Felder fließen NICHT in calculate() ein).
+  UserProfile _draftForCalc() {
     final p = widget.initial;
-    // copyWith statt frischem UserProfile: erhält Felder die der Sheet nicht
-    // anfasst — vor allem onboardingCompleted (sonst würde Speichern den User
-    // beim nächsten Start zurück ins Onboarding werfen).
     return p.copyWith(
       weightKg: _parseInt(_weight, p.weightKg),
       heightCm: _parseInt(_height, p.heightCm),
@@ -102,31 +112,71 @@ class _SettingsSheetState extends State<_SettingsSheet> {
       sex: _sex,
       activityLevel: _activity,
       targetWeightKg: _parseInt(_targetWeight, p.targetWeightKg),
-      dailyStepsGoal: _parseInt(_steps, p.dailyStepsGoal),
-      dailyKcalGoal: _parseInt(_kcal, p.dailyKcalGoal),
-      dailyWaterGoalMl: _parseInt(_water, p.dailyWaterGoalMl),
-      dailySleepGoalMinutes: _sleepGoalMinutes,
-      proteinGoalG: _parseInt(_protein, p.proteinGoalG),
-      carbsGoalG: _parseInt(_carbs, p.carbsGoalG),
-      fatGoalG: _parseInt(_fat, p.fatGoalG),
       weightGoal: _goal,
     );
   }
 
-  void _autoCalc() {
-    final draft = _buildProfile();
-    final suggestion = const KcalCalculator().calculate(draft);
+  KcalTargets get _liveTargets =>
+      const KcalCalculator().calculate(_draftForCalc());
+
+  UserProfile _buildProfile() {
+    final p = widget.initial;
+    final t = _liveTargets;
+    // copyWith erhält Felder die der Sheet nicht anfasst — v.a.
+    // onboardingCompleted (sonst landet der User beim Speichern wieder im
+    // Onboarding).
+    return _draftForCalc().copyWith(
+      dailyStepsGoal: _parseInt(_steps, p.dailyStepsGoal),
+      dailyWaterGoalMl: _parseInt(_water, p.dailyWaterGoalMl),
+      dailySleepGoalMinutes: _sleepGoalMinutes,
+      dailyKcalGoal: _manualEnergy ? _parseInt(_kcal, t.kcal) : t.kcal,
+      proteinGoalG: _manualEnergy ? _parseInt(_protein, t.proteinG) : t.proteinG,
+      carbsGoalG: _manualEnergy ? _parseInt(_carbs, t.carbsG) : t.carbsG,
+      fatGoalG: _manualEnergy ? _parseInt(_fat, t.fatG) : t.fatG,
+    );
+  }
+
+  /// Bei Live-Modus die Energie-Felder mit der frischen Berechnung füllen,
+  /// damit das Sheet konsistent bleibt; danach neu zeichnen.
+  void _recompute() {
+    if (!_manualEnergy) {
+      final t = _liveTargets;
+      _kcal.text = t.kcal.toString();
+      _protein.text = t.proteinG.toString();
+      _carbs.text = t.carbsG.toString();
+      _fat.text = t.fatG.toString();
+    }
+    setState(() {});
+  }
+
+  void _toggleManual(bool manual) {
     setState(() {
-      _kcal.text = suggestion.kcal.toString();
-      _protein.text = suggestion.proteinG.toString();
-      _carbs.text = suggestion.carbsG.toString();
-      _fat.text = suggestion.fatG.toString();
-      _lastSuggestion = suggestion;
+      _manualEnergy = manual;
+      if (!manual) {
+        final t = _liveTargets;
+        _kcal.text = t.kcal.toString();
+        _protein.text = t.proteinG.toString();
+        _carbs.text = t.carbsG.toString();
+        _fat.text = t.fatG.toString();
+      }
     });
+  }
+
+  void _save({required bool resetDay}) {
+    Navigator.pop(
+      context,
+      SettingsResult(profile: _buildProfile(), resetDay: resetDay),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final t = _liveTargets;
+    final heroKcal = _manualEnergy ? _parseInt(_kcal, t.kcal) : t.kcal;
+    final heroProtein = _manualEnergy ? _parseInt(_protein, t.proteinG) : t.proteinG;
+    final heroCarbs = _manualEnergy ? _parseInt(_carbs, t.carbsG) : t.carbsG;
+    final heroFat = _manualEnergy ? _parseInt(_fat, t.fatG) : t.fatG;
+
     return Padding(
       padding: EdgeInsets.fromLTRB(
         20,
@@ -142,14 +192,14 @@ class _SettingsSheetState extends State<_SettingsSheet> {
             const Text(
               'Profil & Ziele',
               style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.4,
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
               ),
             ),
             const SizedBox(height: 4),
             const Text(
-              'Werte fürs Auto-Tagesziel. Du kannst alles überschreiben.',
+              'Wir berechnen dein Tagesziel aus Körper, Aktivität und Ziel.',
               style: TextStyle(
                 color: textMuted,
                 fontSize: 13,
@@ -157,160 +207,211 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               ),
             ),
             const SizedBox(height: 18),
-            const _SectionLabel('KÖRPER'),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: _SettingsField(
-                    label: 'Gewicht',
-                    suffix: 'kg',
-                    controller: _weight,
-                    keyValue: const ValueKey('settings-weight'),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _SettingsField(
-                    label: 'Größe',
-                    suffix: 'cm',
-                    controller: _height,
-                    keyValue: const ValueKey('settings-height'),
-                  ),
-                ),
-              ],
+            _PlanHero(
+              kcal: heroKcal,
+              protein: heroProtein,
+              carbs: heroCarbs,
+              fat: heroFat,
+              maintenanceKcal: t.maintenanceKcal,
+              goal: _goal,
+              manual: _manualEnergy,
             ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: _SettingsField(
-                    label: 'Alter',
-                    suffix: 'J.',
-                    controller: _age,
-                    keyValue: const ValueKey('settings-age'),
+            const SizedBox(height: 14),
+            _GroupCard(
+              icon: Icons.straighten_rounded,
+              title: 'Körper',
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _SettingsField(
+                          label: 'Gewicht',
+                          suffix: 'kg',
+                          controller: _weight,
+                          keyValue: const ValueKey('settings-weight'),
+                          onChanged: (_) => _recompute(),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _SettingsField(
+                          label: 'Größe',
+                          suffix: 'cm',
+                          controller: _height,
+                          keyValue: const ValueKey('settings-height'),
+                          onChanged: (_) => _recompute(),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _SexField(
-                    value: _sex,
-                    onChanged: (v) => setState(() => _sex = v),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _SettingsField(
+                          label: 'Alter',
+                          suffix: 'J.',
+                          controller: _age,
+                          keyValue: const ValueKey('settings-age'),
+                          onChanged: (_) => _recompute(),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _SexField(
+                          value: _sex,
+                          onChanged: (v) {
+                            _sex = v;
+                            _recompute();
+                          },
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-            const SizedBox(height: 18),
-            const _SectionLabel('AKTIVITÄT'),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: _SettingsField(
-                    label: 'Schrittziel',
-                    suffix: 'Schritte',
-                    controller: _steps,
-                    keyValue: const ValueKey('settings-steps-goal'),
+            const SizedBox(height: 12),
+            _GroupCard(
+              icon: Icons.flag_rounded,
+              title: 'Aktivität & Ziel',
+              subtitle: 'Bestimmt deinen Kalorienbedarf.',
+              child: Column(
+                children: [
+                  _ActivityField(
+                    value: _activity,
+                    onChanged: (v) {
+                      _activity = v;
+                      _recompute();
+                    },
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _SettingsField(
-                    label: 'Wasser',
-                    suffix: 'ml',
-                    controller: _water,
-                    keyValue: const ValueKey('settings-water'),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _SettingsField(
+                          label: 'Wunschgewicht',
+                          suffix: 'kg',
+                          controller: _targetWeight,
+                          keyValue: const ValueKey('settings-target-weight'),
+                          onChanged: (_) => _recompute(),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 10),
+                  _WeightGoalField(
+                    value: _goal,
+                    onChanged: (v) {
+                      _goal = v;
+                      _recompute();
+                    },
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 10),
-            _SleepGoalField(
-              minutes: _sleepGoalMinutes,
-              onChanged: (v) => setState(() => _sleepGoalMinutes = v),
+            const SizedBox(height: 12),
+            _GroupCard(
+              icon: Icons.local_fire_department_rounded,
+              title: 'Energie & Makros',
+              trailing: _ManualToggle(
+                value: _manualEnergy,
+                onChanged: _toggleManual,
+              ),
+              child: _manualEnergy
+                  ? Column(
+                      children: [
+                        _SettingsField(
+                          label: 'Kcal Ziel',
+                          suffix: 'kcal',
+                          controller: _kcal,
+                          keyValue: const ValueKey('settings-kcal'),
+                          onChanged: (_) => setState(() {}),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _SettingsField(
+                                label: 'Protein',
+                                suffix: 'g',
+                                controller: _protein,
+                                keyValue: const ValueKey('settings-protein'),
+                                onChanged: (_) => setState(() {}),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _SettingsField(
+                                label: 'Carbs',
+                                suffix: 'g',
+                                controller: _carbs,
+                                keyValue: const ValueKey('settings-carbs'),
+                                onChanged: (_) => setState(() {}),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _SettingsField(
+                                label: 'Fett',
+                                suffix: 'g',
+                                controller: _fat,
+                                keyValue: const ValueKey('settings-fat'),
+                                onChanged: (_) => setState(() {}),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    )
+                  : const _InfoNote(
+                      'Automatisch aus deinem Ziel berechnet. Schalter umlegen, '
+                      'um kcal und Makros von Hand zu setzen.',
+                    ),
             ),
-            const SizedBox(height: 10),
-            _ActivityField(
-              value: _activity,
-              onChanged: (v) => setState(() => _activity = v),
-            ),
-            const SizedBox(height: 18),
-            const _SectionLabel('ZIEL'),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: _SettingsField(
-                    label: 'Wunschgewicht',
-                    suffix: 'kg',
-                    controller: _targetWeight,
-                    keyValue: const ValueKey('settings-target-weight'),
+            const SizedBox(height: 12),
+            _GroupCard(
+              icon: Icons.track_changes_rounded,
+              title: 'Tagesziele',
+              subtitle: 'Nur fürs Tracking – ändert deine Kalorien nicht.',
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _SettingsField(
+                          label: 'Schritte',
+                          suffix: '/Tag',
+                          controller: _steps,
+                          keyValue: const ValueKey('settings-steps-goal'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _SettingsField(
+                          label: 'Wasser',
+                          suffix: 'ml',
+                          controller: _water,
+                          keyValue: const ValueKey('settings-water'),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            _WeightGoalField(
-              value: _goal,
-              onChanged: (v) => setState(() => _goal = v),
-            ),
-            const SizedBox(height: 18),
-            _AutoCalcRow(suggestion: _lastSuggestion, onTap: _autoCalc),
-            const SizedBox(height: 18),
-            const _SectionLabel('ENERGIE & MAKROS'),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: _SettingsField(
-                    label: 'Kcal Ziel',
-                    suffix: 'kcal',
-                    controller: _kcal,
-                    keyValue: const ValueKey('settings-kcal'),
+                  const SizedBox(height: 10),
+                  _SleepGoalField(
+                    minutes: _sleepGoalMinutes,
+                    onChanged: (v) => setState(() => _sleepGoalMinutes = v),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: _SettingsField(
-                    label: 'Protein',
-                    suffix: 'g',
-                    controller: _protein,
-                    keyValue: const ValueKey('settings-protein'),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _SettingsField(
-                    label: 'Carbs',
-                    suffix: 'g',
-                    controller: _carbs,
-                    keyValue: const ValueKey('settings-carbs'),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _SettingsField(
-                    label: 'Fett',
-                    suffix: 'g',
-                    controller: _fat,
-                    keyValue: const ValueKey('settings-fat'),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: 18),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
                 key: const ValueKey('settings-reset-day'),
-                onPressed: () => Navigator.pop(
-                  context,
-                  SettingsResult(profile: _buildProfile(), resetDay: true),
-                ),
+                onPressed: () => _save(resetDay: true),
                 icon: const Icon(Icons.restart_alt_rounded, size: 17),
                 label: const Text(
                   'Tagesdaten zurücksetzen',
@@ -331,10 +432,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               width: double.infinity,
               child: FilledButton.icon(
                 key: const ValueKey('settings-save'),
-                onPressed: () => Navigator.pop(
-                  context,
-                  SettingsResult(profile: _buildProfile(), resetDay: false),
-                ),
+                onPressed: () => _save(resetDay: false),
                 icon: const Icon(Icons.check_rounded, size: 17),
                 label: const Text(
                   'Speichern',
@@ -343,7 +441,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 style: FilledButton.styleFrom(
                   backgroundColor: lime,
                   foregroundColor: bg,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -357,20 +455,326 @@ class _SettingsSheetState extends State<_SettingsSheet> {
   }
 }
 
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text);
+// ---------------------------------------------------------------------------
+// Live-Plan-Hero
+// ---------------------------------------------------------------------------
+
+class _PlanHero extends StatelessWidget {
+  const _PlanHero({
+    required this.kcal,
+    required this.protein,
+    required this.carbs,
+    required this.fat,
+    required this.maintenanceKcal,
+    required this.goal,
+    required this.manual,
+  });
+
+  final int kcal;
+  final int protein;
+  final int carbs;
+  final int fat;
+  final int maintenanceKcal;
+  final WeightGoal goal;
+  final bool manual;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [lime.withValues(alpha: 0.16), surface],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: lime.withValues(alpha: 0.32)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: lime.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  manual ? Icons.edit_rounded : Icons.auto_awesome_rounded,
+                  color: lime,
+                  size: 17,
+                ),
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      manual ? 'DEIN TAGESZIEL · MANUELL' : 'DEIN TAGESZIEL',
+                      style: const TextStyle(
+                        color: textMuted,
+                        fontSize: 10.5,
+                        letterSpacing: 1,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Erhaltung $maintenanceKcal · ${goal.paceLabel}',
+                      style: const TextStyle(
+                        color: textMuted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                '$kcal',
+                style: const TextStyle(
+                  fontSize: 44,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -1.5,
+                  height: 1,
+                  color: lime,
+                ),
+              ),
+              const SizedBox(width: 5),
+              const Padding(
+                padding: EdgeInsets.only(bottom: 5),
+                child: Text(
+                  'kcal',
+                  style: TextStyle(
+                    color: textMuted,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              _MacroChip(label: 'Protein', value: '$protein g', color: lime),
+              const SizedBox(width: 8),
+              _MacroChip(label: 'Carbs', value: '$carbs g', color: cyan),
+              const SizedBox(width: 8),
+              _MacroChip(label: 'Fett', value: '$fat g', color: orange),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MacroChip extends StatelessWidget {
+  const _MacroChip({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: surfaceSoft,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: hairline),
+        ),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: color,
+              ),
+            ),
+            const SizedBox(height: 1),
+            Text(
+              label,
+              style: const TextStyle(
+                color: textMuted,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Group card + shared bits
+// ---------------------------------------------------------------------------
+
+class _GroupCard extends StatelessWidget {
+  const _GroupCard({
+    required this.icon,
+    required this.title,
+    required this.child,
+    this.subtitle,
+    this.trailing,
+  });
+
+  final IconData icon;
+  final String title;
+  final Widget child;
+  final String? subtitle;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: hairline),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 17, color: textMuted),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 1),
+                      Text(
+                        subtitle!,
+                        style: const TextStyle(
+                          color: textMuted,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (trailing != null) trailing!,
+            ],
+          ),
+          const SizedBox(height: 14),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _ManualToggle extends StatelessWidget {
+  const _ManualToggle({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text(
+          'Manuell',
+          style: TextStyle(
+            color: textMuted,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Transform.scale(
+          scale: 0.8,
+          child: Switch(
+            key: const ValueKey('settings-manual-energy'),
+            value: value,
+            onChanged: onChanged,
+            thumbColor: WidgetStateProperty.resolveWith(
+              (states) =>
+                  states.contains(WidgetState.selected) ? bg : null,
+            ),
+            trackColor: WidgetStateProperty.resolveWith(
+              (states) =>
+                  states.contains(WidgetState.selected) ? lime : null,
+            ),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _InfoNote extends StatelessWidget {
+  const _InfoNote(this.text);
 
   final String text;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        color: textMuted,
-        fontSize: 11,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 0.8,
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: surfaceSoft,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: hairline),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline_rounded, size: 15, color: textMuted),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: textMuted,
+                fontSize: 12,
+                height: 1.4,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -382,12 +786,14 @@ class _SettingsField extends StatelessWidget {
     required this.suffix,
     required this.controller,
     required this.keyValue,
+    this.onChanged,
   });
 
   final String label;
   final String suffix;
   final TextEditingController controller;
   final Key keyValue;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -396,6 +802,7 @@ class _SettingsField extends StatelessWidget {
       controller: controller,
       keyboardType: TextInputType.number,
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      onChanged: onChanged,
       decoration: InputDecoration(labelText: label, suffixText: suffix),
     );
   }
@@ -679,6 +1086,7 @@ class _SleepGoalField extends StatelessWidget {
       },
       borderRadius: BorderRadius.circular(14),
       child: Container(
+        width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: surfaceSoft,
@@ -704,74 +1112,6 @@ class _SleepGoalField extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AutoCalcRow extends StatelessWidget {
-  const _AutoCalcRow({required this.suggestion, required this.onTap});
-
-  final KcalTargets? suggestion;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final hint = suggestion == null
-        ? 'Berechnet kcal + Makros aus Größe, Gewicht, Alter und Ziel. '
-            'Schritte zählen separat als „Verbrannt" oben drauf.'
-        : '${suggestion!.kcal} kcal · Erhaltung ${suggestion!.maintenanceKcal} · ${suggestion!.goal.label} (${suggestion!.goal.deltaLabel})';
-    return InkWell(
-      key: const ValueKey('settings-auto-calc'),
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: lime.withValues(alpha: 0.10),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: lime.withValues(alpha: 0.35)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: lime.withValues(alpha: 0.18),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.auto_awesome_rounded, color: lime, size: 18),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Auto-berechnen',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: lime,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    hint,
-                    style: const TextStyle(
-                      color: textMuted,
-                      fontSize: 11,
-                      height: 1.35,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.arrow_forward_rounded, color: lime, size: 18),
           ],
         ),
       ),
