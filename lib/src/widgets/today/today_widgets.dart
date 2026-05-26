@@ -20,9 +20,9 @@ class ShiftFitHero extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF120A2A), Colors.black, Color(0xFF10170E)],
+          colors: [Color(0xFF12180E), bg, Colors.black],
         ),
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(rSheet),
         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Stack(
@@ -48,12 +48,12 @@ class ShiftFitHero extends StatelessWidget {
                 width: 76,
                 height: 104,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(22),
+                  borderRadius: BorderRadius.circular(rCard),
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      violet.withValues(alpha: 0.70),
+                      lime.withValues(alpha: 0.70),
                       plan.accent.withValues(alpha: 0.42),
                     ],
                   ),
@@ -168,7 +168,7 @@ class _TodayEyebrow extends StatelessWidget {
           width: 8,
           height: 8,
           decoration: const BoxDecoration(
-            color: Color(0xFF2997FF),
+            color: lime,
             shape: BoxShape.circle,
           ),
         ),
@@ -199,7 +199,7 @@ class _HeroMetric extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(rCard),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -296,7 +296,7 @@ class FitPilotHubGrid extends StatelessWidget {
                   icon: Icons.emoji_events_rounded,
                   title: 'Challenge',
                   subtitle: '7 Tage Reset',
-                  color: violet,
+                  color: lime,
                 ),
               ),
               SizedBox(width: 8),
@@ -335,7 +335,7 @@ class _HubTile extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: surfaceSoft,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(rCard),
         border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Column(
@@ -346,7 +346,7 @@ class _HubTile extends StatelessWidget {
             height: 32,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(11),
+              borderRadius: BorderRadius.circular(rControl),
             ),
             child: Icon(icon, color: color, size: 18),
           ),
@@ -575,7 +575,7 @@ class PlanBlockTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onStartTimer ?? onToggle,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(rControl),
       child: Padding(
         padding: const EdgeInsets.all(8),
         child: Row(
@@ -585,7 +585,7 @@ class PlanBlockTile extends StatelessWidget {
               height: 36,
               decoration: BoxDecoration(
                 color: accent.withValues(alpha: done ? 0.22 : 0.12),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(rControl),
               ),
               child: Icon(block.icon, color: accent, size: 18),
             ),
@@ -630,7 +630,7 @@ class PlanBlockTile extends StatelessWidget {
                   height: 22,
                   decoration: BoxDecoration(
                     color: done ? accent : Colors.transparent,
-                    borderRadius: BorderRadius.circular(7),
+                    borderRadius: BorderRadius.circular(rChip),
                     border: Border.all(
                       color: done ? accent : textMuted.withValues(alpha: 0.45),
                     ),
@@ -725,7 +725,7 @@ class RecoveryToolsGrid extends StatelessWidget {
           icon: Icons.bedtime_outlined,
           title: 'Sleep Coach',
           body: plan.sleepHint,
-          color: pink,
+          color: wellnessTone,
         ),
         const SizedBox(height: 10),
         RecoveryToolCard(
@@ -772,7 +772,7 @@ class RecoveryToolCard extends StatelessWidget {
             height: 38,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(rControl),
             ),
             child: Icon(icon, color: color, size: 18),
           ),
@@ -817,11 +817,11 @@ class WeeklyChallengeCard extends StatelessWidget {
       key: const ValueKey('weekly-challenge-card'),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(rSheet),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [deepViolet, Color(0xFF111827)],
+          colors: [Color(0xFF18230E), bg],
         ),
         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
@@ -867,7 +867,7 @@ class WeeklyChallengeCard extends StatelessWidget {
             height: 116,
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(rSheet),
               border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
             ),
             child: const Icon(
@@ -894,7 +894,7 @@ class _ChallengeMetric extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.09),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(rControl),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -925,7 +925,7 @@ class RhythmWeekCard extends StatelessWidget {
       ('Mi', 'A', orange),
       ('Do', 'M', cyan),
       ('Fr', 'K', lime),
-      ('Sa', 'R', pink),
+      ('Sa', 'R', wellnessTone),
       ('So', '·', cyan),
     ];
 
@@ -940,7 +940,7 @@ class RhythmWeekCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
                   color: day.$3.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(rControl),
                 ),
                 child: Column(
                   children: [
@@ -1038,7 +1038,7 @@ void showPlanSheet(BuildContext context, ShiftFitPlan plan) {
                   foregroundColor: bg,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(rControl),
                   ),
                 ),
                 onPressed: () {

@@ -204,7 +204,7 @@ class _FoodDateStrip extends StatelessWidget {
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(rCard),
         border: Border.all(color: hairline),
       ),
       child: Column(
@@ -293,13 +293,13 @@ class _FoodDateChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(rControl),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
         decoration: BoxDecoration(
           color: selected ? lime : surfaceSoft,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(rControl),
           border: Border.all(
             color: selected ? lime : hairline,
           ),

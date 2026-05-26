@@ -116,7 +116,7 @@ class TodayDashboard extends StatelessWidget {
         value: lastSleep == null
             ? '–'
             : '${(sleepMinutes / 60).toStringAsFixed(sleepMinutes % 60 == 0 ? 0 : 1)}h',
-        color: pink,
+        color: wellnessTone,
         ratio: sleepRatio,
       ),
     ];
@@ -207,7 +207,7 @@ class _StreakBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: surfaceSoft,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(rControl),
       ),
       child: Row(
         children: [

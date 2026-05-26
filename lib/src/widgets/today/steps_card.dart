@@ -54,7 +54,7 @@ class StepsCard extends StatelessWidget {
                 height: 36,
                 decoration: BoxDecoration(
                   color: lime.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(rControl),
                 ),
                 child: const Icon(
                   Icons.directions_walk_rounded,
@@ -137,7 +137,7 @@ class StepsCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           ClipRRect(
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(rPill),
             child: LinearProgressIndicator(
               value: ratio,
               minHeight: 6,
@@ -208,13 +208,13 @@ class _StepsButton extends StatelessWidget {
     return InkWell(
       key: keyValue,
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(rControl),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 11),
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: surfaceSoft,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(rControl),
           border: Border.all(color: lime.withValues(alpha: 0.22)),
         ),
         child: Text(
@@ -305,7 +305,7 @@ class _StepsEditSheetState extends State<_StepsEditSheet> {
                 foregroundColor: bg,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(rControl),
                 ),
               ),
             ),
@@ -345,7 +345,7 @@ class _HealthStatusBar extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         decoration: BoxDecoration(
           color: lime.withValues(alpha: 0.10),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(rControl),
         ),
         child: Row(
           children: [
@@ -366,7 +366,7 @@ class _HealthStatusBar extends StatelessWidget {
             InkWell(
               key: const ValueKey('health-refresh-button'),
               onTap: syncing ? null : onRefresh,
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(rChip),
               child: Padding(
                 padding: const EdgeInsets.all(4),
                 child: syncing
@@ -393,12 +393,12 @@ class _HealthStatusBar extends StatelessWidget {
     return InkWell(
       key: const ValueKey('health-connect-button'),
       onTap: syncing ? null : onConnect,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(rControl),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         decoration: BoxDecoration(
           color: surfaceSoft,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(rControl),
           border: Border.all(color: lime.withValues(alpha: 0.30)),
         ),
         child: Row(

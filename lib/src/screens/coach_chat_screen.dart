@@ -370,7 +370,7 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
       backgroundColor: surface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(rSheet)),
       ),
       // StatefulBuilder, damit das Sheet nach einem Delete sofort neu baut:
       // showModalBottomSheet hängt nicht am setState der Page, deshalb sah man
@@ -405,7 +405,7 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
       context: context,
       backgroundColor: surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(rSheet)),
       ),
       builder: (_) => Padding(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
@@ -420,7 +420,7 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
                 margin: const EdgeInsets.only(bottom: 14),
                 decoration: BoxDecoration(
                   color: hairline,
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: BorderRadius.circular(rPill),
                 ),
               ),
             ),
@@ -685,7 +685,7 @@ class _GradientText extends StatelessWidget {
       shaderCallback: (rect) => const LinearGradient(
         begin: Alignment.centerLeft,
         end: Alignment.centerRight,
-        colors: [cyan, violet, pink],
+        colors: [lime, limeBright],
       ).createShader(rect),
       child: Text(text, textAlign: textAlign, style: style),
     );
@@ -756,7 +756,7 @@ class _MessageView extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: surfaceSoft,
-                  borderRadius: BorderRadius.circular(22),
+                  borderRadius: BorderRadius.circular(rSheet),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -764,7 +764,7 @@ class _MessageView extends StatelessWidget {
                   children: [
                     if (imageBytes != null) ...[
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(rCard),
                         child: Image.memory(
                           imageBytes,
                           height: 160,
@@ -912,7 +912,7 @@ class _GradientDot extends StatelessWidget {
       height: size,
       decoration: const BoxDecoration(
         shape: BoxShape.circle,
-        gradient: LinearGradient(colors: [cyan, violet]),
+        gradient: LinearGradient(colors: [lime, limeBright]),
       ),
     );
   }
@@ -930,7 +930,7 @@ class _ErrorBanner extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: orange.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(rCard),
         border: Border.all(color: orange.withValues(alpha: 0.35)),
       ),
       child: Row(
@@ -987,7 +987,7 @@ class _Composer extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 4, 6, 4),
         decoration: BoxDecoration(
           color: surface,
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(rSheet),
           border: Border.all(color: hairline),
         ),
         child: Row(
@@ -1008,7 +1008,7 @@ class _Composer extends StatelessWidget {
                   height: 1.3,
                   letterSpacing: -0.1,
                 ),
-                cursorColor: violet,
+                cursorColor: lime,
                 decoration: InputDecoration(
                   isCollapsed: true,
                   contentPadding: const EdgeInsets.symmetric(vertical: 14),
@@ -1075,15 +1075,15 @@ class _ComposerIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? violet : (enabled ? textPrimary : textMuted);
+    final color = active ? lime : (enabled ? textPrimary : textMuted);
     return Padding(
       padding: const EdgeInsets.only(bottom: 2),
       child: Material(
-        color: active ? violet.withValues(alpha: 0.14) : Colors.transparent,
-        borderRadius: BorderRadius.circular(22),
+        color: active ? lime.withValues(alpha: 0.14) : Colors.transparent,
+        borderRadius: BorderRadius.circular(rControl),
         child: InkWell(
           onTap: enabled ? onTap : null,
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(rControl),
           child: SizedBox(
             width: 38,
             height: 44,
@@ -1117,14 +1117,15 @@ class _SendButton extends StatelessWidget {
                 ? const LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [cyan, violet],
+                    colors: [lime, limeBright],
                   )
                 : null,
             color: enabled ? null : surfaceSoft,
           ),
           child: Icon(
             Icons.arrow_upward_rounded,
-            color: enabled ? Colors.white : textMuted,
+            // Dark glyph on the light lime CTA (WCAG contrast).
+            color: enabled ? bg : textMuted,
             size: 18,
           ),
         ),
@@ -1170,7 +1171,7 @@ class _SessionsSheet extends StatelessWidget {
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
                     color: hairline,
-                    borderRadius: BorderRadius.circular(2),
+                    borderRadius: BorderRadius.circular(rPill),
                   ),
                 ),
               ),
@@ -1205,7 +1206,7 @@ class _SessionsSheet extends StatelessWidget {
                         backgroundColor: cyan.withValues(alpha: 0.08),
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(999),
+                          borderRadius: BorderRadius.circular(rPill),
                         ),
                       ),
                     ),
@@ -1296,10 +1297,10 @@ class _SessionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: isActive ? surfaceSoft : Colors.transparent,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(rCard),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(rCard),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
           child: Row(
@@ -1311,7 +1312,7 @@ class _SessionTile extends StatelessWidget {
                   color: isActive
                       ? cyan.withValues(alpha: 0.14)
                       : surfaceSoft,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(rControl),
                 ),
                 child: Icon(
                   Icons.chat_bubble_outline_rounded,
@@ -1381,7 +1382,7 @@ class _QuotaBar extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ClipRRect(
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(rPill),
           child: Stack(
             children: [
               Container(height: 6, color: surfaceSoft),
@@ -1390,7 +1391,7 @@ class _QuotaBar extends StatelessWidget {
                 child: Container(
                   height: 6,
                   decoration: const BoxDecoration(
-                    gradient: LinearGradient(colors: [cyan, violet]),
+                    gradient: LinearGradient(colors: [lime, limeBright]),
                   ),
                 ),
               ),

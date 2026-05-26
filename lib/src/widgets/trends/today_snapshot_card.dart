@@ -80,7 +80,7 @@ class _Stat extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         ClipRRect(
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(rPill),
           child: LinearProgressIndicator(
             value: clamped,
             minHeight: 3,

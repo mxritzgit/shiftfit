@@ -62,12 +62,12 @@ class _FavoriteTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(rControl),
       child: Container(
         padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
         decoration: BoxDecoration(
           color: surfaceSoft,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(rControl),
         ),
         child: Row(
           children: [
@@ -76,7 +76,7 @@ class _FavoriteTile extends StatelessWidget {
               height: 36,
               decoration: BoxDecoration(
                 color: orange.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(rControl),
               ),
               child: const Icon(
                 Icons.bookmark_outline_rounded,

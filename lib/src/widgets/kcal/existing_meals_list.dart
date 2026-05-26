@@ -20,7 +20,7 @@ class ExistingMealsList extends StatelessWidget {
   Color get _accent => switch (slot) {
         MealSlot.breakfast => orange,
         MealSlot.lunch => lime,
-        MealSlot.dinner => pink,
+        MealSlot.dinner => slotDinner,
         MealSlot.snack => cyan,
       };
 
@@ -32,7 +32,7 @@ class ExistingMealsList extends StatelessWidget {
       key: const ValueKey('analyse-existing-meals'),
       decoration: BoxDecoration(
         color: surfaceSoft,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(rCard),
         border: Border.all(color: hairline),
       ),
       padding: const EdgeInsets.symmetric(vertical: 4),

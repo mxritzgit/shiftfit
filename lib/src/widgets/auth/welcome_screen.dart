@@ -146,7 +146,7 @@ class _Logo extends StatelessWidget {
               color: showCheck
                   ? lime
                   : lime.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(rSheet),
               boxShadow: [
                 BoxShadow(
                   color: lime.withValues(alpha: showCheck ? 0.4 : 0.15),

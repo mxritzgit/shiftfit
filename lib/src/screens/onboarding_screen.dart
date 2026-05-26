@@ -357,7 +357,7 @@ class _Header extends StatelessWidget {
         const SizedBox(width: 6),
         Expanded(
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(99),
+            borderRadius: BorderRadius.circular(rPill),
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 6,
@@ -395,7 +395,7 @@ class _PrimaryButton extends StatelessWidget {
           foregroundColor: bg,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(rCard),
           ),
         ),
         child: Text(
@@ -472,7 +472,7 @@ class _IntroStep extends StatelessWidget {
           height: 64,
           decoration: BoxDecoration(
             color: lime.withValues(alpha: 0.16),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(rSheet),
           ),
           child: const Icon(Icons.flag_rounded, color: lime, size: 30),
         ),
@@ -793,7 +793,7 @@ class _NumberPicker extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
               color: lime.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(99),
+              borderRadius: BorderRadius.circular(rPill),
             ),
             child: Text(
               footnote!,
@@ -826,7 +826,7 @@ class _StepButton extends StatelessWidget {
     return InkWell(
       key: keyValue,
       onTap: onTap,
-      borderRadius: BorderRadius.circular(99),
+      borderRadius: BorderRadius.circular(rPill),
       child: Container(
         width: 52,
         height: 52,
@@ -863,13 +863,13 @@ class _TileCard extends StatelessWidget {
     return InkWell(
       key: keyValue,
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(rCard),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
         decoration: BoxDecoration(
           color: selected ? lime.withValues(alpha: 0.12) : surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(rCard),
           border: Border.all(
             color: selected ? lime.withValues(alpha: 0.55) : hairline,
             width: selected ? 1.5 : 1,
@@ -905,13 +905,13 @@ class _RowCard extends StatelessWidget {
     return InkWell(
       key: keyValue,
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(rCard),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
           color: selected ? lime.withValues(alpha: 0.12) : surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(rCard),
           border: Border.all(
             color: selected ? lime.withValues(alpha: 0.55) : hairline,
             width: selected ? 1.5 : 1,
@@ -1032,7 +1032,7 @@ class _SummaryStep extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(rSheet),
             border: Border.all(color: lime.withValues(alpha: 0.35)),
           ),
           child: Column(
@@ -1097,7 +1097,7 @@ class _SummaryStep extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: surface,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(rCard),
             border: Border.all(color: hairline),
           ),
           child: Column(
@@ -1168,7 +1168,7 @@ class _MacroChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
           color: surface,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(rCard),
           border: Border.all(color: hairline),
         ),
         child: Column(

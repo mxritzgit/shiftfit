@@ -27,7 +27,7 @@ class MealPreviewCard extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               color: surfaceSoft,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(rCard),
             ),
             child: imageBytes == null
                 ? Column(
@@ -81,7 +81,7 @@ class MealDailyTotalCard extends StatelessWidget {
             height: 40,
             decoration: BoxDecoration(
               color: lime.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(rControl),
             ),
             child: const Icon(
               Icons.local_fire_department_outlined,
@@ -136,7 +136,7 @@ class MealEmptyCard extends StatelessWidget {
             height: 40,
             decoration: BoxDecoration(
               color: cyan.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(rControl),
             ),
             child: const Icon(Icons.info_outline_rounded, color: cyan, size: 18),
           ),
@@ -228,7 +228,7 @@ class _MealLoadingCardState extends State<MealLoadingCard>
                 height: 38,
                 decoration: BoxDecoration(
                   color: orange.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(rControl),
                 ),
                 child: Icon(stage.$1, color: orange, size: 18),
               ),
@@ -277,7 +277,7 @@ class _MealLoadingCardState extends State<MealLoadingCard>
           ),
           const SizedBox(height: 12),
           ClipRRect(
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(rPill),
             child: AnimatedBuilder(
               animation: _progress,
               builder: (context, _) => LinearProgressIndicator(
@@ -420,7 +420,7 @@ class _MealResultCardState extends State<MealResultCard> {
                 child: MacroTile(
                   label: 'Fett',
                   value: result.fat,
-                  color: pink,
+                  color: macroFat,
                 ),
               ),
             ],
@@ -438,7 +438,7 @@ class _MealResultCardState extends State<MealResultCard> {
                     side: const BorderSide(color: hairline),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(rControl),
                     ),
                   ),
                   child: const Icon(Icons.tune_rounded, size: 18),
@@ -468,7 +468,7 @@ class _MealResultCardState extends State<MealResultCard> {
                     foregroundColor: bg,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(rControl),
                     ),
                   ),
                 ),
@@ -530,7 +530,7 @@ class _MealResultCardState extends State<MealResultCard> {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: surfaceSoft,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(rControl),
                 ),
                 child: const Text(
                   'Schätzungen sind Näherungen. Zutaten, Öl und Portion können abweichen.',
@@ -683,7 +683,7 @@ class _ItemBreakdownRow extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 11, 12, 11),
       decoration: BoxDecoration(
         color: surfaceSoft,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(rControl),
       ),
       child: Row(
         children: [
@@ -737,7 +737,7 @@ class MacroTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: surfaceSoft,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(rControl),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -863,7 +863,7 @@ class _MealWeightAdjustmentSheetState extends State<_MealWeightAdjustmentSheet> 
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: surfaceSoft,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(rControl),
               border: Border.all(color: orange.withValues(alpha: 0.18)),
             ),
             child: Text(
@@ -891,7 +891,7 @@ class _MealWeightAdjustmentSheetState extends State<_MealWeightAdjustmentSheet> 
                 foregroundColor: bg,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(rControl),
                 ),
               ),
             ),
@@ -1087,7 +1087,7 @@ class _MealItemAdjustmentSheetState extends State<_MealItemAdjustmentSheet> {
                   vertical: 10,
                 ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(rControl),
                 ),
               ),
             ),
@@ -1098,7 +1098,7 @@ class _MealItemAdjustmentSheetState extends State<_MealItemAdjustmentSheet> {
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: surfaceSoft,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(rControl),
                 border: Border.all(color: orange.withValues(alpha: 0.18)),
               ),
               child: Row(
@@ -1136,7 +1136,7 @@ class _MealItemAdjustmentSheetState extends State<_MealItemAdjustmentSheet> {
               const Text(
                 'Mindestens ein Bestandteil muss übrig bleiben.',
                 style: TextStyle(
-                  color: pink,
+                  color: warning,
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
@@ -1160,7 +1160,7 @@ class _MealItemAdjustmentSheetState extends State<_MealItemAdjustmentSheet> {
                   foregroundColor: bg,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(rControl),
                   ),
                 ),
               ),
@@ -1198,7 +1198,7 @@ class _ItemEditCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
       decoration: BoxDecoration(
         color: surfaceSoft,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(rCard),
         border: Border.all(color: hairline),
       ),
       child: Column(
@@ -1304,7 +1304,7 @@ class _RemovedItemCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
       decoration: BoxDecoration(
         color: surfaceSoft.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(rCard),
         border: Border.all(color: hairline),
       ),
       child: Row(
@@ -1391,7 +1391,7 @@ class _AddItemDialogState extends State<_AddItemDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rSheet)),
       title: const Text(
         'Bestandteil hinzufügen',
         style: TextStyle(
@@ -1473,7 +1473,7 @@ class _AddItemDialogState extends State<_AddItemDialog> {
             backgroundColor: cyan,
             foregroundColor: bg,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(rControl),
             ),
           ),
           child: const Text(

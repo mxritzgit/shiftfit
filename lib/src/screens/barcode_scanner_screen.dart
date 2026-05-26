@@ -62,7 +62,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: surface.withValues(alpha: 0.92),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(rControl),
                 border: Border.all(color: hairline),
               ),
               child: const Text(
@@ -81,7 +81,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
               width: 240,
               height: 150,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(rCard),
                 border: Border.all(color: cyan, width: 2),
               ),
             ),
@@ -103,7 +103,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                   foregroundColor: textPrimary,
                   padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(rControl),
                   ),
                 ),
               ),

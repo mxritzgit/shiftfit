@@ -345,7 +345,7 @@ class _AddMealSheetState extends State<AddMealSheet> {
         constraints: BoxConstraints(maxHeight: maxHeight),
         decoration: const BoxDecoration(
           color: surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(rSheet)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -494,7 +494,7 @@ class _SheetHandle extends StatelessWidget {
         height: 4,
         decoration: BoxDecoration(
           color: hairline,
-          borderRadius: BorderRadius.circular(2),
+          borderRadius: BorderRadius.circular(rPill),
         ),
       ),
     );
@@ -519,7 +519,7 @@ class _SheetHeader extends StatelessWidget {
   Color get _color => switch (slot) {
         MealSlot.breakfast => orange,
         MealSlot.lunch => lime,
-        MealSlot.dinner => pink,
+        MealSlot.dinner => slotDinner,
         MealSlot.snack => cyan,
       };
 
@@ -541,7 +541,7 @@ class _SheetHeader extends StatelessWidget {
             height: 36,
             decoration: BoxDecoration(
               color: _color.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(rControl),
             ),
             child: Icon(_icon, color: _color, size: 18),
           ),
@@ -567,7 +567,7 @@ class _SheetHeader extends StatelessWidget {
           _HeaderIconButton(
             keyValue: const ValueKey('analyse-gallery-button'),
             icon: Icons.photo_library_outlined,
-            color: pink,
+            color: wellnessTone,
             tooltip: 'Aus Galerie',
             onPressed: onGallery,
           ),
@@ -618,7 +618,7 @@ class _HeaderIconButton extends StatelessWidget {
         height: 34,
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.14),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(rControl),
         ),
         child: Icon(icon, color: color, size: 17),
       ),
@@ -652,7 +652,7 @@ class _SearchBar extends StatelessWidget {
         height: 46,
         decoration: BoxDecoration(
           color: surfaceSoft,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(rCard),
           border: Border.all(color: hairline),
         ),
         child: Row(
@@ -766,7 +766,7 @@ class _EmptyState extends StatelessWidget {
             height: 56,
             decoration: BoxDecoration(
               color: lime.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(rCard),
             ),
             child: const Icon(Icons.restaurant_outlined, color: lime, size: 24),
           ),

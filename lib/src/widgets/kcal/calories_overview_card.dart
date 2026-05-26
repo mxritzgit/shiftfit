@@ -28,7 +28,7 @@ class CaloriesOverviewCard extends StatelessWidget {
     final adjustedGoal = goal + burned;
     final remaining = (adjustedGoal - eaten).clamp(-99999, 99999).toInt();
     final progress = (eaten / adjustedGoal).clamp(0.0, 1.0);
-    final remainingColor = remaining >= 0 ? lime : orange;
+    final remainingColor = remaining >= 0 ? lime : danger;
 
     return AppCard(
       key: const ValueKey('analyse-daily-kcal-card'),
@@ -123,7 +123,7 @@ class CaloriesOverviewCard extends StatelessWidget {
               Expanded(
                 child: _StatTile(
                   icon: Icons.gps_fixed_rounded,
-                  iconColor: violet,
+                  iconColor: lime,
                   label: 'ZIEL',
                   value: _formatThousands(goal),
                 ),
@@ -181,7 +181,7 @@ class _StatTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
       decoration: BoxDecoration(
         color: surfaceSoft,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(rControl),
       ),
       child: Column(
         children: [
@@ -282,7 +282,8 @@ class _RingPainter extends CustomPainter {
       startAngle: 0,
       endAngle: 2 * math.pi,
       transform: const GradientRotation(-math.pi / 2),
-      colors: const [violet, lime, cyan, cyan],
+      // Energy ring is a single brand metric: lime only, soft fade-in start.
+      colors: [lime.withValues(alpha: 0.45), lime, lime, lime],
       stops: const [0.0, 0.45, 0.85, 1.0],
     );
 
@@ -299,7 +300,7 @@ class _RingPainter extends CustomPainter {
       center.dx + radius * math.cos(dotAngle),
       center.dy + radius * math.sin(dotAngle),
     );
-    final dotPaint = Paint()..color = violet.withValues(alpha: 0.9);
+    final dotPaint = Paint()..color = lime.withValues(alpha: 0.9);
     canvas.drawCircle(dotPos, stroke / 2 + 2, dotPaint);
   }
 
@@ -343,7 +344,7 @@ class MacrosOverviewCard extends StatelessWidget {
               if (onDetailsPressed != null)
                 InkWell(
                   onTap: onDetailsPressed,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(rChip),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 4,
@@ -394,7 +395,7 @@ class MacrosOverviewCard extends StatelessWidget {
                   label: 'FETT',
                   current: progress.fatG,
                   goal: profile.fatGoalG.toDouble(),
-                  color: pink,
+                  color: wellnessTone,
                 ),
               ),
             ],
@@ -478,7 +479,7 @@ class _MacroTile extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         ClipRRect(
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(rPill),
           child: LinearProgressIndicator(
             value: ratio,
             minHeight: 3,
@@ -681,7 +682,7 @@ class _MealRow extends StatelessWidget {
   Color get _color => switch (slot) {
         MealSlot.breakfast => orange,
         MealSlot.lunch => lime,
-        MealSlot.dinner => pink,
+        MealSlot.dinner => slotDinner,
         MealSlot.snack => cyan,
       };
 
@@ -689,7 +690,7 @@ class _MealRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(rControl),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(

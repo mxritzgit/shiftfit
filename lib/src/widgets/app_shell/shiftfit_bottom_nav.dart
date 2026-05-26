@@ -66,7 +66,7 @@ class _NavItem extends StatelessWidget {
     final color = selected ? lime : textMuted;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(rCard),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
@@ -74,7 +74,7 @@ class _NavItem extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 4),
         decoration: BoxDecoration(
           color: selected ? lime.withValues(alpha: 0.12) : Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(rCard),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

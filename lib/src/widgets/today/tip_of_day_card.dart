@@ -48,7 +48,7 @@ class TipOfDayCard extends StatelessWidget {
         title: 'Lange Mittagsschlaf vermeiden',
         body: 'Max. 20 Min Power Nap reicht. Längere Phasen kippen den Schlafanker.',
         icon: Icons.bedtime_outlined,
-        color: pink,
+        color: wellnessTone,
       ),
       ShiftTip(
         title: 'Training vor der Schicht',
@@ -68,7 +68,7 @@ class TipOfDayCard extends StatelessWidget {
         title: 'Sonnenbrille morgens',
         body: 'Auf dem Heimweg nach der Nachtschicht Sonnenbrille schützt den Melatonin-Aufbau.',
         icon: Icons.dark_mode_outlined,
-        color: pink,
+        color: wellnessTone,
       ),
       ShiftTip(
         title: 'Snack-Strategie',
@@ -88,7 +88,7 @@ class TipOfDayCard extends StatelessWidget {
         title: 'Anker nicht auflösen',
         body: 'Auch frei: maximal 60 Min später ins Bett als an Arbeitstagen.',
         icon: Icons.bedtime_outlined,
-        color: pink,
+        color: wellnessTone,
       ),
       ShiftTip(
         title: 'Meal Prep',
@@ -127,7 +127,7 @@ class TipOfDayCard extends StatelessWidget {
             height: 40,
             decoration: BoxDecoration(
               color: tip.color.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(rControl),
             ),
             child: Icon(tip.icon, color: tip.color, size: 18),
           ),

@@ -155,7 +155,7 @@ class _AuthScreenState extends State<AuthScreen> {
               child: Container(
                 decoration: const BoxDecoration(
                   color: surface,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(rSheet)),
                   border: Border(
                     top: BorderSide(color: hairline),
                     left: BorderSide(color: hairline),
@@ -239,11 +239,11 @@ class _Hero extends StatelessWidget {
             right: -70,
             child: _GlowBlob(color: lime, size: 280, alpha: 0.20),
           ),
-          // kühler Akzent unten links
+          // zweiter, schwacher Brand-Glow unten links (eine Akzentfarbe, gelockt)
           Positioned(
             bottom: -60,
             left: -80,
-            child: _GlowBlob(color: cyan, size: 220, alpha: 0.10),
+            child: _GlowBlob(color: lime, size: 220, alpha: 0.07),
           ),
           // aufsteigende Flugbahn
           const Positioned.fill(
@@ -264,7 +264,7 @@ class _Hero extends StatelessWidget {
                         height: 38,
                         decoration: BoxDecoration(
                           color: lime,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(rControl),
                           boxShadow: [
                             BoxShadow(
                               color: lime.withValues(alpha: 0.45),
@@ -438,7 +438,7 @@ class _SegmentedMode extends StatelessWidget {
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: surfaceSoft,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(rCard),
         border: Border.all(color: hairline),
       ),
       child: Row(
@@ -487,7 +487,7 @@ class _Segment extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 11),
           decoration: BoxDecoration(
             color: selected ? lime : Colors.transparent,
-            borderRadius: BorderRadius.circular(11),
+            borderRadius: BorderRadius.circular(rControl),
           ),
           child: Text(
             label,
@@ -698,7 +698,7 @@ class _AuthFieldState extends State<_AuthField> {
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
             color: bg,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(rCard),
             border: Border.all(
               color: focused ? lime : hairline,
               width: focused ? 1.5 : 1,
@@ -780,7 +780,7 @@ class _LimePill extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 17),
         decoration: BoxDecoration(
           color: disabled ? surfaceSoft : lime,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(rCard),
           boxShadow: disabled
               ? null
               : [
@@ -853,7 +853,7 @@ class _GoogleButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: bg,
             border: Border.all(color: hairline),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(rCard),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -958,13 +958,13 @@ class _InlineNote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isError ? orange : lime;
+    final color = isError ? danger : lime;
     return Container(
       key: ValueKey(isError ? 'auth-error' : 'auth-message'),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(rControl),
         border: Border.all(color: color.withValues(alpha: 0.30)),
       ),
       child: Row(

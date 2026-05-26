@@ -422,7 +422,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                   side: BorderSide(color: orange.withValues(alpha: 0.45)),
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(rControl),
                   ),
                 ),
               ),
@@ -443,7 +443,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                   foregroundColor: bg,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(rControl),
                   ),
                 ),
               ),
@@ -489,7 +489,7 @@ class _PlanHero extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [lime.withValues(alpha: 0.16), surface],
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(rSheet),
         border: Border.all(color: lime.withValues(alpha: 0.32)),
       ),
       child: Column(
@@ -502,7 +502,7 @@ class _PlanHero extends StatelessWidget {
                 height: 34,
                 decoration: BoxDecoration(
                   color: lime.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(rControl),
                 ),
                 child: Icon(
                   manual ? Icons.edit_rounded : Icons.auto_awesome_rounded,
@@ -601,7 +601,7 @@ class _MacroChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
           color: surfaceSoft,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(rControl),
           border: Border.all(color: hairline),
         ),
         child: Column(
@@ -655,7 +655,7 @@ class _GroupCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(rCard),
         border: Border.all(color: hairline),
       ),
       child: Column(
@@ -755,7 +755,7 @@ class _InfoNote extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: surfaceSoft,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(rControl),
         border: Border.all(color: hairline),
       ),
       child: Row(
@@ -842,12 +842,12 @@ class _SexField extends StatelessWidget {
         );
         if (picked != null) onChanged(picked);
       },
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(rCard),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: surfaceSoft,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(rCard),
           border: Border.all(color: hairline),
         ),
         child: Column(
@@ -911,12 +911,12 @@ class _ActivityField extends StatelessWidget {
         );
         if (picked != null) onChanged(picked);
       },
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(rCard),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: surfaceSoft,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(rCard),
           border: Border.all(color: hairline),
         ),
         child: Row(
@@ -1010,12 +1010,12 @@ class _WeightGoalField extends StatelessWidget {
         );
         if (picked != null) onChanged(picked);
       },
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(rCard),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: surfaceSoft,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(rCard),
           border: Border.all(color: hairline),
         ),
         child: Row(
@@ -1048,7 +1048,7 @@ class _WeightGoalField extends StatelessWidget {
               style: TextStyle(
                 color: value.kcalDelta == 0
                     ? textMuted
-                    : (value.kcalDelta < 0 ? lime : orange),
+                    : (value.kcalDelta < 0 ? lime : warning),
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
               ),
@@ -1084,13 +1084,13 @@ class _SleepGoalField extends StatelessWidget {
           onChanged(picked.hour * 60 + picked.minute);
         }
       },
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(rCard),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: surfaceSoft,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(rCard),
           border: Border.all(color: hairline),
         ),
         child: Column(

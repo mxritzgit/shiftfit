@@ -30,7 +30,7 @@ class SummaryCard extends StatelessWidget {
             height: 32,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(rChip),
             ),
             child: Icon(icon, color: color, size: 16),
           ),
@@ -145,7 +145,7 @@ class PlanningTipsCard extends StatelessWidget {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: cyan.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(7),
+                    borderRadius: BorderRadius.circular(rChip),
                   ),
                   child: Text(
                     '${i + 1}',

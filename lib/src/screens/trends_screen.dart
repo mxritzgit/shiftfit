@@ -60,8 +60,8 @@ class TrendsScreen extends StatelessWidget {
       ('Di', 0.78, lime),
       ('Mi', 0.64, orange),
       ('Do', 0.69, orange),
-      ('Fr', 0.54, pink),
-      ('Sa', 0.58, pink),
+      ('Fr', 0.54, wellnessTone),
+      ('Sa', 0.58, wellnessTone),
       ('So', 0.86, cyan),
     ];
 
@@ -91,7 +91,7 @@ class TrendsScreen extends StatelessWidget {
       SnapshotStat(
         label: 'Schlaf',
         value: sleepLabel,
-        color: pink,
+        color: wellnessTone,
         ratio: sleepRatio,
       ),
       SnapshotStat(

@@ -77,11 +77,11 @@ Future<QuickAddResult?> showQuickAddSheet(BuildContext context) {
                 sheetContext,
                 const QuickAddResult(kind: QuickAddKind.sleep),
               ),
-              icon: const Icon(Icons.bedtime_outlined, size: 17, color: pink),
+              icon: const Icon(Icons.bedtime_outlined, size: 17, color: wellnessTone),
               label: const Text(
                 'Schlaf loggen',
                 style: TextStyle(
-                  color: pink,
+                  color: wellnessTone,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
@@ -122,7 +122,7 @@ class _QuickRow extends StatelessWidget {
           height: 36,
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.14),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(rControl),
           ),
           child: Icon(icon, color: color, size: 18),
         ),
@@ -143,7 +143,7 @@ class _QuickRow extends StatelessWidget {
                 InkWell(
                   key: ValueKey('$keyPrefix-$option'),
                   onTap: () => onPick(option),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(rChip),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -151,7 +151,7 @@ class _QuickRow extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: surfaceSoft,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(rChip),
                       border: Border.all(
                         color: color.withValues(alpha: 0.22),
                       ),

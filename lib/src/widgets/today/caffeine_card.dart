@@ -59,7 +59,7 @@ class CaffeineCard extends StatelessWidget {
                 height: 36,
                 decoration: BoxDecoration(
                   color: orange.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(rControl),
                 ),
                 child: const Icon(
                   Icons.coffee_outlined,
@@ -129,13 +129,13 @@ class CaffeineCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
-                color: pink.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(10),
+                color: wellnessTone.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(rControl),
               ),
               child: const Text(
                 'Spät dran — Schlaf könnte schlechter werden.',
                 style: TextStyle(
-                  color: pink,
+                  color: wellnessTone,
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
@@ -225,12 +225,12 @@ class _CaffeineButton extends StatelessWidget {
     return InkWell(
       key: keyValue,
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(rControl),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
           color: surfaceSoft,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(rControl),
           border: Border.all(color: orange.withValues(alpha: 0.22)),
         ),
         child: Column(

@@ -14,7 +14,7 @@ class AppCard extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         color: surface,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(rSheet),
         border: Border.all(color: hairline),
       ),
       child: child,
@@ -34,7 +34,7 @@ class StatusPill extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(rChip),
       ),
       child: Text(
         label,
@@ -61,7 +61,7 @@ class MetricChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: surfaceSoft,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(rChip),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

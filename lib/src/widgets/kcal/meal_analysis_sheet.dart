@@ -168,7 +168,7 @@ class _MealAnalysisSheetState extends State<MealAnalysisSheet> {
         constraints: BoxConstraints(maxHeight: maxHeight),
         decoration: const BoxDecoration(
           color: surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(rSheet)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -217,7 +217,7 @@ class _SheetHandle extends StatelessWidget {
         height: 4,
         decoration: BoxDecoration(
           color: hairline,
-          borderRadius: BorderRadius.circular(2),
+          borderRadius: BorderRadius.circular(rPill),
         ),
       ),
     );
@@ -233,7 +233,7 @@ class _Header extends StatelessWidget {
   Color get _color => switch (slot) {
         MealSlot.breakfast => orange,
         MealSlot.lunch => lime,
-        MealSlot.dinner => pink,
+        MealSlot.dinner => slotDinner,
         MealSlot.snack => cyan,
       };
 
@@ -255,7 +255,7 @@ class _Header extends StatelessWidget {
             height: 36,
             decoration: BoxDecoration(
               color: _color.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(rControl),
             ),
             child: Icon(_icon, color: _color, size: 18),
           ),

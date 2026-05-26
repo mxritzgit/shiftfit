@@ -38,7 +38,7 @@ class WaterTrackerCard extends StatelessWidget {
                 height: 36,
                 decoration: BoxDecoration(
                   color: cyan.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(rControl),
                 ),
                 child: const Icon(Icons.water_drop_outlined, color: cyan, size: 18),
               ),
@@ -97,7 +97,7 @@ class WaterTrackerCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           ClipRRect(
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(rPill),
             child: LinearProgressIndicator(
               value: ratio,
               minHeight: 6,
@@ -147,12 +147,12 @@ class _WaterAddButton extends StatelessWidget {
     return InkWell(
       key: ValueKey('water-add-$amount'),
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(rControl),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 11),
         decoration: BoxDecoration(
           color: surfaceSoft,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(rControl),
           border: Border.all(color: cyan.withValues(alpha: 0.22)),
         ),
         alignment: Alignment.center,
@@ -193,10 +193,10 @@ class SleepLogCard extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: pink.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(10),
+              color: wellnessTone.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(rControl),
             ),
-            child: const Icon(Icons.bedtime_outlined, color: pink, size: 18),
+            child: const Icon(Icons.bedtime_outlined, color: wellnessTone, size: 18),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -224,7 +224,7 @@ class SleepLogCard extends StatelessWidget {
                         lastEntry!.durationLabel,
                         key: const ValueKey('sleep-last-duration'),
                         style: const TextStyle(
-                          color: pink,
+                          color: wellnessTone,
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
@@ -249,7 +249,7 @@ class SleepLogCard extends StatelessWidget {
             key: const ValueKey('sleep-log-button'),
             onPressed: onLog,
             style: TextButton.styleFrom(
-              foregroundColor: pink,
+              foregroundColor: wellnessTone,
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -427,7 +427,7 @@ class _SleepLogSheetState extends State<_SleepLogSheet> {
                   child: InkWell(
                     key: ValueKey('sleep-quality-$i'),
                     onTap: () => setState(() => quality = i),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(rControl),
                     child: Container(
                       width: 40,
                       height: 40,
@@ -435,7 +435,7 @@ class _SleepLogSheetState extends State<_SleepLogSheet> {
                         color: i <= quality
                             ? orange.withValues(alpha: 0.18)
                             : surfaceSoft,
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(rControl),
                       ),
                       child: Icon(
                         i <= quality ? Icons.star_rounded : Icons.star_border_rounded,
@@ -458,11 +458,11 @@ class _SleepLogSheetState extends State<_SleepLogSheet> {
                 style: TextStyle(fontWeight: FontWeight.w600),
               ),
               style: FilledButton.styleFrom(
-                backgroundColor: pink,
+                backgroundColor: wellnessTone,
                 foregroundColor: bg,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(rControl),
                 ),
               ),
             ),
@@ -491,12 +491,12 @@ class _TimeField extends StatelessWidget {
     return InkWell(
       key: keyValue,
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(rControl),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: surfaceSoft,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(rControl),
           border: Border.all(color: hairline),
         ),
         child: Column(

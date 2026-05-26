@@ -283,7 +283,7 @@ class _ExportSheet extends StatelessWidget {
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(rControl),
                       ),
                     ),
                   ),
@@ -304,7 +304,7 @@ class _ExportSheet extends StatelessWidget {
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     color: surfaceSoft,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(rCard),
                     border: Border.all(color: hairline),
                   ),
                   child: SingleChildScrollView(
@@ -348,7 +348,7 @@ class _AboutSheet extends StatelessWidget {
                 height: 44,
                 decoration: BoxDecoration(
                   color: lime.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(rControl),
                 ),
                 child: const Icon(Icons.bolt_rounded, color: lime, size: 22),
               ),

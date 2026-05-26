@@ -125,7 +125,7 @@ class _MealSuggestionItemState extends State<MealSuggestionItem> {
       curve: Curves.easeOutCubic,
       decoration: BoxDecoration(
         color: widget.expanded ? surface : surfaceSoft,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(rCard),
         border: Border.all(
           color: widget.expanded
               ? widget.accent.withValues(alpha: 0.55)
@@ -215,7 +215,7 @@ class _Header extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(rCard),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(10, 10, 6, 10),
         child: Row(
@@ -288,7 +288,7 @@ class _Avatar extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: accent.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(rControl),
       ),
       child: imageUrl == null
           ? Icon(fallbackIcon, color: accent, size: 19)
@@ -460,7 +460,7 @@ class _ExpandedBody extends StatelessWidget {
                 foregroundColor: bg,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(rControl),
                 ),
               ),
             ),
@@ -492,7 +492,7 @@ class _StepperButton extends StatelessWidget {
         height: 44,
         decoration: BoxDecoration(
           color: surfaceSoft,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(rControl),
           border: Border.all(color: hairline),
         ),
         child: Icon(icon, size: 20, color: textPrimary),
@@ -516,7 +516,7 @@ class _GramsField extends StatelessWidget {
       height: 44,
       decoration: BoxDecoration(
         color: surfaceSoft,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(rControl),
         border: Border.all(color: hairline),
       ),
       child: Row(

@@ -74,7 +74,7 @@ class _HabitRow extends StatelessWidget {
     return InkWell(
       key: ValueKey('habit-row-${habit.id}'),
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(rControl),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
         child: Row(
@@ -84,7 +84,7 @@ class _HabitRow extends StatelessWidget {
               height: 28,
               decoration: BoxDecoration(
                 color: habit.color.withValues(alpha: done ? 0.22 : 0.12),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(rChip),
               ),
               child: Icon(habit.icon, color: habit.color, size: 14),
             ),
@@ -105,7 +105,7 @@ class _HabitRow extends StatelessWidget {
               height: 20,
               decoration: BoxDecoration(
                 color: done ? habit.color : Colors.transparent,
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(rChip),
                 border: Border.all(
                   color: done ? habit.color : textMuted.withValues(alpha: 0.45),
                 ),
@@ -144,7 +144,7 @@ const List<Habit> defaultHabits = [
     id: 'no-late-screens',
     title: 'Keine Screens 30 Min vor Bett',
     icon: Icons.phonelink_erase_outlined,
-    color: pink,
+    color: wellnessTone,
   ),
   Habit(
     id: 'breathwork',

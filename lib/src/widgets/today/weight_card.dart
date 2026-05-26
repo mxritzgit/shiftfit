@@ -30,7 +30,7 @@ class WeightCard extends StatelessWidget {
                 height: 36,
                 decoration: BoxDecoration(
                   color: lime.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(rControl),
                 ),
                 child: const Icon(
                   Icons.monitor_weight_outlined,
@@ -273,7 +273,7 @@ class _WeightInputSheetState extends State<_WeightInputSheet> {
                 foregroundColor: bg,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(rControl),
                 ),
               ),
             ),

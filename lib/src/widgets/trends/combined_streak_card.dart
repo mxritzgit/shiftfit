@@ -28,7 +28,7 @@ class CombinedStreakCard extends StatelessWidget {
                 height: 32,
                 decoration: BoxDecoration(
                   color: orange.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(rChip),
                 ),
                 child: const Icon(
                   Icons.local_fire_department_rounded,
@@ -159,7 +159,7 @@ class _Cell extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(
           color: isActive ? lime.withValues(alpha: 0.78) : surfaceSoft,
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(rChip),
           border: isToday
               ? Border.all(color: lime, width: 1.5)
               : Border.all(color: hairline),

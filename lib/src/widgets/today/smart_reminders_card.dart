@@ -79,7 +79,7 @@ class SmartRemindersCard extends StatelessWidget {
           icon: Icons.bedtime_outlined,
           title: 'Schlaf-Runway',
           body: 'In ${delta} Min ins Bett — Licht dimmen, Screens weg.',
-          color: pink,
+          color: wellnessTone,
         ));
       }
     }
@@ -182,7 +182,7 @@ class _ReminderRow extends StatelessWidget {
           height: 28,
           decoration: BoxDecoration(
             color: reminder.color.withValues(alpha: 0.14),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(rChip),
           ),
           child: Icon(reminder.icon, color: reminder.color, size: 14),
         ),

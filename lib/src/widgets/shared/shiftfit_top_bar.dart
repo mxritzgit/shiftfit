@@ -87,7 +87,7 @@ class _AvatarBadge extends StatelessWidget {
             plan.accent.withValues(alpha: 0.06),
           ],
         ),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(rControl),
         border: Border.all(color: plan.accent.withValues(alpha: 0.35)),
       ),
       alignment: Alignment.center,
@@ -110,7 +110,7 @@ class _AvatarBadge extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(rControl),
         child: badge,
       ),
     );

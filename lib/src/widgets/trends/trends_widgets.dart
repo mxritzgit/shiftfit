@@ -32,7 +32,7 @@ class TrendBarsCard extends StatelessWidget {
                             width: 10,
                             decoration: BoxDecoration(
                               color: bar.$3.withValues(alpha: 0.85),
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(rChip),
                             ),
                           ),
                         ),

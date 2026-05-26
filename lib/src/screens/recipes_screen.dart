@@ -146,7 +146,7 @@ class _RecipesHeader extends StatelessWidget {
           height: 42,
           decoration: BoxDecoration(
             color: surface,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(rCard),
             border: Border.all(color: hairline),
           ),
           child: const Icon(Icons.menu_book_rounded, color: lime, size: 21),
@@ -167,7 +167,7 @@ class _RecipeSearchField extends StatelessWidget {
       height: 48,
       decoration: BoxDecoration(
         color: surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(rCard),
         border: Border.all(color: hairline),
       ),
       child: TextField(
@@ -210,14 +210,14 @@ class _RecipeFilterChips extends StatelessWidget {
           return InkWell(
             key: ValueKey('recipe-filter-$filter'),
             onTap: () => onSelected(filter),
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(rPill),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 160),
               padding: const EdgeInsets.symmetric(horizontal: 14),
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: active ? lime : surface,
-                borderRadius: BorderRadius.circular(999),
+                borderRadius: BorderRadius.circular(rPill),
                 border: Border.all(color: active ? lime : hairline),
               ),
               child: Text(
@@ -280,13 +280,13 @@ class _RecipeHeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(rSheet),
       child: SizedBox(
         width: 198,
         child: Container(
           decoration: BoxDecoration(
             color: surface,
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(rSheet),
             border: Border.all(color: hairline),
           ),
           clipBehavior: Clip.antiAlias,
@@ -377,18 +377,18 @@ class _RecipeListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(rCard),
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: surface,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(rCard),
           border: Border.all(color: hairline),
         ),
         child: Row(
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(rCard),
               child: Image.asset(
                 recipe.imageAsset,
                 width: 74,
@@ -494,7 +494,7 @@ class RecipeDetailScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               ClipRRect(
-                borderRadius: BorderRadius.circular(28),
+                borderRadius: BorderRadius.circular(rSheet),
                 child: Image.asset(
                   recipe.imageAsset,
                   height: 258,
@@ -561,7 +561,7 @@ class _AddToMealCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: surface,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(rSheet),
         border: Border.all(color: lime.withValues(alpha: 0.28)),
       ),
       child: Column(
@@ -574,7 +574,7 @@ class _AddToMealCard extends StatelessWidget {
                 height: 36,
                 decoration: BoxDecoration(
                   color: lime.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(rControl),
                 ),
                 child: const Icon(Icons.add_rounded, color: lime, size: 22),
               ),
@@ -617,7 +617,7 @@ class _AddToMealCard extends StatelessWidget {
                 foregroundColor: bg,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(rCard),
                 ),
               ),
               icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
@@ -660,7 +660,7 @@ class _MealSlotPickerSheet extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
         decoration: BoxDecoration(
           color: bg,
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(rSheet),
           border: Border.all(color: hairline),
         ),
         child: Column(
@@ -673,7 +673,7 @@ class _MealSlotPickerSheet extends StatelessWidget {
                 height: 4,
                 decoration: BoxDecoration(
                   color: hairline,
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(rPill),
                 ),
               ),
             ),
@@ -681,7 +681,7 @@ class _MealSlotPickerSheet extends StatelessWidget {
             Row(
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(rCard),
                   child: Image.asset(
                     recipe.imageAsset,
                     width: 58,
@@ -735,7 +735,7 @@ class _MealSlotPickerSheet extends StatelessWidget {
                 style: TextButton.styleFrom(
                   foregroundColor: textMuted,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
+                    borderRadius: BorderRadius.circular(rCard),
                   ),
                 ),
                 child: const Text(
@@ -760,7 +760,7 @@ class _MealSlotButton extends StatelessWidget {
   Color get color => switch (slot) {
         MealSlot.breakfast => orange,
         MealSlot.lunch => lime,
-        MealSlot.dinner => pink,
+        MealSlot.dinner => slotDinner,
         MealSlot.snack => cyan,
       };
 
@@ -776,13 +776,13 @@ class _MealSlotButton extends StatelessWidget {
     return InkWell(
       key: ValueKey('recipe-meal-picker-${slot.name}'),
       onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(rCard),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.14),
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(rCard),
           border: Border.all(color: color.withValues(alpha: 0.36)),
         ),
         child: Row(
@@ -830,7 +830,7 @@ class _NutritionGrid extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(child: _NutritionTile(label: 'KH', value: '${recipe.carbsG} g', color: cyan)),
         const SizedBox(width: 8),
-        Expanded(child: _NutritionTile(label: 'Fett', value: '${recipe.fatG} g', color: pink)),
+        Expanded(child: _NutritionTile(label: 'Fett', value: '${recipe.fatG} g', color: macroFat)),
       ],
     );
   }
@@ -853,7 +853,7 @@ class _NutritionTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       decoration: BoxDecoration(
         color: surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(rCard),
         border: Border.all(color: hairline),
       ),
       child: Column(
@@ -904,7 +904,7 @@ class _RecipeInfoSection extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: surface,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(rSheet),
           border: Border.all(color: hairline),
         ),
         child: Column(
@@ -957,7 +957,7 @@ class _GlassBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
         color: dark ? surface : Colors.black.withValues(alpha: 0.48),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(rPill),
         border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
       ),
       child: Text(
@@ -1012,13 +1012,13 @@ class _RoundIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(rCard),
       child: Container(
         width: 42,
         height: 42,
         decoration: BoxDecoration(
           color: surface,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(rCard),
           border: Border.all(color: hairline),
         ),
         child: Icon(icon, color: textPrimary, size: 20),
@@ -1038,7 +1038,7 @@ class _RecipeEmptyState extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(rCard),
         border: Border.all(color: hairline),
       ),
       child: const Text(

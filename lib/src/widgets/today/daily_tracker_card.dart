@@ -67,7 +67,7 @@ class DailyTrackerCard extends StatelessWidget {
               if (_healthSupported)
                 InkWell(
                   onTap: connected ? onRefreshHealth : onConnectHealth,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(rChip),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
@@ -77,7 +77,7 @@ class DailyTrackerCard extends StatelessWidget {
                       color: connected
                           ? lime.withValues(alpha: 0.12)
                           : surfaceSoft,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(rChip),
                       border: Border.all(
                         color: connected
                             ? lime.withValues(alpha: 0.35)
@@ -170,7 +170,7 @@ class _StatCell extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         ClipRRect(
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(rPill),
           child: LinearProgressIndicator(
             value: clamped,
             minHeight: 3,

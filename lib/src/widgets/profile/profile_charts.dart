@@ -162,7 +162,7 @@ class BMIGaugePainter extends CustomPainter {
     (upper: 18.5, color: cyan),
     (upper: 25.0, color: lime),
     (upper: 30.0, color: orange),
-    (upper: 40.0, color: pink),
+    (upper: 40.0, color: danger),
   ];
 
   @override
@@ -265,7 +265,7 @@ class BMIGaugePainter extends CustomPainter {
     for (final z in _zones) {
       if (v < z.upper) return z.color;
     }
-    return pink;
+    return danger;
   }
 
   static String labelFor(double v) {
@@ -293,7 +293,7 @@ class ShiftDonutPainter extends CustomPainter {
     'Ausdauer': orange,
     'Recovery': cyan,
     'Mobility': cyan,
-    'Frei': pink,
+    'Frei': macroCarbs,
   };
 
   @override

@@ -31,7 +31,7 @@ class MoodCard extends StatelessWidget {
                 height: 36,
                 decoration: BoxDecoration(
                   color: cyan.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(rControl),
                 ),
                 child: const Icon(
                   Icons.emoji_emotions_outlined,
@@ -93,7 +93,7 @@ class MoodCard extends StatelessWidget {
               width: double.infinity,
               decoration: BoxDecoration(
                 color: surfaceSoft,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(rControl),
               ),
               child: Text(
                 mood.note,
@@ -129,14 +129,14 @@ class _MoodOption extends StatelessWidget {
     return InkWell(
       key: ValueKey('mood-option-$score'),
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(rControl),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         width: 50,
         height: 50,
         decoration: BoxDecoration(
           color: selected ? cyan.withValues(alpha: 0.18) : surfaceSoft,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(rControl),
           border: Border.all(
             color: selected ? cyan : hairline,
           ),
@@ -215,7 +215,7 @@ Future<String?> showMoodNoteSheet(
                   foregroundColor: bg,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(rControl),
                   ),
                 ),
               ),

@@ -120,7 +120,7 @@ class _WorkoutTimerSheetState extends State<_WorkoutTimerSheet> {
                 height: 38,
                 decoration: BoxDecoration(
                   color: widget.accent.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(rControl),
                 ),
                 child: Icon(
                   widget.block.icon,
@@ -216,7 +216,7 @@ class _WorkoutTimerSheetState extends State<_WorkoutTimerSheet> {
                     side: const BorderSide(color: hairline),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(rControl),
                     ),
                   ),
                 ),
@@ -240,7 +240,7 @@ class _WorkoutTimerSheetState extends State<_WorkoutTimerSheet> {
                     foregroundColor: bg,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(rControl),
                     ),
                   ),
                 ),

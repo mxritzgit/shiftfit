@@ -39,7 +39,7 @@ class DayOverviewCard extends StatelessWidget {
               painter: _DayRingPainter(
                 segments: [
                   (waterRatio.clamp(0.0, 1.0).toDouble(), cyan),
-                  (sleepRatio.clamp(0.0, 1.0).toDouble(), pink),
+                  (sleepRatio.clamp(0.0, 1.0).toDouble(), wellnessTone),
                   (workoutRatio.clamp(0.0, 1.0).toDouble(), lime),
                   (stepsRatio.clamp(0.0, 1.0).toDouble(), orange),
                 ],
@@ -90,7 +90,7 @@ class DayOverviewCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 _LegendRow(
-                  color: pink,
+                  color: wellnessTone,
                   label: 'Schlaf',
                   ratio: sleepRatio,
                 ),

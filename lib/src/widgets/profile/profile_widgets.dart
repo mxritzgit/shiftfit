@@ -62,7 +62,7 @@ class ProfileHero extends StatelessWidget {
                       plan.accent.withValues(alpha: 0.08),
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(rSheet),
                   border: Border.all(color: plan.accent.withValues(alpha: 0.4)),
                 ),
                 alignment: Alignment.center,
@@ -146,7 +146,7 @@ class _HeroTag extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(rControl),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -195,7 +195,7 @@ class GoalPlanCard extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [accent.withValues(alpha: 0.14), surface],
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(rSheet),
         border: Border.all(color: accent.withValues(alpha: 0.30)),
       ),
       child: Column(
@@ -208,7 +208,7 @@ class GoalPlanCard extends StatelessWidget {
                 height: 38,
                 decoration: BoxDecoration(
                   color: accent.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(11),
+                  borderRadius: BorderRadius.circular(rControl),
                 ),
                 child: Icon(
                   isMaintain
@@ -311,7 +311,7 @@ class GoalPlanCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
               decoration: BoxDecoration(
                 color: surfaceSoft,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(rControl),
                 border: Border.all(color: hairline),
               ),
               child: Row(
@@ -417,7 +417,7 @@ class _PlanChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
       decoration: BoxDecoration(
         color: surfaceSoft,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(rControl),
         border: Border.all(color: hairline),
       ),
       child: Row(
@@ -559,7 +559,7 @@ class BodyStatsCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               color: bmiColor.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(rControl),
               border: Border.all(color: bmiColor.withValues(alpha: 0.32)),
             ),
             child: Row(
@@ -611,7 +611,7 @@ class BodyStatsCard extends StatelessWidget {
                 side: const BorderSide(color: hairline),
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(rControl),
                 ),
               ),
             ),
@@ -652,7 +652,7 @@ class _BmiInfoSheet extends StatelessWidget {
       ('Untergewicht', '< 18.5', cyan),
       ('Normal', '18.5 – 24.9', lime),
       ('Übergewicht', '25.0 – 29.9', orange),
-      ('Adipös', '≥ 30.0', pink),
+      ('Adipös', '≥ 30.0', danger),
     ];
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
@@ -682,7 +682,7 @@ class _BmiInfoSheet extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 color: z.$3.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(rControl),
                 border: Border.all(color: z.$3.withValues(alpha: 0.32)),
               ),
               child: Row(
@@ -803,7 +803,7 @@ class _ProfileWeightInputSheetState extends State<_ProfileWeightInputSheet> {
                 foregroundColor: bg,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(rControl),
                 ),
               ),
             ),
@@ -833,7 +833,7 @@ class _DeltaPill extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(rChip),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1017,7 +1017,7 @@ class GoalsOverviewCard extends StatelessWidget {
         current: sleepMinutes,
         target: profile.dailySleepGoalMinutes,
         unit: 'min',
-        color: pink,
+        color: wellnessTone,
         icon: Icons.bedtime_outlined,
       ),
     ];
@@ -1103,7 +1103,7 @@ class _GoalTile extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: surfaceSoft,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(rCard),
         border: Border.all(color: hairline),
       ),
       child: Row(
@@ -1253,7 +1253,7 @@ class ShiftDistributionCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               color: surfaceSoft,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(rControl),
             ),
             child: Row(
               children: [
@@ -1277,7 +1277,7 @@ class ShiftDistributionCard extends StatelessWidget {
                 Text(
                   '$balance/14',
                   style: TextStyle(
-                    color: balance >= 9 ? lime : (balance >= 6 ? orange : pink),
+                    color: balance >= 9 ? lime : (balance >= 6 ? warning : danger),
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.4,
@@ -1366,7 +1366,7 @@ class LifetimeStatsCard extends StatelessWidget {
       ),
       _LifetimeTile(
         icon: Icons.monitor_weight_outlined,
-        color: pink,
+        color: wellnessTone,
         value: stats.weightLogs.toString(),
         label: 'Wiegen',
       ),
@@ -1391,7 +1391,7 @@ class LifetimeStatsCard extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: surfaceSoft,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(rChip),
                 ),
                 child: Text(
                   since,
@@ -1454,7 +1454,7 @@ class _LifetimeTile extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: surfaceSoft,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(rCard),
         border: Border.all(color: hairline),
       ),
       child: Row(
@@ -1464,7 +1464,7 @@ class _LifetimeTile extends StatelessWidget {
             height: 36,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(rControl),
             ),
             child: Icon(icon, color: color, size: 17),
           ),
@@ -1541,7 +1541,7 @@ class AchievementsGrid extends StatelessWidget {
         subtitle: stats.mealsLogged >= 5
             ? '${stats.mealsLogged} Mahlzeiten erfasst'
             : 'Logge 5 Mahlzeiten',
-        color: pink,
+        color: wellnessTone,
         unlocked: stats.mealsLogged >= 5,
       ),
       _Achievement(
@@ -1645,7 +1645,7 @@ class _AchievementTile extends StatelessWidget {
         color: data.unlocked
             ? data.color.withValues(alpha: 0.10)
             : surfaceSoft,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(rCard),
         border: Border.all(
           color: data.unlocked
               ? data.color.withValues(alpha: 0.40)
@@ -1659,7 +1659,7 @@ class _AchievementTile extends StatelessWidget {
             height: 34,
             decoration: BoxDecoration(
               color: tint.withValues(alpha: data.unlocked ? 0.18 : 0.08),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(rControl),
             ),
             child: Icon(data.icon, color: tint, size: 16),
           ),
@@ -1745,7 +1745,7 @@ class HealthConnectionCard extends StatelessWidget {
             height: 44,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(rControl),
             ),
             child: Icon(
               isGranted ? Icons.favorite_rounded : Icons.favorite_border_rounded,
@@ -1803,7 +1803,7 @@ class HealthConnectionCard extends StatelessWidget {
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(rControl),
                 ),
               ),
               child: const Text(
@@ -1887,7 +1887,7 @@ class ProfileActionsCard extends StatelessWidget {
             const _Divider(),
             _ActionRow(
               icon: Icons.logout_rounded,
-              color: pink,
+              color: danger,
               title: 'Ausloggen',
               subtitle: 'Zurück zum Login',
               onTap: onSignOut!,
@@ -1931,7 +1931,7 @@ class _ActionRow extends StatelessWidget {
               height: 36,
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(rControl),
               ),
               child: Icon(icon, color: color, size: 16),
             ),
@@ -1996,14 +1996,14 @@ class _InfoButton extends StatelessWidget {
       message: tooltip,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(rControl),
         child: Container(
           width: 28,
           height: 28,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: surfaceSoft,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(rControl),
           ),
           child: const Icon(
             Icons.info_outline_rounded,

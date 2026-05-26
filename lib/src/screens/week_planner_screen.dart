@@ -91,7 +91,7 @@ class WeekPlannerScreen extends StatelessWidget {
                 icon: Icons.spa_rounded,
                 title: 'Regeneration',
                 value: '$recoveryDays Recovery',
-                color: pink,
+                color: wellnessTone,
               ),
             ),
           ],

@@ -114,7 +114,7 @@ Future<void> showDaySummarySheet(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: surfaceSoft,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(rControl),
               ),
               child: SelectableText(
                 text,
@@ -153,7 +153,7 @@ Future<void> showDaySummarySheet(
                   foregroundColor: bg,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(rControl),
                   ),
                 ),
               ),

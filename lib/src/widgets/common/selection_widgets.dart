@@ -20,7 +20,7 @@ class SegmentedOptions extends StatelessWidget {
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: surfaceSoft,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(rControl),
       ),
       child: Row(
         children: [
@@ -61,7 +61,7 @@ class OptionPill extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 9),
         decoration: BoxDecoration(
           color: selected ? bg : Colors.transparent,
-          borderRadius: BorderRadius.circular(9),
+          borderRadius: BorderRadius.circular(rChip),
         ),
         child: Text(
           label,
@@ -101,7 +101,7 @@ class ShiftChoiceChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
           color: selected ? color.withValues(alpha: 0.18) : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(rControl),
           border: Border.all(
             color: selected ? color.withValues(alpha: 0.55) : hairline,
           ),
