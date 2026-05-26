@@ -812,12 +812,12 @@ class _MessageView extends StatelessWidget {
               ),
               if (message.refusal) ...[
                 const SizedBox(width: 8),
-                const Icon(Icons.info_outline_rounded, size: 12, color: orange),
+                const Icon(Icons.info_outline_rounded, size: 12, color: warning),
                 const SizedBox(width: 3),
                 const Text(
                   'Hinweis',
                   style: TextStyle(
-                    color: orange,
+                    color: warning,
                     fontSize: 10.5,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.3,
@@ -929,13 +929,13 @@ class _ErrorBanner extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(8, 8, 8, 0),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: orange.withValues(alpha: 0.12),
+        color: warning.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(rCard),
-        border: Border.all(color: orange.withValues(alpha: 0.35)),
+        border: Border.all(color: warning.withValues(alpha: 0.35)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.info_outline_rounded, size: 16, color: orange),
+          const Icon(Icons.info_outline_rounded, size: 16, color: warning),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -1193,17 +1193,17 @@ class _SessionsSheet extends StatelessWidget {
                     TextButton.icon(
                       key: const ValueKey('coach-sessions-new'),
                       onPressed: onNew,
-                      icon: const Icon(Icons.add_rounded, size: 18, color: cyan),
+                      icon: const Icon(Icons.add_rounded, size: 18, color: lime),
                       label: const Text(
                         'Neu',
                         style: TextStyle(
-                          color: cyan,
+                          color: lime,
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                       style: TextButton.styleFrom(
-                        backgroundColor: cyan.withValues(alpha: 0.08),
+                        backgroundColor: lime.withValues(alpha: 0.08),
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(rPill),
@@ -1272,7 +1272,7 @@ class _SessionsSheet extends StatelessWidget {
               Navigator.of(ctx).pop();
               onDelete(s.id);
             },
-            child: const Text('Loeschen', style: TextStyle(color: orange)),
+            child: const Text('Loeschen', style: TextStyle(color: danger)),
           ),
         ],
       ),
@@ -1310,14 +1310,14 @@ class _SessionTile extends StatelessWidget {
                 height: 32,
                 decoration: BoxDecoration(
                   color: isActive
-                      ? cyan.withValues(alpha: 0.14)
+                      ? lime.withValues(alpha: 0.14)
                       : surfaceSoft,
                   borderRadius: BorderRadius.circular(rControl),
                 ),
                 child: Icon(
                   Icons.chat_bubble_outline_rounded,
                   size: 16,
-                  color: isActive ? cyan : textMuted,
+                  color: isActive ? lime : textMuted,
                 ),
               ),
               const SizedBox(width: 12),

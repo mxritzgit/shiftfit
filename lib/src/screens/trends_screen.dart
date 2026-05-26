@@ -58,11 +58,11 @@ class TrendsScreen extends StatelessWidget {
     final bars = [
       ('Mo', 0.72, lime),
       ('Di', 0.78, lime),
-      ('Mi', 0.64, orange),
-      ('Do', 0.69, orange),
-      ('Fr', 0.54, wellnessTone),
-      ('Sa', 0.58, wellnessTone),
-      ('So', 0.86, cyan),
+      ('Mi', 0.64, lime),
+      ('Do', 0.69, lime),
+      ('Fr', 0.54, lime),
+      ('Sa', 0.58, lime),
+      ('So', 0.86, lime),
     ];
 
     final double waterRatio = waterGoalMl <= 0
