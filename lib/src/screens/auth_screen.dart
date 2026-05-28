@@ -5,10 +5,14 @@ import 'package:flutter/material.dart';
 import '../auth/auth_repository.dart';
 import '../theme/app_colors.dart';
 
-/// FitPilot Auth-Screen — „Cockpit/Ascent"-Konzept: immersiver Gradient-Hero
-/// mit Lime-Glow und aufsteigender Flugbahn (Wortspiel FitPilot), darunter ein
-/// erhabenes Form-Sheet mit Segmented-Control (Login | Registrieren), klaren
-/// Feldern und Lime-CTA. Single-Screen; Form-Logik unverändert.
+/// FitPilot Auth - ruhiger, immersiver Dark-Screen.
+///
+/// Bewusst minimal: tiefes Schwarz mit einer einzigen weichen Lime-Aurora,
+/// kompakter Brand-Mark, große Headline und Google-OAuth als prominente
+/// Primär-Aktion. Darunter cleane E-Mail-Felder und ein Lime-CTA; der
+/// Login/Registrieren-Wechsel sitzt als dezenter Text-Toggle ganz unten.
+/// Single-Screen; die Auth-Logik (Validierung, OAuth, Fehler-Mapping)
+/// ist unverändert.
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key, required this.authRepository});
 
@@ -19,7 +23,7 @@ class AuthScreen extends StatefulWidget {
 }
 
 const _dim = Color(0xFF5A5B63);
-const _ink = bg; // Text auf Lime
+const _ink = bg; // Text/Glyph auf Lime
 
 class _AuthScreenState extends State<AuthScreen> {
   final _nameController = TextEditingController();
@@ -72,8 +76,8 @@ class _AuthScreenState extends State<AuthScreen> {
       setState(() => _error = 'Bitte gib eine gültige E-Mail ein.');
       return;
     }
-    if (password.length < 6) {
-      setState(() => _error = 'Das Passwort braucht mindestens 6 Zeichen.');
+    if (password.length < 8) {
+      setState(() => _error = 'Das Passwort braucht mindestens 8 Zeichen.');
       return;
     }
     if (_isRegister && name.length < 2) {
@@ -137,37 +141,44 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenH = MediaQuery.sizeOf(context).height;
-    final heroH = (screenH * 0.36).clamp(280.0, 420.0);
     final insets = MediaQuery.viewInsetsOf(context).bottom;
 
     return Scaffold(
       key: const ValueKey('screen-auth'),
       backgroundColor: bg,
-      body: SingleChildScrollView(
-        padding: EdgeInsets.only(bottom: insets),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _Hero(height: heroH, isRegister: _isRegister),
-            Transform.translate(
-              offset: const Offset(0, -26),
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: surface,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(rSheet)),
-                  border: Border(
-                    top: BorderSide(color: hairline),
-                    left: BorderSide(color: hairline),
-                    right: BorderSide(color: hairline),
+      body: Stack(
+        children: [
+          const Positioned.fill(child: _AuroraBackdrop()),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(24, 0, 24, 28 + insets),
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: 1),
+                duration: const Duration(milliseconds: 420),
+                curve: Curves.easeOutCubic,
+                builder: (context, t, child) => Opacity(
+                  opacity: t,
+                  child: Transform.translate(
+                    offset: Offset(0, (1 - t) * 14),
+                    child: child,
                   ),
                 ),
-                padding: const EdgeInsets.fromLTRB(24, 22, 24, 28),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _SegmentedMode(isRegister: _isRegister, onChanged: _setMode),
                     const SizedBox(height: 24),
+                    const _BrandMark(),
+                    const SizedBox(height: 44),
+                    _Hero(isRegister: _isRegister),
+                    const SizedBox(height: 30),
+                    _GoogleButton(
+                      enabled: !_busy,
+                      loading: _oauthLoading == FitPilotOAuthProvider.google,
+                      onTap: () => _startOAuth(FitPilotOAuthProvider.google),
+                    ),
+                    const SizedBox(height: 20),
+                    const _OrDivider(),
+                    const SizedBox(height: 20),
                     _EmailForm(
                       isRegister: _isRegister,
                       loading: _loading,
@@ -183,19 +194,40 @@ class _AuthScreenState extends State<AuthScreen> {
                       ),
                       onSubmit: _submit,
                     ),
-                    const SizedBox(height: 20),
-                    const _OrDivider(),
-                    const SizedBox(height: 16),
-                    _GoogleButton(
-                      enabled: !_busy,
-                      loading: _oauthLoading == FitPilotOAuthProvider.google,
-                      onTap: () => _startOAuth(FitPilotOAuthProvider.google),
+                    const SizedBox(height: 22),
+                    _ModeToggle(
+                      isRegister: _isRegister,
+                      onTap: _busy ? null : () => _setMode(!_isRegister),
                     ),
                   ],
                 ),
               ),
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// Aurora-Hintergrund - eine weiche Lime-Lichtquelle oben, sonst ruhig.
+// ═════════════════════════════════════════════════════════════════════
+
+class _AuroraBackdrop extends StatelessWidget {
+  const _AuroraBackdrop();
+
+  @override
+  Widget build(BuildContext context) {
+    return const IgnorePointer(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment(0.0, -1.15),
+            radius: 1.05,
+            colors: [Color(0x2BB6F36A), Color(0x00B6F36A)],
+            stops: [0.0, 1.0],
+          ),
         ),
       ),
     );
@@ -203,301 +235,160 @@ class _AuthScreenState extends State<AuthScreen> {
 }
 
 // ═════════════════════════════════════════════════════════════════════
-// Hero — Gradient + Lime-Glow + aufsteigende Flugbahn + Brand/Headline
+// Brand-Mark - Lime-Kachel mit Bolt + Wortmarke.
+// ═════════════════════════════════════════════════════════════════════
+
+class _BrandMark extends StatelessWidget {
+  const _BrandMark();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: lime,
+            borderRadius: BorderRadius.circular(rControl),
+            boxShadow: [
+              BoxShadow(
+                color: lime.withValues(alpha: 0.40),
+                blurRadius: 22,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: const Icon(Icons.bolt_rounded, color: _ink, size: 24),
+        ),
+        const SizedBox(width: 11),
+        const Text(
+          'FitPilot',
+          style: TextStyle(
+            fontSize: 21,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.6,
+            color: textPrimary,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// Hero - Eyebrow + große Headline + ruhige Subline.
 // ═════════════════════════════════════════════════════════════════════
 
 class _Hero extends StatelessWidget {
-  const _Hero({required this.height, required this.isRegister});
+  const _Hero({required this.isRegister});
 
-  final double height;
   final bool isRegister;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    return Column(
       key: const ValueKey('auth-hero'),
-      height: height,
-      width: double.infinity,
-      child: Stack(
-        children: [
-          // Basis-Gradient
-          const Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF161B22), Color(0xFF0E1116), bg],
-                  stops: [0, 0.55, 1],
-                ),
-              ),
-            ),
-          ),
-          // Lime-Glow oben rechts
-          Positioned(
-            top: -90,
-            right: -70,
-            child: _GlowBlob(color: lime, size: 280, alpha: 0.20),
-          ),
-          // zweiter, schwacher Brand-Glow unten links (eine Akzentfarbe, gelockt)
-          Positioned(
-            bottom: -60,
-            left: -80,
-            child: _GlowBlob(color: lime, size: 220, alpha: 0.07),
-          ),
-          // aufsteigende Flugbahn
-          const Positioned.fill(
-            child: CustomPaint(painter: _FlightPathPainter()),
-          ),
-          // Inhalt
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(28, 22, 28, 40),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: lime,
-                          borderRadius: BorderRadius.circular(rControl),
-                          boxShadow: [
-                            BoxShadow(
-                              color: lime.withValues(alpha: 0.45),
-                              blurRadius: 18,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
-                        ),
-                        child: const Center(
-                          child: SizedBox(
-                            width: 19,
-                            height: 19,
-                            child: CustomPaint(painter: _PaperPlanePainter()),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 11),
-                      const Text(
-                        'FITPILOT',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 2.4,
-                          color: textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Spacer(),
-                  Text(
-                    isRegister ? 'KONTO ERSTELLEN' : 'WILLKOMMEN AN BORD',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      letterSpacing: 2.2,
-                      fontWeight: FontWeight.w700,
-                      color: lime,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    isRegister ? 'Bereit zum\nAbheben?' : 'Zurück im\nCockpit.',
-                    style: const TextStyle(
-                      fontSize: 36,
-                      height: 1.02,
-                      letterSpacing: -1.2,
-                      fontWeight: FontWeight.w800,
-                      color: textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    isRegister
-                        ? 'Erstell dein Konto und starte durch.'
-                        : 'Melde dich an und mach da weiter, wo du warst.',
-                    style: const TextStyle(
-                      color: textMuted,
-                      fontSize: 14,
-                      height: 1.4,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GlowBlob extends StatelessWidget {
-  const _GlowBlob({required this.color, required this.size, required this.alpha});
-
-  final Color color;
-  final double size;
-  final double alpha;
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [color.withValues(alpha: alpha), color.withValues(alpha: 0)],
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          isRegister ? 'KONTO ERSTELLEN' : 'WILLKOMMEN ZURÜCK',
+          style: const TextStyle(
+            fontSize: 11,
+            letterSpacing: 2.0,
+            fontWeight: FontWeight.w700,
+            color: lime,
           ),
         ),
-      ),
+        const SizedBox(height: 12),
+        Text(
+          isRegister ? 'Starte deine\nReise.' : 'Schön,\ndich zu sehen.',
+          style: const TextStyle(
+            fontSize: 38,
+            height: 1.04,
+            letterSpacing: -1.4,
+            fontWeight: FontWeight.w800,
+            color: textPrimary,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          isRegister
+              ? 'Erstell dein Konto und richte in einer Minute dein Tagesziel ein.'
+              : 'Melde dich an und mach genau da weiter, wo du aufgehört hast.',
+          style: const TextStyle(
+            color: textMuted,
+            fontSize: 15,
+            height: 1.45,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
-}
-
-class _FlightPathPainter extends CustomPainter {
-  const _FlightPathPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final start = Offset(size.width * 0.04, size.height * 0.92);
-    final end = Offset(size.width * 0.82, size.height * 0.30);
-    final ctrl = Offset(size.width * 0.34, size.height * 0.40);
-
-    final path = Path()
-      ..moveTo(start.dx, start.dy)
-      ..quadraticBezierTo(ctrl.dx, ctrl.dy, end.dx, end.dy);
-
-    // weicher Schein
-    canvas.drawPath(
-      path,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 6
-        ..strokeCap = StrokeCap.round
-        ..color = lime.withValues(alpha: 0.06),
-    );
-    // feine Linie
-    canvas.drawPath(
-      path,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.6
-        ..strokeCap = StrokeCap.round
-        ..color = lime.withValues(alpha: 0.40),
-    );
-
-    // Wegpunkt am Ende
-    canvas.drawCircle(end, 9, Paint()..color = lime.withValues(alpha: 0.16));
-    canvas.drawCircle(end, 3.4, Paint()..color = lime);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _PaperPlanePainter extends CustomPainter {
-  const _PaperPlanePainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final p = Paint()
-      ..color = _ink
-      ..style = PaintingStyle.fill;
-    final path = Path()
-      ..moveTo(size.width * 0.18, size.height * 0.55)
-      ..lineTo(size.width * 0.86, size.height * 0.18)
-      ..lineTo(size.width * 0.62, size.height * 0.86)
-      ..lineTo(size.width * 0.50, size.height * 0.62)
-      ..close();
-    canvas.drawPath(path, p);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 // ═════════════════════════════════════════════════════════════════════
-// Segmented-Control — Login | Registrieren
+// Google-Button - weiße, prominente Primär-Aktion (OAuth).
 // ═════════════════════════════════════════════════════════════════════
 
-class _SegmentedMode extends StatelessWidget {
-  const _SegmentedMode({required this.isRegister, required this.onChanged});
-
-  final bool isRegister;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: surfaceSoft,
-        borderRadius: BorderRadius.circular(rCard),
-        border: Border.all(color: hairline),
-      ),
-      child: Row(
-        children: [
-          _Segment(
-            segmentKey: const ValueKey('auth-toggle-login'),
-            label: 'Login',
-            selected: !isRegister,
-            onTap: () => onChanged(false),
-          ),
-          _Segment(
-            segmentKey: const ValueKey('auth-toggle-register'),
-            label: 'Registrieren',
-            selected: isRegister,
-            onTap: () => onChanged(true),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Segment extends StatelessWidget {
-  const _Segment({
-    required this.segmentKey,
-    required this.label,
-    required this.selected,
+class _GoogleButton extends StatelessWidget {
+  const _GoogleButton({
+    required this.enabled,
+    required this.loading,
     required this.onTap,
   });
 
-  final Key segmentKey;
-  final String label;
-  final bool selected;
+  final bool enabled;
+  final bool loading;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        key: segmentKey,
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(vertical: 11),
+    return GestureDetector(
+      key: const ValueKey('auth-google-oauth'),
+      onTap: enabled ? onTap : null,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 160),
+        opacity: enabled ? 1 : 0.55,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 18),
           decoration: BoxDecoration(
-            color: selected ? lime : Colors.transparent,
-            borderRadius: BorderRadius.circular(rControl),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(rPill),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x33000000),
+                blurRadius: 20,
+                offset: Offset(0, 8),
+              ),
+            ],
           ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w700,
-              color: selected ? _ink : textMuted,
-              letterSpacing: -0.1,
-            ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: loading
+                    ? const CircularProgressIndicator(
+                        strokeWidth: 2.2, color: _ink)
+                    : const CustomPaint(painter: _GoogleGPainter()),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Mit Google anmelden',
+                style: TextStyle(
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1A1C1E),
+                  letterSpacing: -0.1,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -505,8 +396,74 @@ class _Segment extends StatelessWidget {
   }
 }
 
+class _GoogleGPainter extends CustomPainter {
+  const _GoogleGPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final r = size.width / 2 - 1;
+    const stroke = 2.8;
+
+    void arc(double startDeg, double sweepDeg, Color color) {
+      final p = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..color = color;
+      canvas.drawArc(
+        Rect.fromCircle(center: Offset(cx, cy), radius: r),
+        startDeg * math.pi / 180,
+        sweepDeg * math.pi / 180,
+        false,
+        p,
+      );
+    }
+
+    arc(-90, 90, const Color(0xFF4285F4));
+    arc(0, 90, const Color(0xFF34A853));
+    arc(90, 90, const Color(0xFFFBBC05));
+    arc(180, 90, const Color(0xFFEA4335));
+
+    final p = Paint()..color = const Color(0xFF4285F4);
+    canvas.drawRect(Rect.fromLTWH(cx, cy - 1.4, r, 2.8), p);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 // ═════════════════════════════════════════════════════════════════════
-// Email-Form
+// ODER-Divider
+// ═════════════════════════════════════════════════════════════════════
+
+class _OrDivider extends StatelessWidget {
+  const _OrDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Expanded(child: Divider(color: hairline, height: 1)),
+        const SizedBox(width: 12),
+        Text(
+          'oder mit E-Mail',
+          style: TextStyle(
+            fontSize: 12,
+            color: textMuted.withValues(alpha: 0.85),
+            letterSpacing: 0.2,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(width: 12),
+        const Expanded(child: Divider(color: hairline, height: 1)),
+      ],
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// E-Mail-Form
 // ═════════════════════════════════════════════════════════════════════
 
 class _EmailForm extends StatelessWidget {
@@ -543,13 +500,13 @@ class _EmailForm extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AnimatedSize(
-          duration: const Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 220),
           curve: Curves.easeOutCubic,
           alignment: Alignment.topCenter,
           child: isRegister
               ? Padding(
                   key: const ValueKey('name-field-wrap'),
-                  padding: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.only(bottom: 14),
                   child: _AuthField(
                     fieldKey: const ValueKey('auth-name-field'),
                     icon: Icons.person_outline_rounded,
@@ -574,12 +531,12 @@ class _EmailForm extends StatelessWidget {
           textInputAction: TextInputAction.next,
           autofillHints: const [AutofillHints.email],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         _AuthField(
           fieldKey: const ValueKey('auth-password-field'),
           icon: Icons.lock_outline_rounded,
           label: 'Passwort',
-          hint: 'Mind. 6 Zeichen',
+          hint: 'Mind. 8 Zeichen',
           controller: passwordController,
           enabled: !busy,
           obscure: !passwordVisible,
@@ -598,7 +555,7 @@ class _EmailForm extends StatelessWidget {
                 passwordVisible
                     ? Icons.visibility_off_rounded
                     : Icons.visibility_rounded,
-                size: 18,
+                size: 19,
                 color: textMuted,
               ),
             ),
@@ -613,7 +570,7 @@ class _EmailForm extends StatelessWidget {
           _InlineNote(text: message!, isError: false),
         ],
         const SizedBox(height: 22),
-        _LimePill(
+        _PrimaryCta(
           buttonKey: const ValueKey('auth-submit'),
           label: isRegister ? 'Account erstellen' : 'Einloggen',
           loading: loading,
@@ -626,7 +583,7 @@ class _EmailForm extends StatelessWidget {
 }
 
 // ═════════════════════════════════════════════════════════════════════
-// Auth-Field — Label + boxed Input mit Leading-Icon, Lime-Fokus
+// Auth-Field - Label oben, gefülltes Feld mit Leading-Icon, Lime-Fokus.
 // ═════════════════════════════════════════════════════════════════════
 
 class _AuthField extends StatefulWidget {
@@ -686,19 +643,19 @@ class _AuthFieldState extends State<_AuthField> {
         Text(
           widget.label.toUpperCase(),
           style: const TextStyle(
-            fontSize: 10,
-            letterSpacing: 1.2,
+            fontSize: 10.5,
+            letterSpacing: 1.0,
             color: textMuted,
             fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(height: 7),
+        const SizedBox(height: 8),
         AnimatedContainer(
           duration: const Duration(milliseconds: 160),
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(rCard),
+            color: surfaceSoft,
+            borderRadius: BorderRadius.circular(rControl),
             border: Border.all(
               color: focused ? lime : hairline,
               width: focused ? 1.5 : 1,
@@ -729,6 +686,9 @@ class _AuthFieldState extends State<_AuthField> {
                   decoration: InputDecoration(
                     isCollapsed: true,
                     border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    filled: false,
                     contentPadding: const EdgeInsets.symmetric(vertical: 16),
                     hintText: widget.hint,
                     hintStyle: const TextStyle(
@@ -749,11 +709,11 @@ class _AuthFieldState extends State<_AuthField> {
 }
 
 // ═════════════════════════════════════════════════════════════════════
-// Lime-Pill — Primary CTA
+// Primär-CTA - Lime-Pill (E-Mail-Login/Registrieren).
 // ═════════════════════════════════════════════════════════════════════
 
-class _LimePill extends StatelessWidget {
-  const _LimePill({
+class _PrimaryCta extends StatelessWidget {
+  const _PrimaryCta({
     required this.buttonKey,
     required this.label,
     required this.loading,
@@ -780,13 +740,13 @@ class _LimePill extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 17),
         decoration: BoxDecoration(
           color: disabled ? surfaceSoft : lime,
-          borderRadius: BorderRadius.circular(rCard),
+          borderRadius: BorderRadius.circular(rPill),
           boxShadow: disabled
               ? null
               : [
                   BoxShadow(
-                    color: lime.withValues(alpha: 0.28),
-                    blurRadius: 20,
+                    color: lime.withValues(alpha: 0.30),
+                    blurRadius: 22,
                     offset: const Offset(0, 8),
                   ),
                 ],
@@ -804,8 +764,8 @@ class _LimePill extends StatelessWidget {
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.w800,
                   color: disabled ? textMuted : _ink,
                   letterSpacing: -0.1,
                 ),
@@ -813,7 +773,7 @@ class _LimePill extends StatelessWidget {
               const SizedBox(width: 8),
               Icon(
                 Icons.arrow_forward_rounded,
-                size: 17,
+                size: 18,
                 color: disabled ? textMuted : _ink,
               ),
             ],
@@ -825,129 +785,52 @@ class _LimePill extends StatelessWidget {
 }
 
 // ═════════════════════════════════════════════════════════════════════
-// Google-Button
+// Mode-Toggle - dezenter Text-Wechsel Login/Registrieren.
 // ═════════════════════════════════════════════════════════════════════
 
-class _GoogleButton extends StatelessWidget {
-  const _GoogleButton({
-    required this.enabled,
-    required this.loading,
-    required this.onTap,
-  });
+class _ModeToggle extends StatelessWidget {
+  const _ModeToggle({required this.isRegister, required this.onTap});
 
-  final bool enabled;
-  final bool loading;
-  final VoidCallback onTap;
+  final bool isRegister;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      key: const ValueKey('auth-google-oauth'),
-      onTap: enabled ? onTap : null,
+      key: ValueKey(isRegister ? 'auth-toggle-login' : 'auth-toggle-register'),
+      onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: Opacity(
-        opacity: enabled ? 1 : 0.55,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 18),
-          decoration: BoxDecoration(
-            color: bg,
-            border: Border.all(color: hairline),
-            borderRadius: BorderRadius.circular(rCard),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: 18,
-                height: 18,
-                child: loading
-                    ? const CircularProgressIndicator(
-                        strokeWidth: 2.2, color: textPrimary)
-                    : const CustomPaint(painter: _GoogleGPainter()),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              isRegister ? 'Schon dabei?' : 'Noch kein Konto?',
+              style: const TextStyle(
+                color: textMuted,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
               ),
-              const SizedBox(width: 12),
-              const Text(
-                'Mit Google anmelden',
-                style: TextStyle(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w600,
-                  color: textPrimary,
-                ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              isRegister ? 'Einloggen' : 'Registrieren',
+              style: const TextStyle(
+                color: lime,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _GoogleGPainter extends CustomPainter {
-  const _GoogleGPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-    final r = size.width / 2 - 1;
-    const stroke = 2.6;
-
-    void arc(double startDeg, double sweepDeg, Color color) {
-      final p = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = stroke
-        ..color = color;
-      canvas.drawArc(
-        Rect.fromCircle(center: Offset(cx, cy), radius: r),
-        startDeg * math.pi / 180,
-        sweepDeg * math.pi / 180,
-        false,
-        p,
-      );
-    }
-
-    arc(-90, 90, const Color(0xFF4285F4));
-    arc(0, 90, const Color(0xFF34A853));
-    arc(90, 90, const Color(0xFFFBBC05));
-    arc(180, 90, const Color(0xFFEA4335));
-
-    final p = Paint()..color = const Color(0xFF4285F4);
-    canvas.drawRect(Rect.fromLTWH(cx, cy - 1.3, r, 2.6), p);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
 // ═════════════════════════════════════════════════════════════════════
-// ODER-Divider
-// ═════════════════════════════════════════════════════════════════════
-
-class _OrDivider extends StatelessWidget {
-  const _OrDivider();
-  @override
-  Widget build(BuildContext context) {
-    return Row(children: [
-      const Expanded(child: Divider(color: hairline, height: 1)),
-      const SizedBox(width: 12),
-      Text(
-        'ODER',
-        style: TextStyle(
-          fontSize: 11,
-          color: textMuted.withValues(alpha: 0.8),
-          letterSpacing: 1.6,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      const SizedBox(width: 12),
-      const Expanded(child: Divider(color: hairline, height: 1)),
-    ]);
-  }
-}
-
-// ═════════════════════════════════════════════════════════════════════
-// Inline-Note
+// Inline-Note - Fehler (danger) / Bestätigung (lime).
 // ═════════════════════════════════════════════════════════════════════
 
 class _InlineNote extends StatelessWidget {
@@ -974,7 +857,7 @@ class _InlineNote extends StatelessWidget {
             isError
                 ? Icons.error_outline_rounded
                 : Icons.check_circle_outline_rounded,
-            size: 15,
+            size: 16,
             color: color,
           ),
           const SizedBox(width: 9),
