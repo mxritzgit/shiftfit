@@ -11,8 +11,11 @@ import 'app_colors.dart';
 /// und Lime als einzige Interaktionsfarbe zentral, damit jeder Screen ohne
 /// lokale Sonderfälle konsistent wirkt.
 ThemeData buildShiftFitTheme() {
+  final fontFamily = GoogleFonts.manrope().fontFamily;
+
   final base = ThemeData(
     useMaterial3: true,
+    fontFamily: fontFamily,
     brightness: Brightness.dark,
     colorScheme: ColorScheme.fromSeed(
       seedColor: lime,
@@ -25,8 +28,6 @@ ThemeData buildShiftFitTheme() {
     ),
     scaffoldBackgroundColor: bg,
   );
-
-  final fontFamily = GoogleFonts.manrope().fontFamily;
 
   final textTheme = GoogleFonts.manropeTextTheme(base.textTheme)
       .apply(bodyColor: textPrimary, displayColor: textPrimary)
@@ -44,7 +45,6 @@ ThemeData buildShiftFitTheme() {
       );
 
   return base.copyWith(
-    fontFamily: fontFamily,
     textTheme: textTheme,
     primaryTextTheme: textTheme,
     dividerColor: hairline,
