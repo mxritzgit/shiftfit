@@ -30,129 +30,163 @@ class CaloriesOverviewCard extends StatelessWidget {
     final progress = (eaten / adjustedGoal).clamp(0.0, 1.0);
     final remainingColor = remaining >= 0 ? lime : danger;
 
-    return AppCard(
-      key: const ValueKey('analyse-daily-kcal-card'),
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxHeight = constraints.hasBoundedHeight
+            ? constraints.maxHeight
+            : double.infinity;
+        final compact = maxHeight < 220;
+        final tight = maxHeight < 185;
+        final padding = EdgeInsets.all(tight ? 12 : (compact ? 14 : 18));
+        final ringSize = tight ? 64.0 : (compact ? 78.0 : 108.0);
+        final remainingSize = tight ? 34.0 : (compact ? 38.0 : 46.0);
+        final titleGap = tight ? 5.0 : (compact ? 7.0 : 10.0);
+        final statsGap = tight ? 6.0 : (compact ? 8.0 : 12.0);
+        final showSubtitle = !tight;
+
+        return AppCard(
+          key: const ValueKey('analyse-daily-kcal-card'),
+          padding: padding,
+          child: Column(
+            mainAxisAlignment:
+                compact ? MainAxisAlignment.start : MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'ÜBRIGE KALORIEN',
-                      style: TextStyle(
-                        color: textMuted,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      _formatThousands(remaining),
-                      style: TextStyle(
-                        color: remainingColor,
-                        fontSize: 46,
-                        fontWeight: FontWeight.w800,
-                        height: 1.0,
-                        letterSpacing: -1.8,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      'kcal',
-                      style: TextStyle(
-                        color: textPrimary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      remaining >= 0
-                          ? '$eaten von $adjustedGoal kcal'
-                          : '${-remaining} kcal über Ziel',
-                      style: const TextStyle(
-                        color: textMuted,
-                        fontSize: 11,
-                        height: 1.3,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(
-                width: 108,
-                height: 108,
-                child: _ProgressRing(
-                  progress: progress,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '${(progress * 100).round()}%',
-                        style: const TextStyle(
-                          color: textPrimary,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'ÜBRIGE KALORIEN',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: textMuted,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.4,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      const Text(
-                        'des Ziels',
-                        style: TextStyle(
-                          color: textMuted,
-                          fontSize: 10,
+                        SizedBox(height: titleGap),
+                        Text(
+                          _formatThousands(remaining),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: remainingColor,
+                            fontSize: remainingSize,
+                            fontWeight: FontWeight.w800,
+                            height: 1.0,
+                            letterSpacing: compact ? -1.2 : -1.8,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
                         ),
-                      ),
-                    ],
+                        SizedBox(height: tight ? 1 : 2),
+                        Text(
+                          'kcal',
+                          style: TextStyle(
+                            color: textPrimary,
+                            fontSize: tight ? 12 : 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        if (showSubtitle) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            remaining >= 0
+                                ? '$eaten von $adjustedGoal kcal'
+                                : '${-remaining} kcal über Ziel',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: textMuted,
+                              fontSize: 11,
+                              height: 1.3,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
-                ),
+                  SizedBox(width: compact ? 8 : 10),
+                  SizedBox(
+                    width: ringSize,
+                    height: ringSize,
+                    child: _ProgressRing(
+                      progress: progress,
+                      strokeWidth: compact ? 8 : 10,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '${(progress * 100).round()}%',
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontSize: tight ? 16 : (compact ? 18 : 20),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          SizedBox(height: tight ? 0 : 2),
+                          Text(
+                            'des Ziels',
+                            style: TextStyle(
+                              color: textMuted,
+                              fontSize: tight ? 8.5 : 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: statsGap),
+              Row(
+                children: [
+                  Expanded(
+                    child: _StatTile(
+                      icon: Icons.gps_fixed_rounded,
+                      iconColor: lime,
+                      label: 'ZIEL',
+                      value: _formatThousands(goal),
+                      compact: compact,
+                      tight: tight,
+                    ),
+                  ),
+                  SizedBox(width: compact ? 6 : 8),
+                  Expanded(
+                    child: _StatTile(
+                      icon: Icons.restaurant_rounded,
+                      iconColor: lime,
+                      label: 'GEGESSEN',
+                      combinedKcal: '$eaten kcal',
+                      combinedKcalKey: const ValueKey('analyse-daily-kcal-total'),
+                      compact: compact,
+                      tight: tight,
+                    ),
+                  ),
+                  SizedBox(width: compact ? 6 : 8),
+                  Expanded(
+                    child: _StatTile(
+                      icon: Icons.local_fire_department_outlined,
+                      iconColor: cyan,
+                      label: 'VERBRANNT',
+                      value: burned == 0 ? '—' : _formatThousands(burned),
+                      showKcalSuffix: burned != 0,
+                      compact: compact,
+                      tight: tight,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _StatTile(
-                  icon: Icons.gps_fixed_rounded,
-                  iconColor: lime,
-                  label: 'ZIEL',
-                  value: _formatThousands(goal),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _StatTile(
-                  icon: Icons.restaurant_rounded,
-                  iconColor: lime,
-                  label: 'GEGESSEN',
-                  combinedKcal: '$eaten kcal',
-                  combinedKcalKey: const ValueKey('analyse-daily-kcal-total'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _StatTile(
-                  icon: Icons.local_fire_department_outlined,
-                  iconColor: cyan,
-                  label: 'VERBRANNT',
-                  value: burned == 0 ? '—' : _formatThousands(burned),
-                  showKcalSuffix: burned != 0,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -166,6 +200,8 @@ class _StatTile extends StatelessWidget {
     this.showKcalSuffix = true,
     this.combinedKcal,
     this.combinedKcalKey,
+    this.compact = false,
+    this.tight = false,
   }) : assert(value != null || combinedKcal != null);
 
   final IconData icon;
@@ -175,59 +211,75 @@ class _StatTile extends StatelessWidget {
   final bool showKcalSuffix;
   final String? combinedKcal;
   final Key? combinedKcalKey;
+  final bool compact;
+  final bool tight;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 8),
+      padding: EdgeInsets.symmetric(
+        vertical: tight ? 6 : (compact ? 7 : 11),
+        horizontal: compact ? 6 : 8,
+      ),
       decoration: BoxDecoration(
         color: surfaceSoft,
         borderRadius: BorderRadius.circular(rControl),
         border: Border.all(color: hairline),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: iconColor, size: 12),
-              const SizedBox(width: 4),
+              Icon(icon, color: iconColor, size: compact ? 10 : 12),
+              SizedBox(width: compact ? 3 : 4),
               Flexible(
                 child: Text(
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: textMuted,
-                    fontSize: 9,
+                    fontSize: compact ? 8.2 : 9,
                     fontWeight: FontWeight.w600,
-                    letterSpacing: 0.6,
+                    letterSpacing: compact ? 0.35 : 0.6,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: tight ? 2 : 4),
           if (combinedKcal != null)
-            Text(
-              combinedKcal!,
-              key: combinedKcalKey,
-              style: const TextStyle(
-                color: textPrimary,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                combinedKcal!,
+                key: combinedKcalKey,
+                maxLines: 1,
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: compact ? 12.5 : 14,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
               ),
             )
           else ...[
-            Text(
-              value!,
-              style: const TextStyle(
-                color: textPrimary,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                value!,
+                maxLines: 1,
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: compact ? 13 : 15,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
               ),
             ),
-            if (showKcalSuffix)
+            if (showKcalSuffix && !tight)
               const Text(
                 'kcal',
                 style: TextStyle(
@@ -243,28 +295,34 @@ class _StatTile extends StatelessWidget {
 }
 
 class _ProgressRing extends StatelessWidget {
-  const _ProgressRing({required this.progress, required this.child});
+  const _ProgressRing({
+    required this.progress,
+    required this.child,
+    this.strokeWidth = 10,
+  });
 
   final double progress;
   final Widget child;
+  final double strokeWidth;
 
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      painter: _RingPainter(progress: progress),
+      painter: _RingPainter(progress: progress, strokeWidth: strokeWidth),
       child: Center(child: child),
     );
   }
 }
 
 class _RingPainter extends CustomPainter {
-  _RingPainter({required this.progress});
+  _RingPainter({required this.progress, required this.strokeWidth});
 
   final double progress;
+  final double strokeWidth;
 
   @override
   void paint(Canvas canvas, Size size) {
-    const stroke = 10.0;
+    final stroke = strokeWidth;
     final rect = Offset(stroke / 2, stroke / 2) &
         Size(size.width - stroke, size.height - stroke);
     final center = rect.center;
@@ -307,7 +365,8 @@ class _RingPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _RingPainter old) => old.progress != progress;
+  bool shouldRepaint(covariant _RingPainter old) =>
+      old.progress != progress || old.strokeWidth != strokeWidth;
 }
 
 class MacrosOverviewCard extends StatelessWidget {

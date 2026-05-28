@@ -101,7 +101,7 @@ class MealAnalysisScreen extends StatelessWidget {
           SizedBox(height: boundedHeight ? 8 : 10),
           if (boundedHeight)
             Expanded(
-              flex: 36,
+              flex: 40,
               child: CaloriesOverviewCard(
                 dailyConsumedKcal: dailyConsumedKcal,
                 kcalGoal: profile.dailyKcalGoal,
@@ -117,7 +117,7 @@ class MealAnalysisScreen extends StatelessWidget {
           const SizedBox(height: 10),
           if (boundedHeight)
             Expanded(
-              flex: 20,
+              flex: 18,
               child: MacrosOverviewCard(
                 progress: macroProgress,
                 profile: profile,
@@ -131,7 +131,7 @@ class MealAnalysisScreen extends StatelessWidget {
           const SizedBox(height: 10),
           if (boundedHeight)
             Expanded(
-              flex: 44,
+              flex: 42,
               child: MealsTodayCard(
                 meals: loggedMeals,
                 onMealTap: (slot) => _openAddSheet(context, slot),

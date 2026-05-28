@@ -5,13 +5,13 @@ import 'app_colors.dart';
 
 /// Premium-Dark Theme für FitPilot.
 ///
-/// Eine Schrift (Manrope) trägt die gesamte App — Hierarchie entsteht über
+/// Eine Schrift (Plus Jakarta Sans) trägt die gesamte App — Hierarchie entsteht über
 /// Gewicht, Größe und Tracking, nicht über Font-Wechsel. Komponenten-Themes
 /// setzen Tiefe (getönte Schatten statt Schwarz), die gelockte Radius-Skala
 /// und Lime als einzige Interaktionsfarbe zentral, damit jeder Screen ohne
 /// lokale Sonderfälle konsistent wirkt.
 ThemeData buildShiftFitTheme() {
-  final fontFamily = GoogleFonts.manrope().fontFamily;
+  final fontFamily = GoogleFonts.plusJakartaSans().fontFamily;
 
   final base = ThemeData(
     useMaterial3: true,
@@ -29,15 +29,15 @@ ThemeData buildShiftFitTheme() {
     scaffoldBackgroundColor: bg,
   );
 
-  final textTheme = GoogleFonts.manropeTextTheme(base.textTheme)
+  final textTheme = GoogleFonts.plusJakartaSansTextTheme(base.textTheme)
       .apply(bodyColor: textPrimary, displayColor: textPrimary)
       .copyWith(
-        bodyMedium: GoogleFonts.manrope(
+        bodyMedium: GoogleFonts.plusJakartaSans(
           color: textPrimary,
           fontSize: 14,
           height: 1.45,
         ),
-        bodySmall: GoogleFonts.manrope(
+        bodySmall: GoogleFonts.plusJakartaSans(
           color: textMuted,
           fontSize: 13,
           height: 1.45,
@@ -66,7 +66,7 @@ ThemeData buildShiftFitTheme() {
     ),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: surfaceSoft,
-      contentTextStyle: GoogleFonts.manrope(
+      contentTextStyle: GoogleFonts.plusJakartaSans(
         color: textPrimary,
         fontWeight: FontWeight.w600,
         fontSize: 13.5,
@@ -105,7 +105,7 @@ ThemeData buildShiftFitTheme() {
       backgroundColor: surfaceSoft,
       selectedColor: lime,
       side: BorderSide.none,
-      labelStyle: GoogleFonts.manrope(
+      labelStyle: GoogleFonts.plusJakartaSans(
         color: textPrimary,
         fontSize: 12,
         fontWeight: FontWeight.w600,
@@ -117,8 +117,8 @@ ThemeData buildShiftFitTheme() {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: surfaceSoft,
-      hintStyle: GoogleFonts.manrope(color: textMuted),
-      labelStyle: GoogleFonts.manrope(color: textMuted),
+      hintStyle: GoogleFonts.plusJakartaSans(color: textMuted),
+      labelStyle: GoogleFonts.plusJakartaSans(color: textMuted),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(rControl),
