@@ -60,8 +60,12 @@ class OptionPill extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(vertical: 9),
         decoration: BoxDecoration(
-          color: selected ? bg : Colors.transparent,
+          color: selected ? surface : Colors.transparent,
           borderRadius: BorderRadius.circular(rChip),
+          border: selected
+              ? const Border.fromBorderSide(BorderSide(color: hairline))
+              : null,
+          boxShadow: selected ? cardShadow : null,
         ),
         child: Text(
           label,

@@ -3,21 +3,48 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 
 class AppCard extends StatelessWidget {
-  const AppCard({super.key, required this.child, this.padding = EdgeInsets.zero});
+  const AppCard({
+    super.key,
+    required this.child,
+    this.padding = EdgeInsets.zero,
+    this.radius,
+    this.elevated = true,
+  });
 
   final Widget child;
   final EdgeInsetsGeometry padding;
 
+  /// Override the corner radius. Defaults to [rCard]; pass [rSheet] for the
+  /// occasional large container that should read as a panel.
+  final double? radius;
+
+  /// Soft tinted elevation. On by default for the premium-dark depth; turn it
+  /// off for cards that sit directly on another elevated surface.
+  final bool elevated;
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: padding,
+    final r = radius ?? rCard;
+    return DecoratedBox(
       decoration: BoxDecoration(
-        color: surface,
-        borderRadius: BorderRadius.circular(rSheet),
-        border: Border.all(color: hairline),
+        borderRadius: BorderRadius.circular(r),
+        boxShadow: elevated ? cardShadow : null,
       ),
-      child: child,
+      child: Container(
+        padding: padding,
+        decoration: BoxDecoration(
+          // Faint lit top edge fading into the card body — physical, not flat.
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [cardSheenTop, surface],
+            stops: [0.0, 0.55],
+          ),
+          borderRadius: BorderRadius.circular(r),
+          border: Border.all(color: hairline),
+        ),
+        child: child,
+      ),
     );
   }
 }
@@ -33,8 +60,9 @@ class StatusPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(rChip),
+        border: Border.all(color: color.withValues(alpha: 0.22)),
       ),
       child: Text(
         label,
@@ -42,7 +70,7 @@ class StatusPill extends StatelessWidget {
           color: color,
           fontSize: 11,
           letterSpacing: 0.3,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
@@ -98,9 +126,9 @@ class SectionHeader extends StatelessWidget {
             child: Text(
               title,
               style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                letterSpacing: -0.2,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
               ),
             ),
           ),

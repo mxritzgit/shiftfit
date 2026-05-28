@@ -28,6 +28,14 @@ class ShiftFitBottomNav extends StatelessWidget {
       decoration: const BoxDecoration(
         color: bg,
         border: Border(top: BorderSide(color: hairline)),
+        boxShadow: [
+          BoxShadow(
+            color: shadowTint,
+            blurRadius: 24,
+            offset: Offset(0, -8),
+            spreadRadius: -4,
+          ),
+        ],
       ),
       child: Row(
         children: [

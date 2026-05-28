@@ -1,7 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
 
+/// Premium-Dark Theme für FitPilot.
+///
+/// Eine Schrift (Manrope) trägt die gesamte App — Hierarchie entsteht über
+/// Gewicht, Größe und Tracking, nicht über Font-Wechsel. Komponenten-Themes
+/// setzen Tiefe (getönte Schatten statt Schwarz), die gelockte Radius-Skala
+/// und Lime als einzige Interaktionsfarbe zentral, damit jeder Screen ohne
+/// lokale Sonderfälle konsistent wirkt.
 ThemeData buildShiftFitTheme() {
   final base = ThemeData(
     useMaterial3: true,
@@ -11,26 +19,46 @@ ThemeData buildShiftFitTheme() {
       brightness: Brightness.dark,
       surface: surface,
       primary: lime,
+      // Dunkler Text/Icon auf der hellen Lime-Fläche (Kontrast-Lock).
+      onPrimary: bg,
+      error: danger,
     ),
     scaffoldBackgroundColor: bg,
-    fontFamily: 'Roboto',
   );
 
-  return base.copyWith(
-    textTheme: base.textTheme
-        .apply(bodyColor: textPrimary, displayColor: textPrimary)
-        .copyWith(
-          bodyMedium: const TextStyle(
-            color: textPrimary,
-            fontSize: 14,
-            height: 1.4,
-          ),
-          bodySmall: const TextStyle(color: textMuted, fontSize: 13, height: 1.4),
+  final fontFamily = GoogleFonts.manrope().fontFamily;
+
+  final textTheme = GoogleFonts.manropeTextTheme(base.textTheme)
+      .apply(bodyColor: textPrimary, displayColor: textPrimary)
+      .copyWith(
+        bodyMedium: GoogleFonts.manrope(
+          color: textPrimary,
+          fontSize: 14,
+          height: 1.45,
         ),
+        bodySmall: GoogleFonts.manrope(
+          color: textMuted,
+          fontSize: 13,
+          height: 1.45,
+        ),
+      );
+
+  return base.copyWith(
+    fontFamily: fontFamily,
+    textTheme: textTheme,
+    primaryTextTheme: textTheme,
     dividerColor: hairline,
+    dividerTheme: const DividerThemeData(
+      color: hairline,
+      thickness: 1,
+      space: 1,
+    ),
+    splashColor: lime.withValues(alpha: 0.06),
+    highlightColor: lime.withValues(alpha: 0.04),
     cardTheme: CardThemeData(
       color: surface,
       elevation: 0,
+      shadowColor: shadowTint,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(rCard),
         side: const BorderSide(color: hairline),
@@ -38,18 +66,59 @@ ThemeData buildShiftFitTheme() {
     ),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: surfaceSoft,
-      contentTextStyle: const TextStyle(
+      contentTextStyle: GoogleFonts.manrope(
         color: textPrimary,
         fontWeight: FontWeight.w600,
+        fontSize: 13.5,
       ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rCard)),
+      actionTextColor: lime,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(rControl),
+      ),
       behavior: SnackBarBehavior.floating,
+      elevation: 8,
+    ),
+    bottomSheetTheme: const BottomSheetThemeData(
+      backgroundColor: surface,
+      surfaceTintColor: Colors.transparent,
+      modalBackgroundColor: surface,
+      showDragHandle: false,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(rSheet)),
+      ),
+    ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: surface,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(rSheet),
+        side: const BorderSide(color: hairline),
+      ),
+    ),
+    progressIndicatorTheme: const ProgressIndicatorThemeData(
+      color: lime,
+      linearTrackColor: surfaceSoft,
+      circularTrackColor: surfaceSoft,
+    ),
+    iconTheme: const IconThemeData(color: textPrimary, size: 22),
+    chipTheme: ChipThemeData(
+      backgroundColor: surfaceSoft,
+      selectedColor: lime,
+      side: BorderSide.none,
+      labelStyle: GoogleFonts.manrope(
+        color: textPrimary,
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(rChip),
+      ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: surfaceSoft,
-      hintStyle: const TextStyle(color: textMuted),
-      labelStyle: const TextStyle(color: textMuted),
+      hintStyle: GoogleFonts.manrope(color: textMuted),
+      labelStyle: GoogleFonts.manrope(color: textMuted),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(rControl),
@@ -61,7 +130,7 @@ ThemeData buildShiftFitTheme() {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(rControl),
-        borderSide: const BorderSide(color: lime),
+        borderSide: const BorderSide(color: lime, width: 1.5),
       ),
     ),
   );

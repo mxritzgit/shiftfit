@@ -57,6 +57,26 @@ const Color textPrimary = Color(0xFFF5F6F8);
 const Color textMuted = Color(0xFF8A8F99);
 const Color hairline = Color(0x1AFFFFFF);
 
+// --- DEPTH ------------------------------------------------------------------
+// Premium dark relies on tinted depth, never pure black. The shadow carries
+// the background hue so elevation reads as soft, not as a black halo.
+const Color shadowTint = Color(0x59060810);
+// A 1px inner top-edge highlight that gives surfaces a physical lit edge.
+const Color cardHighlight = Color(0x12FFFFFF);
+// Top-of-card sheen tone (sits between surface and surfaceSoft) for a faint
+// lit gradient from the top edge down into the card body.
+const Color cardSheenTop = Color(0xFF181C24);
+
+/// Reusable soft elevation for raised surfaces (cards, sheets, pills).
+const List<BoxShadow> cardShadow = <BoxShadow>[
+  BoxShadow(
+    color: shadowTint,
+    blurRadius: 28,
+    offset: Offset(0, 14),
+    spreadRadius: -10,
+  ),
+];
+
 // --- SHAPE SCALE ------------------------------------------------------------
 // One documented radius system. Pick the role, not a random number.
 //   rChip    chips, small toggles, tags

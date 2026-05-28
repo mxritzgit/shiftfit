@@ -32,7 +32,7 @@ class CaloriesOverviewCard extends StatelessWidget {
 
     return AppCard(
       key: const ValueKey('analyse-daily-kcal-card'),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(18),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -49,19 +49,20 @@ class CaloriesOverviewCard extends StatelessWidget {
                       style: TextStyle(
                         color: textMuted,
                         fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 1.2,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.4,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     Text(
                       _formatThousands(remaining),
                       style: TextStyle(
                         color: remainingColor,
-                        fontSize: 40,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 46,
+                        fontWeight: FontWeight.w800,
                         height: 1.0,
-                        letterSpacing: -1.2,
+                        letterSpacing: -1.8,
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -178,10 +179,11 @@ class _StatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 8),
       decoration: BoxDecoration(
         color: surfaceSoft,
         borderRadius: BorderRadius.circular(rControl),
+        border: Border.all(color: hairline),
       ),
       child: Column(
         children: [
@@ -324,7 +326,7 @@ class MacrosOverviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppCard(
       key: const ValueKey('macro-targets-card'),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(18),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -395,7 +397,7 @@ class MacrosOverviewCard extends StatelessWidget {
                   label: 'FETT',
                   current: progress.fatG,
                   goal: profile.fatGoalG.toDouble(),
-                  color: wellnessTone,
+                  color: macroFat,
                 ),
               ),
             ],
@@ -585,7 +587,7 @@ class MealsTodayCard extends StatelessWidget {
 
     return AppCard(
       key: const ValueKey('kcal-meals-today-card'),
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 6),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.start,

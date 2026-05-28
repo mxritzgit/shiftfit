@@ -314,7 +314,6 @@ class _ExportSheet extends StatelessWidget {
                       style: const TextStyle(
                         color: textPrimary,
                         fontSize: 11.5,
-                        fontFamily: 'Roboto',
                         fontFeatures: [FontFeature.tabularFigures()],
                         height: 1.45,
                       ),
