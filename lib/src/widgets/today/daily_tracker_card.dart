@@ -166,6 +166,7 @@ class _StatCell extends StatelessWidget {
             fontSize: 16,
             fontWeight: FontWeight.w700,
             letterSpacing: -0.3,
+            fontFeatures: const [FontFeature.tabularFigures()],
           ),
         ),
         const SizedBox(height: 6),

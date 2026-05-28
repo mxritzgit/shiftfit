@@ -24,6 +24,7 @@ class ShiftFitHero extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(rSheet),
         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        boxShadow: cardShadow,
       ),
       child: Stack(
         children: [
@@ -212,6 +213,7 @@ class _HeroMetric extends StatelessWidget {
               fontSize: 17,
               fontWeight: FontWeight.w700,
               letterSpacing: -0.3,
+              fontFeatures: [FontFeature.tabularFigures()],
             ),
           ),
           const SizedBox(height: 2),
@@ -824,6 +826,7 @@ class WeeklyChallengeCard extends StatelessWidget {
           colors: [Color(0xFF18230E), bg],
         ),
         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        boxShadow: cardShadow,
       ),
       child: Row(
         children: [

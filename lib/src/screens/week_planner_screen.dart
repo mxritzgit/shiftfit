@@ -56,10 +56,10 @@ class WeekPlannerScreen extends StatelessWidget {
               const Text(
                 'Trainingswoche,\nsmart geplant.',
                 style: TextStyle(
-                  fontSize: 28,
-                  height: 1.1,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -1,
+                  fontSize: 30,
+                  height: 1.08,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -1.1,
                 ),
               ),
               const SizedBox(height: 8),
