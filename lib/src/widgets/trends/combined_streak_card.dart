@@ -118,7 +118,7 @@ class CombinedStreakCard extends StatelessWidget {
   }
 }
 
-/// Map<dayKey, DailyLog> fuer O(1)-Lookup je Kalenderzelle.
+/// `Map<dayKey, DailyLog>` fuer O(1)-Lookup je Kalenderzelle.
 Map<int, DailyLog> _historyByDay(List<DailyLog> history) {
   final map = <int, DailyLog>{};
   for (final log in history) {
