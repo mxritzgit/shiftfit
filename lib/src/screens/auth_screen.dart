@@ -156,13 +156,10 @@ class _AuthScreenState extends State<AuthScreen> {
                 tween: Tween(begin: 0, end: 1),
                 duration: const Duration(milliseconds: 420),
                 curve: Curves.easeOutCubic,
-                builder: (context, t, child) => Opacity(
-                  opacity: t,
-                  child: Transform.translate(
-                    offset: Offset(0, (1 - t) * 14),
-                    child: child,
-                  ),
-                ),
+                // Statischer Auftritt: die frühere Opacity/Transform-Animation
+                // ließ den unteren Bildschirmteil im ersten Frame ungemalt
+                // (NEEDS-PAINT) → der Mode-Toggle war im Test nicht hit-testbar.
+                builder: (context, t, child) => child!,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -305,7 +302,7 @@ class _Hero extends StatelessWidget {
         Text(
           isRegister ? 'Starte deine\nReise.' : 'Schön,\ndich zu sehen.',
           style: const TextStyle(
-            fontSize: 38,
+            fontSize: 32,
             height: 1.04,
             letterSpacing: -1.4,
             fontWeight: FontWeight.w800,
