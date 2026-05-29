@@ -1,3 +1,4 @@
+import 'macro_progress.dart';
 import 'meal_analysis_result.dart';
 
 class FitnessRecipe {
@@ -16,6 +17,7 @@ class FitnessRecipe {
     required this.fatG,
     required this.estimatedGrams,
     required this.categories,
+    this.userCreated = false,
   });
 
   final String slug;
@@ -33,7 +35,54 @@ class FitnessRecipe {
   final int estimatedGrams;
   final List<String> categories;
 
+  /// True für selbst angelegte Rezepte (kein Bild-Asset, eigener Akzent).
+  /// Erlaubt der UI, sie ohne Image.asset darzustellen.
+  final bool userCreated;
+
   double get kcalPer100G => estimatedGrams <= 0 ? 0 : caloriesKcal * 100 / estimatedGrams;
+
+  /// 0..1 wie gut dieses Rezept zu den noch offenen Tagesmakros passt.
+  /// Bewertet anhand der Restmengen (Protein/KH/Fett, mit Protein doppelt
+  /// gewichtet) plus eines kcal-Fit-Terms. Eine Mahlzeit, die in die
+  /// Restmakros passt ohne deutlich zu überschießen, rankt höher.
+  /// Reine Sortier-Heuristik — keine Ernährungsberatung.
+  double matchScore(MacroProgress remaining) {
+    if (remaining.kcal <= 0 &&
+        remaining.proteinG <= 0 &&
+        remaining.carbsG <= 0 &&
+        remaining.fatG <= 0) {
+      return 0;
+    }
+    double term(double recipeG, double remainingG, double weight) {
+      if (remainingG <= 0) {
+        // Kein Bedarf mehr → Überschuss wird leicht bestraft.
+        return recipeG <= 0 ? weight : weight * 0.35;
+      }
+      final ratio = recipeG / remainingG;
+      // Optimal nahe 1.0 (deckt den Rest), sanft fallend bei Über-/Unterschuss.
+      final closeness = ratio <= 1
+          ? 0.55 + 0.45 * ratio
+          : (1 / ratio).clamp(0.0, 1.0);
+      return weight * closeness;
+    }
+
+    final pScore = term(proteinG.toDouble(), remaining.proteinG, 2.0);
+    final cScore = term(carbsG.toDouble(), remaining.carbsG, 1.0);
+    final fScore = term(fatG.toDouble(), remaining.fatG, 1.0);
+
+    double kcalScore;
+    if (remaining.kcal <= 0) {
+      kcalScore = 0.3;
+    } else {
+      final ratio = caloriesKcal / remaining.kcal;
+      kcalScore = ratio <= 1
+          ? 0.5 + 0.5 * ratio
+          : (1 / ratio).clamp(0.0, 1.0);
+    }
+
+    final macroPart = (pScore + cScore + fScore) / 4.0; // weights sum to 4
+    return (macroPart * 0.7 + kcalScore * 0.3).clamp(0.0, 1.0);
+  }
 
   MealAnalysisResult toMealResult() {
     return MealAnalysisResult(

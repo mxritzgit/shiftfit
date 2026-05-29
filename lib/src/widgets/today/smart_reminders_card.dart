@@ -10,12 +10,20 @@ class SmartReminder {
     required this.title,
     required this.body,
     required this.color,
+    this.onTap,
+    this.actionLabel,
   });
 
   final IconData icon;
   final String title;
   final String body;
   final Color color;
+
+  /// Optional one-tap action that resolves the nudge (e.g. log 250 ml water).
+  final VoidCallback? onTap;
+
+  /// Short label for the action chip shown when [onTap] is set.
+  final String? actionLabel;
 }
 
 class SmartRemindersCard extends StatelessWidget {
@@ -27,6 +35,7 @@ class SmartRemindersCard extends StatelessWidget {
     required this.caffeineDay,
     required this.lastBedtimeMinutes,
     required this.sleepGoalMinutes,
+    this.onAddWater,
   });
 
   final String shift;
@@ -37,6 +46,10 @@ class SmartRemindersCard extends StatelessWidget {
   /// Bedtime minutes-of-day from the last sleep log, or null.
   final int? lastBedtimeMinutes;
   final int sleepGoalMinutes;
+
+  /// When set, the hydration nudge becomes actionable: tapping logs the given
+  /// amount of water (ml) immediately, no sheet needed.
+  final ValueChanged<int>? onAddWater;
 
   List<SmartReminder> _build() {
     final now = DateTime.now();
@@ -52,6 +65,8 @@ class SmartRemindersCard extends StatelessWidget {
         title: 'Wasser nachlegen',
         body: 'Noch $missing ml bis zum Tagesziel.',
         color: cyan,
+        actionLabel: onAddWater == null ? null : '+250 ml',
+        onTap: onAddWater == null ? null : () => onAddWater!(250),
       ));
     }
 
@@ -174,7 +189,7 @@ class _ReminderRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final row = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
@@ -211,7 +226,37 @@ class _ReminderRow extends StatelessWidget {
             ],
           ),
         ),
+        if (reminder.onTap != null && reminder.actionLabel != null) ...[
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: reminder.color.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(rChip),
+              border: Border.all(color: reminder.color.withValues(alpha: 0.30)),
+            ),
+            child: Text(
+              reminder.actionLabel!,
+              style: TextStyle(
+                color: reminder.color,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
       ],
+    );
+
+    if (reminder.onTap == null) return row;
+
+    return InkWell(
+      onTap: reminder.onTap,
+      borderRadius: BorderRadius.circular(rControl),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: row,
+      ),
     );
   }
 }

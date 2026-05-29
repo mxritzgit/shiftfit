@@ -11,6 +11,8 @@ class TrackerStat {
     required this.value,
     required this.color,
     required this.ratio,
+    this.onTap,
+    this.statKey,
   });
 
   final IconData icon;
@@ -18,6 +20,14 @@ class TrackerStat {
   final String value;
   final Color color;
   final double ratio;
+
+  /// Optional tap handler. When non-null the stat cell becomes interactive and
+  /// opens the matching log affordance (water sheet, sleep sheet, steps sheet,
+  /// or a hint for kcal). When null the cell stays a read-only display.
+  final VoidCallback? onTap;
+
+  /// Optional stable key for the tappable cell (e.g. for tests/affordances).
+  final Key? statKey;
 }
 
 class DailyTrackerCard extends StatelessWidget {
@@ -137,7 +147,7 @@ class _StatCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final double clamped = stat.ratio.clamp(0.0, 1.0).toDouble();
-    return Column(
+    final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
@@ -180,6 +190,18 @@ class _StatCell extends StatelessWidget {
           ),
         ),
       ],
+    );
+
+    if (stat.onTap == null) return content;
+
+    return InkWell(
+      key: stat.statKey,
+      onTap: stat.onTap,
+      borderRadius: BorderRadius.circular(rChip),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+        child: content,
+      ),
     );
   }
 }

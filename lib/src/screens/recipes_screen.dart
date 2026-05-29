@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/fitness_recipe.dart';
 import '../models/logged_meal.dart';
+import '../models/macro_progress.dart';
 import '../models/meal_analysis_result.dart';
 import '../theme/app_colors.dart';
 
@@ -9,9 +11,22 @@ class RecipesScreen extends StatefulWidget {
   const RecipesScreen({
     super.key,
     required this.onAddMeal,
+    this.remainingMacros,
+    this.onCreateRecipe,
   });
 
   final void Function(MealAnalysisResult result, MealSlot slot) onAddMeal;
+
+  /// Noch offene Tagesmakros (Ziel minus verbraucht). Wenn gesetzt, blendet
+  /// der Screen eine „Passt zu deinem Ziel"-Sektion ein, die die Rezepte nach
+  /// Makro-Match rankt. Null → Sektion ausgeblendet (Tests ohne den Param
+  /// bleiben grün).
+  final MacroProgress? remainingMacros;
+
+  /// Optionaler Hook, mit dem ein selbst angelegtes Rezept an den
+  /// Orchestrator gemeldet wird (persistiert via user_recipes). Null → das
+  /// Rezept lebt nur lokal in dieser Session.
+  final ValueChanged<FitnessRecipe>? onCreateRecipe;
 
   @override
   State<RecipesScreen> createState() => _RecipesScreenState();
@@ -21,9 +36,16 @@ class _RecipesScreenState extends State<RecipesScreen> {
   String selectedFilter = 'Alle';
   String query = '';
 
+  /// In dieser Session angelegte Eigen-Rezepte. Werden vorn an die Liste
+  /// gestellt, damit der User sie sofort findet.
+  final List<FitnessRecipe> _userRecipes = <FitnessRecipe>[];
+
+  List<FitnessRecipe> get _allRecipes =>
+      <FitnessRecipe>[..._userRecipes, ...fitnessRecipes];
+
   List<FitnessRecipe> get filteredRecipes {
     final normalizedQuery = query.trim().toLowerCase();
-    return fitnessRecipes.where((recipe) {
+    return _allRecipes.where((recipe) {
       final matchesFilter = selectedFilter == 'Alle' ||
           recipe.categories.contains(selectedFilter);
       final matchesQuery = normalizedQuery.isEmpty ||
@@ -34,6 +56,17 @@ class _RecipesScreenState extends State<RecipesScreen> {
           );
       return matchesFilter && matchesQuery;
     }).toList(growable: false);
+  }
+
+  /// Bis zu drei Rezepte mit dem höchsten Makro-Match zu den Restmakros.
+  /// Nur sinnvolle Treffer (>0) werden aufgenommen.
+  List<FitnessRecipe> _goalMatches(MacroProgress remaining) {
+    final scored = _allRecipes
+        .map((r) => (r, r.matchScore(remaining)))
+        .where((pair) => pair.$2 > 0)
+        .toList(growable: false)
+      ..sort((a, b) => b.$2.compareTo(a.$2));
+    return scored.take(3).map((pair) => pair.$1).toList(growable: false);
   }
 
   void _openRecipe(FitnessRecipe recipe) {
@@ -47,17 +80,37 @@ class _RecipesScreenState extends State<RecipesScreen> {
     );
   }
 
+  Future<void> _openCreateSheet() async {
+    final recipe = await showModalBottomSheet<FitnessRecipe>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.6),
+      builder: (_) => const _CreateRecipeSheet(),
+    );
+    if (recipe == null || !mounted) return;
+    setState(() => _userRecipes.insert(0, recipe));
+    widget.onCreateRecipe?.call(recipe);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('„${recipe.title}" gespeichert.')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final visibleRecipes = filteredRecipes;
-    final recommended = fitnessRecipes.take(4).toList(growable: false);
+    final recommended = _allRecipes.take(4).toList(growable: false);
+    final remaining = widget.remainingMacros;
+    final goalMatches = remaining == null
+        ? const <FitnessRecipe>[]
+        : _goalMatches(remaining);
 
     return ListView(
       key: const ValueKey('screen-recipes'),
       padding: const EdgeInsets.only(bottom: 28),
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       children: [
-        const _RecipesHeader(),
+        _RecipesHeader(onCreate: _openCreateSheet),
         const SizedBox(height: 18),
         _RecipeSearchField(onChanged: (value) => setState(() => query = value)),
         const SizedBox(height: 16),
@@ -65,10 +118,36 @@ class _RecipesScreenState extends State<RecipesScreen> {
           selected: selectedFilter,
           onSelected: (filter) => setState(() => selectedFilter = filter),
         ),
+        if (goalMatches.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          _SectionHeader(
+            title: 'Passt zu deinem Ziel',
+            subtitle: 'nach Restmakros',
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 244,
+            child: ListView.separated(
+              key: const ValueKey('recipe-goal-matches'),
+              scrollDirection: Axis.horizontal,
+              clipBehavior: Clip.none,
+              itemCount: goalMatches.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final recipe = goalMatches[index];
+                return _RecipeHeroCard(
+                  recipe: recipe,
+                  badgeText: 'Match',
+                  onTap: () => _openRecipe(recipe),
+                );
+              },
+            ),
+          ),
+        ],
         const SizedBox(height: 24),
         _SectionHeader(
           title: 'Empfehlungen',
-          subtitle: '${fitnessRecipes.length} Fitness-Gerichte',
+          subtitle: '${_allRecipes.length} Fitness-Gerichte',
         ),
         const SizedBox(height: 12),
         SizedBox(
@@ -108,7 +187,9 @@ class _RecipesScreenState extends State<RecipesScreen> {
 }
 
 class _RecipesHeader extends StatelessWidget {
-  const _RecipesHeader();
+  const _RecipesHeader({this.onCreate});
+
+  final VoidCallback? onCreate;
 
   @override
   Widget build(BuildContext context) {
@@ -141,6 +222,23 @@ class _RecipesHeader extends StatelessWidget {
             ],
           ),
         ),
+        if (onCreate != null)
+          InkWell(
+            key: const ValueKey('recipe-create-button'),
+            onTap: onCreate,
+            borderRadius: BorderRadius.circular(rCard),
+            child: Container(
+              width: 42,
+              height: 42,
+              margin: const EdgeInsets.only(right: 10),
+              decoration: BoxDecoration(
+                color: lime.withValues(alpha: 0.16),
+                borderRadius: BorderRadius.circular(rCard),
+                border: Border.all(color: lime.withValues(alpha: 0.36)),
+              ),
+              child: const Icon(Icons.add_rounded, color: lime, size: 22),
+            ),
+          ),
         Container(
           width: 42,
           height: 42,
@@ -271,10 +369,17 @@ class _SectionHeader extends StatelessWidget {
 }
 
 class _RecipeHeroCard extends StatelessWidget {
-  const _RecipeHeroCard({required this.recipe, required this.onTap});
+  const _RecipeHeroCard({
+    required this.recipe,
+    required this.onTap,
+    this.badgeText,
+  });
 
   final FitnessRecipe recipe;
   final VoidCallback onTap;
+
+  /// Optionales zweites Badge oben rechts (z.B. „Match" in der Ziel-Sektion).
+  final String? badgeText;
 
   @override
   Widget build(BuildContext context) {
@@ -298,7 +403,7 @@ class _RecipeHeroCard extends StatelessWidget {
                   SizedBox(
                     height: 126,
                     width: double.infinity,
-                    child: Image.asset(recipe.imageAsset, fit: BoxFit.cover),
+                    child: _RecipeImage(recipe: recipe),
                   ),
                   Positioned.fill(
                     child: DecoratedBox(
@@ -319,6 +424,12 @@ class _RecipeHeroCard extends StatelessWidget {
                     top: 10,
                     child: _GlassBadge(text: '${recipe.caloriesKcal} kcal'),
                   ),
+                  if (badgeText != null)
+                    Positioned(
+                      right: 10,
+                      top: 10,
+                      child: _MatchBadge(text: badgeText!),
+                    ),
                 ],
               ),
               Padding(
@@ -389,11 +500,10 @@ class _RecipeListTile extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(rCard),
-              child: Image.asset(
-                recipe.imageAsset,
+              child: SizedBox(
                 width: 74,
                 height: 74,
-                fit: BoxFit.cover,
+                child: _RecipeImage(recipe: recipe),
               ),
             ),
             const SizedBox(width: 12),
@@ -495,11 +605,10 @@ class RecipeDetailScreen extends StatelessWidget {
               const SizedBox(height: 16),
               ClipRRect(
                 borderRadius: BorderRadius.circular(rSheet),
-                child: Image.asset(
-                  recipe.imageAsset,
+                child: SizedBox(
                   height: 258,
                   width: double.infinity,
-                  fit: BoxFit.cover,
+                  child: _RecipeImage(recipe: recipe),
                 ),
               ),
               const SizedBox(height: 22),
@@ -682,11 +791,10 @@ class _MealSlotPickerSheet extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(rCard),
-                  child: Image.asset(
-                    recipe.imageAsset,
+                  child: SizedBox(
                     width: 58,
                     height: 58,
-                    fit: BoxFit.cover,
+                    child: _RecipeImage(recipe: recipe),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -972,6 +1080,63 @@ class _GlassBadge extends StatelessWidget {
   }
 }
 
+/// Lime-getöntes Badge oben rechts auf der „Passt zu deinem Ziel"-Karte.
+class _MatchBadge extends StatelessWidget {
+  const _MatchBadge({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: lime,
+        borderRadius: BorderRadius.circular(rPill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.bolt_rounded, color: bg, size: 12),
+          const SizedBox(width: 3),
+          Text(
+            text,
+            style: const TextStyle(
+              color: bg,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Bild für eine Rezept-Karte. Asset-Rezepte zeigen ihr PNG, selbst angelegte
+/// Rezepte (ohne Asset) bekommen einen ruhigen lime-getönten Platzhalter.
+class _RecipeImage extends StatelessWidget {
+  const _RecipeImage({required this.recipe});
+
+  final FitnessRecipe recipe;
+
+  @override
+  Widget build(BuildContext context) {
+    if (recipe.userCreated || recipe.imageAsset.isEmpty) {
+      return Container(
+        color: surfaceSoft,
+        alignment: Alignment.center,
+        child: const Icon(
+          Icons.ramen_dining_outlined,
+          color: lime,
+          size: 30,
+        ),
+      );
+    }
+    return Image.asset(recipe.imageAsset, fit: BoxFit.cover);
+  }
+}
+
 class _MacroRow extends StatelessWidget {
   const _MacroRow({required this.recipe, this.compact = false});
 
@@ -1044,6 +1209,281 @@ class _RecipeEmptyState extends StatelessWidget {
       child: const Text(
         'Kein Rezept gefunden. Versuch eine andere Kategorie oder Suche.',
         style: TextStyle(color: textMuted, fontSize: 13, height: 1.4),
+      ),
+    );
+  }
+}
+
+/// Bottom-Sheet zum Anlegen eines eigenen Rezepts (Name, Portion, Makros,
+/// Zutaten). Gibt beim Speichern ein [FitnessRecipe] via Navigator.pop zurück.
+class _CreateRecipeSheet extends StatefulWidget {
+  const _CreateRecipeSheet();
+
+  @override
+  State<_CreateRecipeSheet> createState() => _CreateRecipeSheetState();
+}
+
+class _CreateRecipeSheetState extends State<_CreateRecipeSheet> {
+  final _name = TextEditingController();
+  final _portion = TextEditingController(text: '1 Portion');
+  final _grams = TextEditingController(text: '300');
+  final _kcal = TextEditingController();
+  final _protein = TextEditingController();
+  final _carbs = TextEditingController();
+  final _fat = TextEditingController();
+  final _ingredients = TextEditingController();
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _portion.dispose();
+    _grams.dispose();
+    _kcal.dispose();
+    _protein.dispose();
+    _carbs.dispose();
+    _fat.dispose();
+    _ingredients.dispose();
+    super.dispose();
+  }
+
+  bool get _isValid {
+    final kcal = int.tryParse(_kcal.text.trim());
+    return _name.text.trim().isNotEmpty && kcal != null && kcal > 0;
+  }
+
+  void _save() {
+    final name = _name.text.trim();
+    final kcal = int.tryParse(_kcal.text.trim()) ?? 0;
+    if (name.isEmpty || kcal <= 0) return;
+    final grams = int.tryParse(_grams.text.trim()) ?? 0;
+    final ingredients = _ingredients.text.trim();
+    final portion = _portion.text.trim().isEmpty
+        ? '1 Portion'
+        : _portion.text.trim();
+    final slug = 'user_${DateTime.now().millisecondsSinceEpoch}';
+
+    Navigator.of(context).pop(
+      FitnessRecipe(
+        slug: slug,
+        title: name,
+        description: 'Eigenes Rezept',
+        portion: portion,
+        ingredients: ingredients.isEmpty ? 'Keine Angabe' : ingredients,
+        preparation: 'Eigenes Rezept — keine Zubereitung hinterlegt.',
+        professionalHint: 'Selbst angelegt. Werte beruhen auf deinen Angaben.',
+        imageAsset: '',
+        caloriesKcal: kcal,
+        proteinG: int.tryParse(_protein.text.trim()) ?? 0,
+        carbsG: int.tryParse(_carbs.text.trim()) ?? 0,
+        fatG: int.tryParse(_fat.text.trim()) ?? 0,
+        estimatedGrams: grams > 0 ? grams : 100,
+        categories: const <String>['Eigene'],
+        userCreated: true,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final viewInsets = MediaQuery.viewInsetsOf(context).bottom;
+    return Padding(
+      padding: EdgeInsets.only(bottom: viewInsets),
+      child: Container(
+        key: const ValueKey('recipe-create-sheet'),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.92,
+        ),
+        decoration: const BoxDecoration(
+          color: surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(rSheet)),
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: hairline,
+                    borderRadius: BorderRadius.circular(rPill),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Eigenes Rezept',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.4,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Name und Kalorien genügen — Makros sind optional.',
+                style: TextStyle(
+                  color: textMuted,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 18),
+              _Field(
+                fieldKey: const ValueKey('recipe-create-name'),
+                controller: _name,
+                label: 'Name',
+                hint: 'z. B. Protein-Bowl',
+                onChanged: () => setState(() {}),
+              ),
+              const SizedBox(height: 12),
+              _Field(
+                fieldKey: const ValueKey('recipe-create-portion'),
+                controller: _portion,
+                label: 'Portion',
+                hint: '1 Teller',
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _Field(
+                      fieldKey: const ValueKey('recipe-create-kcal'),
+                      controller: _kcal,
+                      label: 'Kalorien',
+                      suffix: 'kcal',
+                      numeric: true,
+                      onChanged: () => setState(() {}),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _Field(
+                      fieldKey: const ValueKey('recipe-create-grams'),
+                      controller: _grams,
+                      label: 'Gewicht',
+                      suffix: 'g',
+                      numeric: true,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _Field(
+                      fieldKey: const ValueKey('recipe-create-protein'),
+                      controller: _protein,
+                      label: 'Protein',
+                      suffix: 'g',
+                      numeric: true,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _Field(
+                      fieldKey: const ValueKey('recipe-create-carbs'),
+                      controller: _carbs,
+                      label: 'KH',
+                      suffix: 'g',
+                      numeric: true,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _Field(
+                      fieldKey: const ValueKey('recipe-create-fat'),
+                      controller: _fat,
+                      label: 'Fett',
+                      suffix: 'g',
+                      numeric: true,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _Field(
+                fieldKey: const ValueKey('recipe-create-ingredients'),
+                controller: _ingredients,
+                label: 'Zutaten',
+                hint: 'Eine Zutat pro Zeile',
+                maxLines: 4,
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: FilledButton.icon(
+                  key: const ValueKey('recipe-create-save'),
+                  onPressed: _isValid ? _save : null,
+                  icon: const Icon(Icons.check_rounded, size: 19),
+                  label: const Text(
+                    'Rezept speichern',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: lime,
+                    foregroundColor: bg,
+                    disabledBackgroundColor: surfaceSoft,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(rControl),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Field extends StatelessWidget {
+  const _Field({
+    required this.fieldKey,
+    required this.controller,
+    required this.label,
+    this.hint,
+    this.suffix,
+    this.numeric = false,
+    this.maxLines = 1,
+    this.onChanged,
+  });
+
+  final Key fieldKey;
+  final TextEditingController controller;
+  final String label;
+  final String? hint;
+  final String? suffix;
+  final bool numeric;
+  final int maxLines;
+  final VoidCallback? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      key: fieldKey,
+      controller: controller,
+      maxLines: maxLines,
+      keyboardType: numeric ? TextInputType.number : TextInputType.text,
+      inputFormatters:
+          numeric ? [FilteringTextInputFormatter.digitsOnly] : null,
+      textCapitalization: numeric
+          ? TextCapitalization.none
+          : TextCapitalization.sentences,
+      style: const TextStyle(color: textPrimary, fontSize: 14),
+      cursorColor: lime,
+      onChanged: onChanged == null ? null : (_) => onChanged!(),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        suffixText: suffix,
       ),
     );
   }

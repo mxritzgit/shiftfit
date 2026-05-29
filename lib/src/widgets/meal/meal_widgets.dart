@@ -304,12 +304,21 @@ class MealResultCard extends StatefulWidget {
     required this.addedToDailyTotal,
     required this.onAdjustRequested,
     required this.onAddToDailyRequested,
+    this.isFavorite = false,
+    this.onToggleFavorite,
   });
 
   final MealAnalysisResult result;
   final bool addedToDailyTotal;
   final VoidCallback onAdjustRequested;
   final VoidCallback onAddToDailyRequested;
+
+  /// Ob diese Mahlzeit aktuell als Favorit markiert ist (Herz gefüllt).
+  final bool isFavorite;
+
+  /// Optionaler Toggle für den Favoriten-Herz-Button. Null → Button wird
+  /// ausgeblendet (bestehende Aufrufer ohne Verdrahtung bleiben unverändert).
+  final ValueChanged<MealAnalysisResult>? onToggleFavorite;
 
   @override
   State<MealResultCard> createState() => _MealResultCardState();
@@ -344,6 +353,22 @@ class _MealResultCardState extends State<MealResultCard> {
                 color: isBarcode ? cyan : orange,
               ),
               const Spacer(),
+              if (widget.onToggleFavorite != null)
+                IconButton(
+                  key: const ValueKey('analyse-favorite-button'),
+                  onPressed: () => widget.onToggleFavorite!(result),
+                  tooltip: widget.isFavorite
+                      ? 'Aus Favoriten entfernen'
+                      : 'Als Favorit speichern',
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(
+                    widget.isFavorite
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_outline_rounded,
+                    size: 19,
+                    color: widget.isFavorite ? lime : textMuted,
+                  ),
+                ),
               IconButton(
                 key: const ValueKey('analyse-info-button'),
                 onPressed: () => _showInfo(context),

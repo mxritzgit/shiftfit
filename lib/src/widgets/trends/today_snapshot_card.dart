@@ -9,12 +9,18 @@ class SnapshotStat {
     required this.value,
     required this.color,
     required this.ratio,
+    this.delta = 0,
   });
 
   final String label;
   final String value;
   final Color color;
   final double ratio;
+
+  /// Optionales „vs. gestern"-Mikro-Signal: >0 hoch, <0 runter, 0 = neutral
+  /// oder kein Vergleich verfuegbar. Wird als kleines ↑/↓ neben dem Label
+  /// gezeigt (lime fuer hoch, danger fuer runter) — nur fuers Encoding.
+  final int delta;
 }
 
 class TodaySnapshotCard extends StatelessWidget {
@@ -67,16 +73,32 @@ class _Stat extends StatelessWidget {
             fontSize: 20,
             fontWeight: FontWeight.w700,
             letterSpacing: -0.4,
+            fontFeatures: const [FontFeature.tabularFigures()],
           ),
         ),
         const SizedBox(height: 2),
-        Text(
-          stat.label,
-          style: const TextStyle(
-            color: textMuted,
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
-          ),
+        Row(
+          children: [
+            Flexible(
+              child: Text(
+                stat.label,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: textMuted,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            if (stat.delta != 0) ...[
+              const SizedBox(width: 3),
+              Icon(
+                stat.delta > 0 ? Icons.arrow_upward : Icons.arrow_downward,
+                size: 10,
+                color: stat.delta > 0 ? lime : danger,
+              ),
+            ],
+          ],
         ),
         const SizedBox(height: 8),
         ClipRRect(

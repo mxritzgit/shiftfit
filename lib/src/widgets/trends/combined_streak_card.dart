@@ -1,20 +1,35 @@
 import 'package:flutter/material.dart';
 
+import '../../services/daily_log_sync.dart';
 import '../../theme/app_colors.dart';
 import '../common/basic_widgets.dart';
 
+/// 28-Tage Workout-Kalender. Eine Zelle = ein Kalendertag der letzten 4 Wochen.
+/// Aktiv (lime) wenn an dem Tag `workoutCompleted == true` in der History steht.
+/// KEIN Rueckwaerts-Fuellen mehr aus einem Counter — jede Zelle ist echte Historie.
 class CombinedStreakCard extends StatelessWidget {
   const CombinedStreakCard({
     super.key,
     required this.workoutStreak,
     required this.completedToday,
+    this.history = const <DailyLog>[],
   });
 
+  /// Echte Streak-Zahl (kommt vom Orchestrator, aus lifetime_stats/History).
   final int workoutStreak;
+
+  /// Ob heute alle Bloecke abgeschlossen sind (Today-Signal, ergaenzt History
+  /// fuer den aktuellen Tag falls noch kein workout_completed-Flush erfolgte).
   final bool completedToday;
+
+  /// Letzte ~28-30 Tage, aufsteigend sortiert. Defensiv: darf leer sein.
+  final List<DailyLog> history;
 
   @override
   Widget build(BuildContext context) {
+    // Wie viele der letzten 28 Tage hatten ein Workout — fuer das Sublabel.
+    final activeCount = _activeDayCount(history, completedToday);
+
     return AppCard(
       key: const ValueKey('combined-streak-card'),
       padding: const EdgeInsets.all(16),
@@ -47,6 +62,7 @@ class CombinedStreakCard extends StatelessWidget {
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         letterSpacing: -0.3,
+                        fontFeatures: [FontFeature.tabularFigures()],
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -63,28 +79,66 @@ class CombinedStreakCard extends StatelessWidget {
                   ],
                 ),
               ),
+              // Trainingstage im 28-Tage-Fenster — kompakte Dichte ohne Deko.
+              Text(
+                '$activeCount/28',
+                style: const TextStyle(
+                  color: textMuted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 14),
           _Calendar(
-            workoutStreak: workoutStreak,
+            history: history,
             completedToday: completedToday,
           ),
         ],
       ),
     );
   }
+
+  static int _activeDayCount(List<DailyLog> history, bool completedToday) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final byDay = _historyByDay(history);
+    var count = 0;
+    for (var i = 0; i < _Calendar._totalDays; i++) {
+      final day = today.subtract(Duration(days: _Calendar._totalDays - 1 - i));
+      final key = _dayKey(day);
+      final isToday = day == today;
+      final active = (byDay[key]?.workoutCompleted ?? false) ||
+          (isToday && completedToday);
+      if (active) count++;
+    }
+    return count;
+  }
 }
 
-/// Thin wrapper that reuses StreakCalendar but strips its own card chrome so
-/// we don't get a card-in-card look.
+/// Map<dayKey, DailyLog> fuer O(1)-Lookup je Kalenderzelle.
+Map<int, DailyLog> _historyByDay(List<DailyLog> history) {
+  final map = <int, DailyLog>{};
+  for (final log in history) {
+    final d = log.date;
+    map[_dayKey(DateTime(d.year, d.month, d.day))] = log;
+  }
+  return map;
+}
+
+/// Stabiler, vergleichbarer Tages-Schluessel (kein Zeitanteil).
+int _dayKey(DateTime d) => d.year * 10000 + d.month * 100 + d.day;
+
+/// 4x7-Raster echter Kalendertage. Letzte Zelle = heute.
 class _Calendar extends StatelessWidget {
   const _Calendar({
-    required this.workoutStreak,
+    required this.history,
     required this.completedToday,
   });
 
-  final int workoutStreak;
+  final List<DailyLog> history;
   final bool completedToday;
 
   static const int _weeks = 4;
@@ -96,14 +150,14 @@ class _Calendar extends StatelessWidget {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final start = today.subtract(const Duration(days: _totalDays - 1));
+    final byDay = _historyByDay(history);
 
-    final activeDays = <int>{};
-    final streakEnd = completedToday ? _totalDays - 1 : _totalDays - 2;
-    for (var i = 0; i < workoutStreak; i++) {
-      final idx = streakEnd - i;
-      if (idx >= 0 && idx < _totalDays) {
-        activeDays.add(idx);
-      }
+    bool activeFor(DateTime day) {
+      final isToday = day == today;
+      final logged = byDay[_dayKey(day)]?.workoutCompleted ?? false;
+      // Heute zusaetzlich aus dem Live-Today-Signal speisen, falls der
+      // workout_completed-Flush fuer heute noch nicht in der History ist.
+      return logged || (isToday && completedToday);
     }
 
     return LayoutBuilder(
@@ -118,12 +172,16 @@ class _Calendar extends StatelessWidget {
               Row(
                 children: [
                   for (var d = 0; d < _daysPerWeek; d++) ...[
-                    _Cell(
-                      size: cellSize,
-                      isToday: w * _daysPerWeek + d == _totalDays - 1,
-                      isActive: activeDays.contains(w * _daysPerWeek + d),
-                      date: start.add(Duration(days: w * _daysPerWeek + d)),
-                    ),
+                    Builder(builder: (context) {
+                      final dayIndex = w * _daysPerWeek + d;
+                      final date = start.add(Duration(days: dayIndex));
+                      return _Cell(
+                        size: cellSize,
+                        isToday: dayIndex == _totalDays - 1,
+                        isActive: activeFor(date),
+                        date: date,
+                      );
+                    }),
                     if (d != _daysPerWeek - 1) const SizedBox(width: spacing),
                   ],
                 ],

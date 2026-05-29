@@ -1,13 +1,31 @@
 import 'package:flutter/material.dart';
 
-import '../../models/shift_fit_plan.dart';
 import '../../theme/app_colors.dart';
 import '../common/basic_widgets.dart';
+
+/// Eine Balkensaeule im 7-Tage-Verlauf.
+/// label  = Wochentags-Kuerzel aus dem echten Datum (Mo/Di/…)
+/// ratio  = 0..1 Tages-Score (siehe TrendsScreen-Formel)
+/// color  = Encoding-Farbe (lime fuer Workout-Tag, gedaempft sonst)
+/// isToday hebt die heutige Saeule mit einem feinen Rand hervor.
+class TrendBar {
+  const TrendBar({
+    required this.label,
+    required this.ratio,
+    required this.color,
+    this.isToday = false,
+  });
+
+  final String label;
+  final double ratio;
+  final Color color;
+  final bool isToday;
+}
 
 class TrendBarsCard extends StatelessWidget {
   const TrendBarsCard({super.key, required this.bars});
 
-  final List<(String, double, Color)> bars;
+  final List<TrendBar> bars;
 
   @override
   Widget build(BuildContext context) {
@@ -27,12 +45,17 @@ class TrendBarsCard extends StatelessWidget {
                       child: Align(
                         alignment: Alignment.bottomCenter,
                         child: FractionallySizedBox(
-                          heightFactor: bar.$2,
+                          // Leerer Tag = niedriger, sichtbarer Sockel, nicht
+                          // fehlend. Mindesthoehe 0.06.
+                          heightFactor: bar.ratio.clamp(0.06, 1.0).toDouble(),
                           child: Container(
                             width: 10,
                             decoration: BoxDecoration(
-                              color: bar.$3.withValues(alpha: 0.85),
+                              color: bar.color.withValues(alpha: 0.85),
                               borderRadius: BorderRadius.circular(rChip),
+                              border: bar.isToday
+                                  ? Border.all(color: lime, width: 1.4)
+                                  : null,
                             ),
                           ),
                         ),
@@ -40,11 +63,12 @@ class TrendBarsCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      bar.$1,
-                      style: const TextStyle(
-                        color: textMuted,
+                      bar.label,
+                      style: TextStyle(
+                        color: bar.isToday ? textPrimary : textMuted,
                         fontSize: 11,
-                        fontWeight: FontWeight.w500,
+                        fontWeight:
+                            bar.isToday ? FontWeight.w700 : FontWeight.w500,
                       ),
                     ),
                   ],
@@ -57,23 +81,41 @@ class TrendBarsCard extends StatelessWidget {
   }
 }
 
-class InsightsCard extends StatelessWidget {
-  const InsightsCard({super.key, required this.plan, required this.loadBalance});
+/// Ein berechneter Insight: Icon + Akzentfarbe + Text. Vom TrendsScreen aus
+/// echten History-Mustern befuellt — keine Template-Konstanten mehr.
+class TrendInsight {
+  const TrendInsight({
+    required this.icon,
+    required this.color,
+    required this.text,
+  });
 
-  final ShiftFitPlan plan;
-  final int loadBalance;
+  final IconData icon;
+  final Color color;
+  final String text;
+}
+
+class InsightsCard extends StatelessWidget {
+  const InsightsCard({super.key, required this.insights});
+
+  final List<TrendInsight> insights;
 
   @override
   Widget build(BuildContext context) {
-    final insights = [
-      plan.recoveryScore >= 80
-          ? 'Genug Reserve für Kraft oder intensivere Intervalle.'
-          : 'Heute ruhiger Reset statt zusätzlicher Druck.',
-      loadBalance >= 75
-          ? 'Woche ist ausgewogen. Schlafanker stabil halten.'
-          : 'Mehr Puffer einplanen: Mobility statt Volumen.',
-      'Koffein-Stopp und Lichtfenster bleiben die stärksten Hebel.',
-    ];
+    if (insights.isEmpty) {
+      return const AppCard(
+        padding: EdgeInsets.all(16),
+        child: Text(
+          'Noch zu wenig Verlauf — log ein paar Tage, dann erscheinen hier Muster.',
+          style: TextStyle(
+            color: textMuted,
+            fontSize: 13,
+            height: 1.45,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      );
+    }
 
     return AppCard(
       padding: const EdgeInsets.all(16),
@@ -84,14 +126,14 @@ class InsightsCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Icon(
-                  i == 0 ? Icons.bolt : Icons.check_circle_outline,
-                  color: i == 0 ? lime : cyan,
+                  insights[i].icon,
+                  color: insights[i].color,
                   size: 18,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    insights[i],
+                    insights[i].text,
                     style: const TextStyle(
                       color: textPrimary,
                       fontSize: 13,

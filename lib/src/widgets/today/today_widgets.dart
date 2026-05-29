@@ -232,9 +232,23 @@ class _HeroMetric extends StatelessWidget {
 }
 
 class FitPilotHubGrid extends StatelessWidget {
-  const FitPilotHubGrid({super.key, required this.plan});
+  const FitPilotHubGrid({
+    super.key,
+    required this.plan,
+    this.onTapWorkout,
+    this.onTapNutrition,
+    this.onTapChallenge,
+    this.onTapGuides,
+  });
 
   final ShiftFitPlan plan;
+
+  /// Optional navigation callbacks. When non-null the matching tile becomes
+  /// tappable and routes to the relevant tab/sheet; when null it stays inert.
+  final VoidCallback? onTapWorkout;
+  final VoidCallback? onTapNutrition;
+  final VoidCallback? onTapChallenge;
+  final VoidCallback? onTapGuides;
 
   @override
   Widget build(BuildContext context) {
@@ -273,41 +287,49 @@ class FitPilotHubGrid extends StatelessWidget {
             children: [
               Expanded(
                 child: _HubTile(
+                  keyValue: const ValueKey('hub-tile-workout'),
                   icon: Icons.fitness_center_rounded,
                   title: 'Workout',
                   subtitle: '${plan.totalMinutes} Min',
                   color: lime,
+                  onTap: onTapWorkout,
                 ),
               ),
               const SizedBox(width: 8),
-              const Expanded(
+              Expanded(
                 child: _HubTile(
+                  keyValue: const ValueKey('hub-tile-nutrition'),
                   icon: Icons.restaurant_rounded,
                   title: 'Nutrition',
                   subtitle: 'Protein zuerst',
                   color: lime,
+                  onTap: onTapNutrition,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          const Row(
+          Row(
             children: [
               Expanded(
                 child: _HubTile(
+                  keyValue: const ValueKey('hub-tile-challenge'),
                   icon: Icons.emoji_events_rounded,
                   title: 'Challenge',
                   subtitle: '7 Tage Reset',
                   color: lime,
+                  onTap: onTapChallenge,
                 ),
               ),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Expanded(
                 child: _HubTile(
+                  keyValue: const ValueKey('hub-tile-guides'),
                   icon: Icons.play_circle_rounded,
                   title: 'Guides',
                   subtitle: 'Form & Tipps',
                   color: lime,
+                  onTap: onTapGuides,
                 ),
               ),
             ],
@@ -324,16 +346,20 @@ class _HubTile extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.color,
+    this.onTap,
+    this.keyValue,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
   final Color color;
+  final VoidCallback? onTap;
+  final Key? keyValue;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final tile = Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: surfaceSoft,
@@ -376,6 +402,15 @@ class _HubTile extends StatelessWidget {
           ),
         ],
       ),
+    );
+
+    if (onTap == null) return tile;
+
+    return InkWell(
+      key: keyValue,
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(rCard),
+      child: tile,
     );
   }
 }
@@ -809,13 +844,30 @@ class RecoveryToolCard extends StatelessWidget {
 }
 
 class WeeklyChallengeCard extends StatelessWidget {
-  const WeeklyChallengeCard({super.key, required this.plan});
+  const WeeklyChallengeCard({
+    super.key,
+    required this.plan,
+    this.completed = 3,
+    this.total = 7,
+    this.onTap,
+  });
 
   final ShiftFitPlan plan;
 
+  /// Real challenge progress. [completed] active days out of [total]. Defaults
+  /// keep the previous static "3/7" reading until the orchestrator wires real
+  /// data (e.g. workoutStreak clamped to 7, or active days from history).
+  final int completed;
+  final int total;
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final int safeTotal = total <= 0 ? 7 : total;
+    final int safeDone = completed.clamp(0, safeTotal);
+    final double ratio = safeDone / safeTotal;
+
+    final card = Container(
       key: const ValueKey('weekly-challenge-card'),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -853,10 +905,20 @@ class WeeklyChallengeCard extends StatelessWidget {
                     height: 1.35,
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(rPill),
+                  child: LinearProgressIndicator(
+                    value: ratio,
+                    minHeight: 5,
+                    backgroundColor: Colors.white.withValues(alpha: 0.10),
+                    color: lime,
+                  ),
+                ),
+                const SizedBox(height: 12),
                 Row(
                   children: [
-                    const _ChallengeMetric(value: '3/7', label: 'Tage'),
+                    _ChallengeMetric(value: '$safeDone/$safeTotal', label: 'Tage'),
                     const SizedBox(width: 8),
                     _ChallengeMetric(value: plan.intensity, label: 'Level'),
                   ],
@@ -881,6 +943,14 @@ class WeeklyChallengeCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+
+    if (onTap == null) return card;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(rSheet),
+      child: card,
     );
   }
 }

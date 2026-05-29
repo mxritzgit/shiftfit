@@ -1,13 +1,26 @@
 import 'package:flutter/material.dart';
 
+import '../models/caffeine_entry.dart';
+import '../models/daily_mood.dart';
+import '../models/habit.dart';
 import '../models/shift_fit_plan.dart';
 import '../models/sleep_entry.dart';
+import '../models/weight_log.dart';
 import '../services/health_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/common/basic_widgets.dart';
 import '../widgets/shared/shiftfit_top_bar.dart';
+import '../widgets/today/caffeine_card.dart';
+import '../widgets/today/caffeine_half_life_card.dart';
 import '../widgets/today/daily_tracker_card.dart';
+import '../widgets/today/day_overview_card.dart';
+import '../widgets/today/habits_card.dart';
+import '../widgets/today/mood_card.dart';
+import '../widgets/today/smart_reminders_card.dart';
+import '../widgets/today/tip_of_day_card.dart';
+import '../widgets/today/today_log_sheet.dart';
 import '../widgets/today/today_widgets.dart';
+import '../widgets/today/weight_card.dart';
 import '../widgets/today/workout_timer_sheet.dart';
 
 class TodayDashboard extends StatelessWidget {
@@ -36,6 +49,22 @@ class TodayDashboard extends StatelessWidget {
     required this.onConnectHealth,
     required this.onRefreshHealth,
     required this.onSettingsPressed,
+    // Wellness/logging state + handlers (activate the dormant log cards).
+    required this.caffeineDay,
+    required this.mood,
+    required this.habits,
+    required this.weightLog,
+    required this.onAddWater,
+    required this.onSetSteps,
+    required this.onLogSleep,
+    required this.onMoodScore,
+    required this.onEditMoodNote,
+    required this.onToggleHabit,
+    required this.onAddCaffeine,
+    required this.onResetCaffeine,
+    required this.onLogWeight,
+    required this.onOpenTraining,
+    required this.onOpenFood,
     this.onProfilePressed,
     this.profileInitial,
   });
@@ -63,6 +92,23 @@ class TodayDashboard extends StatelessWidget {
   final VoidCallback onConnectHealth;
   final VoidCallback onRefreshHealth;
   final VoidCallback onSettingsPressed;
+
+  final CaffeineDay caffeineDay;
+  final DailyMood mood;
+  final HabitState habits;
+  final WeightLog weightLog;
+  final ValueChanged<int> onAddWater;
+  final ValueChanged<int> onSetSteps;
+  final VoidCallback onLogSleep;
+  final ValueChanged<int> onMoodScore;
+  final VoidCallback onEditMoodNote;
+  final ValueChanged<String> onToggleHabit;
+  final ValueChanged<int> onAddCaffeine;
+  final VoidCallback onResetCaffeine;
+  final ValueChanged<double> onLogWeight;
+  final VoidCallback onOpenTraining;
+  final VoidCallback onOpenFood;
+
   final VoidCallback? onProfilePressed;
   final String? profileInitial;
 
@@ -87,7 +133,12 @@ class TodayDashboard extends StatelessWidget {
     final double sleepRatio = sleepGoalMinutes <= 0
         ? 0.0
         : (sleepMinutes / sleepGoalMinutes).clamp(0.0, 1.0).toDouble();
+    final double workoutRatio =
+        total <= 0 ? 0.0 : (completedCount / total).clamp(0.0, 1.0).toDouble();
 
+    // Tracker stats are now tappable quick-log entry points (slot-tap pattern):
+    // Wasser/Schritte open a focused sheet, Schlaf opens the sleep log, Kcal
+    // jumps to the Food tab where meals are logged.
     final stats = <TrackerStat>[
       TrackerStat(
         icon: Icons.local_fire_department_outlined,
@@ -95,6 +146,8 @@ class TodayDashboard extends StatelessWidget {
         value: '$dailyConsumedKcal',
         color: orange,
         ratio: kcalRatio,
+        statKey: const ValueKey('tracker-stat-kcal'),
+        onTap: onOpenFood,
       ),
       TrackerStat(
         icon: Icons.water_drop_outlined,
@@ -102,6 +155,15 @@ class TodayDashboard extends StatelessWidget {
         value: '${(dailyWaterMl / 1000).toStringAsFixed(1)}L',
         color: cyan,
         ratio: waterRatio,
+        statKey: const ValueKey('tracker-stat-water'),
+        onTap: () async {
+          final ml = await showWaterQuickAddSheet(
+            context,
+            intakeMl: dailyWaterMl,
+            goalMl: waterGoalMl,
+          );
+          if (ml != null) onAddWater(ml);
+        },
       ),
       TrackerStat(
         icon: Icons.directions_walk_outlined,
@@ -109,6 +171,11 @@ class TodayDashboard extends StatelessWidget {
         value: _formatSteps(dailySteps),
         color: lime,
         ratio: stepsRatio,
+        statKey: const ValueKey('tracker-stat-steps'),
+        onTap: () async {
+          final s = await showStepsQuickSetSheet(context, steps: dailySteps);
+          if (s != null) onSetSteps(s);
+        },
       ),
       TrackerStat(
         icon: Icons.bedtime_outlined,
@@ -118,6 +185,8 @@ class TodayDashboard extends StatelessWidget {
             : '${(sleepMinutes / 60).toStringAsFixed(sleepMinutes % 60 == 0 ? 0 : 1)}h',
         color: wellnessTone,
         ratio: sleepRatio,
+        statKey: const ValueKey('tracker-stat-sleep'),
+        onTap: onLogSleep,
       ),
     ];
 
@@ -134,7 +203,12 @@ class TodayDashboard extends StatelessWidget {
         const SizedBox(height: 18),
         ShiftFitHero(plan: plan),
         const SizedBox(height: 12),
-        FitPilotHubGrid(plan: plan),
+        FitPilotHubGrid(
+          plan: plan,
+          onTapWorkout: onOpenTraining,
+          onTapNutrition: onOpenFood,
+          onTapGuides: () => showPlanSheet(context, plan),
+        ),
         const SizedBox(height: 12),
         QuickCheckInCard(
           selectedShift: selectedShift,
@@ -146,6 +220,13 @@ class TodayDashboard extends StatelessWidget {
           onStressSelected: onStressSelected,
         ),
         const SizedBox(height: 12),
+        DayOverviewCard(
+          waterRatio: waterRatio,
+          sleepRatio: sleepRatio,
+          workoutRatio: workoutRatio,
+          stepsRatio: stepsRatio,
+        ),
+        const SizedBox(height: 12),
         DailyTrackerCard(
           stats: stats,
           healthAuthState: healthAuthState,
@@ -153,6 +234,45 @@ class TodayDashboard extends StatelessWidget {
           onConnectHealth: onConnectHealth,
           onRefreshHealth: onRefreshHealth,
         ),
+        const SizedBox(height: 20),
+        const SectionHeader(title: 'Wohlbefinden', action: 'heute'),
+        const SizedBox(height: 10),
+        MoodCard(
+          mood: mood,
+          onMoodChanged: onMoodScore,
+          onEditNote: onEditMoodNote,
+        ),
+        const SizedBox(height: 10),
+        HabitsCard(
+          habits: defaultHabits,
+          state: habits,
+          onToggle: onToggleHabit,
+        ),
+        const SizedBox(height: 10),
+        CaffeineCard(
+          day: caffeineDay,
+          shift: selectedShift,
+          onAdd: onAddCaffeine,
+          onReset: onResetCaffeine,
+        ),
+        if (caffeineDay.entries.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          CaffeineHalfLifeCard(day: caffeineDay),
+        ],
+        const SizedBox(height: 10),
+        WeightCard(log: weightLog, onLog: onLogWeight),
+        const SizedBox(height: 16),
+        SmartRemindersCard(
+          shift: selectedShift,
+          dailyWaterMl: dailyWaterMl,
+          waterGoalMl: waterGoalMl,
+          caffeineDay: caffeineDay,
+          lastBedtimeMinutes: lastSleep?.bedtimeMinutes,
+          sleepGoalMinutes: sleepGoalMinutes,
+          onAddWater: onAddWater,
+        ),
+        const SizedBox(height: 10),
+        TipOfDayCard(shift: selectedShift),
         const SizedBox(height: 20),
         SectionHeader(title: 'Session', action: planAction),
         const SizedBox(height: 10),
@@ -181,7 +301,11 @@ class TodayDashboard extends StatelessWidget {
         const SizedBox(height: 20),
         const SectionHeader(title: 'Motivation', action: 'Challenge'),
         const SizedBox(height: 10),
-        WeeklyChallengeCard(plan: plan),
+        WeeklyChallengeCard(
+          plan: plan,
+          completed: workoutStreak.clamp(0, 7),
+          total: 7,
+        ),
       ],
     );
   }
@@ -229,4 +353,3 @@ class _StreakBadge extends StatelessWidget {
     );
   }
 }
-

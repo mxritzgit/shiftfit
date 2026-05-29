@@ -93,6 +93,15 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
   DateTime? healthLastFetch;
   bool healthSyncing = false;
   LifetimeStats lifetimeStats = LifetimeStats();
+  // Tageswert: bleibt true sobald der Plan einmal voll abgehakt wurde — das
+  // robuste Signal fuer Streak/History (completedBlockIds wird bei Abschluss
+  // geleert). Wird in daily_logs.workout_completed persistiert.
+  bool workoutCompletedToday = false;
+  // Letzte ~30 Tage daily_logs fuer den Trends-Verlauf (echte History statt
+  // Demo-Daten). Beim Boot via DailyLogSync.loadRange befuellt.
+  List<DailyLog> _trendsHistory = const <DailyLog>[];
+  // Debounce für den Lifetime-Stats-Upsert (mehrere Quick-Logs → 1 Write).
+  Timer? _statsSaveDebounce;
   String userName = 'Moritz';
   final ValueNotifier<int> _profileRefresh = ValueNotifier<int>(0);
   late bool _profileLoaded;
@@ -150,6 +159,10 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
       _safeLoad(() => sync.tracking.loadWeightLog()),
       _safeLoad(() => sync.tracking.loadCaffeineDay(today)),
       _safeLoad(() => sync.tracking.loadLatestSleep()),
+      _safeLoad(() => sync.lifetimeStats.load()),
+      _safeLoad(() => sync.weeklyPlan.load()),
+      _safeLoad(() => sync.dailyLog
+          .loadRange(today.subtract(const Duration(days: 29)), today)),
     ]);
     if (!mounted) return;
     setState(() {
@@ -174,6 +187,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         mood = loadedDailyLog.mood;
         habits = loadedDailyLog.habitState;
         completedBlockIds = loadedDailyLog.completedBlockIds;
+        workoutCompletedToday = loadedDailyLog.workoutCompleted;
       }
 
       final loadedWeightLog = results[4] as WeightLog?;
@@ -184,6 +198,24 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
 
       final loadedSleep = results[6] as SleepEntry?;
       if (loadedSleep != null) lastSleep = loadedSleep;
+
+      final loadedStats = results[7] as LifetimeStats?;
+      if (loadedStats != null) {
+        lifetimeStats = loadedStats;
+        // Durabler Streak aus der persistierten Zeile (vorher in-memory only).
+        workoutStreak = loadedStats.currentStreak;
+      }
+
+      final loadedWeek = results[8] as List<String>?;
+      if (loadedWeek != null && loadedWeek.length == 7) {
+        // weekPlan ist eine final List → in-place ersetzen statt neu zuweisen.
+        weekPlan
+          ..clear()
+          ..addAll(loadedWeek);
+      }
+
+      final loadedHistory = results[9] as List<DailyLog>?;
+      if (loadedHistory != null) _trendsHistory = loadedHistory;
 
       dailyConsumedKcal = _consumedKcalForFoodDate(today);
       macroProgress = _macroProgressForFoodDate(today);
@@ -236,11 +268,34 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
       moodNote: mood.note,
       completedBlockIds: completedBlockIds,
       completedHabitIds: habits.completedIds,
+      workoutCompleted: workoutCompletedToday,
     ));
+  }
+
+  /// Persistiert die kumulierten Lebenszeit-Statistiken (inkl. Streak) nach
+  /// Supabase — debounced (600ms), damit eine Serie schneller Quick-Logs
+  /// (mehrere +Wasser/+Schritte-Taps) zu EINEM Upsert zusammenläuft (analog zu
+  /// DailyLogSync.queueUpsert). Fehler landen sichtbar in einer Snackbar.
+  void _saveLifetimeStats() {
+    if (widget.sync == null) return;
+    _statsSaveDebounce?.cancel();
+    _statsSaveDebounce = Timer(const Duration(milliseconds: 600), () {
+      widget.sync?.lifetimeStats
+          .save(lifetimeStats)
+          .catchError((Object e) => _reportSyncError('Statistik', e));
+    });
+  }
+
+  /// Persistiert den 7-Tage-Wochenplan nach Supabase (fire-and-forget).
+  void _saveWeeklyPlan() {
+    widget.sync?.weeklyPlan
+        .save(weekPlan)
+        .catchError((Object e) => _reportSyncError('Wochenplan', e));
   }
 
   @override
   void dispose() {
+    _statsSaveDebounce?.cancel();
     _profileRefresh.dispose();
     widget.sync?.dispose();
     super.dispose();
@@ -298,6 +353,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
       if (ml > 0) lifetimeStats = lifetimeStats.addWater(ml);
     });
     _queueDailyLogSync();
+    _saveLifetimeStats();
   }
 
   void _toggleHabit(String id) {
@@ -314,6 +370,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
     widget.sync?.tracking
         .insertWeight(kg, ts)
         .catchError((e) => _reportSyncError('Gewicht', e));
+    _saveLifetimeStats();
   }
 
   void _resetWater() {
@@ -342,6 +399,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
       if (amount > 0) lifetimeStats = lifetimeStats.addSteps(amount);
     });
     _queueDailyLogSync();
+    _saveLifetimeStats();
   }
 
   void _setSteps(int amount) {
@@ -384,18 +442,30 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
               (e) => next.contains('${e.key + 1}:${e.value.title}'),
             );
 
+    // Idempotent pro Tag: nur der ERSTE Voll-Abschluss zählt Workout + Streak
+    // hoch. Sonst würde erneutes Abhaken (nach dem Block-Reset) den jetzt
+    // persistierten lifetimeStats.workoutsCompleted-Zähler aufblähen.
+    final bool wasCompletedToday = workoutCompletedToday;
     setState(() {
       if (allDone) {
-        workoutStreak += 1;
+        if (!wasCompletedToday) {
+          // Streak durabel fortschreiben (gestern→+1, heute→idempotent, sonst
+          // Reset 1) + Workout-Zähler + Tages-Flag fürs History-Signal.
+          lifetimeStats = lifetimeStats
+              .incrementWorkouts()
+              .recordWorkoutDay(DateTime.now());
+          workoutStreak = lifetimeStats.currentStreak;
+          workoutCompletedToday = true;
+        }
         completedBlockIds = <String>{};
-        lifetimeStats = lifetimeStats.incrementWorkouts();
       } else {
         completedBlockIds = next;
       }
     });
     _queueDailyLogSync();
 
-    if (allDone) {
+    if (allDone && !wasCompletedToday) {
+      _saveLifetimeStats();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Plan abgehakt · Streak: $workoutStreak')),
       );
@@ -484,6 +554,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
     widget.sync?.meals
         .insertLoggedMeal(entry)
         .catchError((e) => _reportSyncError('Mahlzeit', e));
+    _saveLifetimeStats();
   }
 
   void _removeLoggedMeal(String id) {
@@ -565,6 +636,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         mood = DailyMood.empty;
         habits = const HabitState();
         loggedMeals = <LoggedMeal>[];
+        workoutCompletedToday = false;
         selectedFoodDate = DateUtils.dateOnly(DateTime.now());
       }
     });
@@ -605,6 +677,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
       mood = DailyMood.empty;
       habits = const HabitState();
       loggedMeals = <LoggedMeal>[];
+      workoutCompletedToday = false;
       selectedFoodDate = DateUtils.dateOnly(DateTime.now());
     });
     ScaffoldMessenger.of(context).showSnackBar(
@@ -735,7 +808,9 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         weekPlan: weekPlan,
         onShiftChanged: (dayIndex, shift) {
           setState(() => weekPlan[dayIndex] = shift);
+          _saveWeeklyPlan();
         },
+        onSavePlan: widget.sync == null ? null : _saveWeeklyPlan,
         onSettingsPressed: _openSettings,
         onProfilePressed: _openProfile,
         profileInitial: _profileInitial,
@@ -754,6 +829,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         stepsGoal: stepsGoal,
         dailyConsumedKcal: dailyConsumedKcal,
         kcalGoal: profile.dailyKcalGoal,
+        history: _trendsHistory,
         onSettingsPressed: _openSettings,
         onProfilePressed: _openProfile,
         profileInitial: _profileInitial,
@@ -795,6 +871,21 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
           slot: slot,
           foodDate: DateTime.now(),
         ),
+        // Restmakros des Tages (Ziel − verbraucht) → „Passt zu deinem Ziel".
+        remainingMacros: MacroProgress(
+          proteinG: (profile.proteinGoalG - macroProgress.proteinG)
+              .clamp(0.0, double.infinity)
+              .toDouble(),
+          carbsG: (profile.carbsGoalG - macroProgress.carbsG)
+              .clamp(0.0, double.infinity)
+              .toDouble(),
+          fatG: (profile.fatGoalG - macroProgress.fatG)
+              .clamp(0.0, double.infinity)
+              .toDouble(),
+          kcal: (profile.dailyKcalGoal - macroProgress.kcal)
+              .clamp(0, 1 << 30)
+              .toInt(),
+        ),
       ),
       _ => TodayDashboard(
         selectedShift: selectedShift,
@@ -819,6 +910,21 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         healthLastFetch: healthLastFetch,
         onConnectHealth: _connectHealth,
         onRefreshHealth: _refreshHealthSteps,
+        caffeineDay: caffeineDay,
+        mood: mood,
+        habits: habits,
+        weightLog: weightLog,
+        onAddWater: _addWater,
+        onSetSteps: _setSteps,
+        onLogSleep: _logSleep,
+        onMoodScore: _setMoodScore,
+        onEditMoodNote: _editMoodNote,
+        onToggleHabit: _toggleHabit,
+        onAddCaffeine: _addCaffeine,
+        onResetCaffeine: _resetCaffeine,
+        onLogWeight: _logWeight,
+        onOpenTraining: () => setState(() => selectedTab = 1),
+        onOpenFood: () => setState(() => selectedTab = 3),
         onSettingsPressed: _openSettings,
         onProfilePressed: _openProfile,
         profileInitial: _profileInitial,

@@ -24,6 +24,9 @@ class MealSuggestionItem extends StatefulWidget {
     this.justAdded = false,
     this.onRemove,
     this.addButtonKey,
+    this.isFavorite = false,
+    this.onToggleFavorite,
+    this.favoriteButtonKey,
   });
 
   final MealAnalysisResult result;
@@ -36,6 +39,14 @@ class MealSuggestionItem extends StatefulWidget {
   final bool justAdded;
   final VoidCallback? onRemove;
   final Key? addButtonKey;
+
+  /// Ob dieses Item aktuell favorisiert ist (Herz gefüllt, lime).
+  final bool isFavorite;
+
+  /// Optionaler Favoriten-Toggle im Header. Null → kein Herz-Button
+  /// (bestehende Aufrufer bleiben unverändert).
+  final ValueChanged<MealAnalysisResult>? onToggleFavorite;
+  final Key? favoriteButtonKey;
 
   @override
   State<MealSuggestionItem> createState() => _MealSuggestionItemState();
@@ -154,6 +165,9 @@ class _MealSuggestionItemState extends State<MealSuggestionItem> {
             justAdded: widget.justAdded,
             onTap: widget.onTap,
             onRemove: widget.onRemove,
+            isFavorite: widget.isFavorite,
+            onToggleFavorite: widget.onToggleFavorite,
+            favoriteButtonKey: widget.favoriteButtonKey,
           ),
           AnimatedSize(
             duration: const Duration(milliseconds: 180),
@@ -195,6 +209,9 @@ class _Header extends StatelessWidget {
     required this.justAdded,
     required this.onTap,
     required this.onRemove,
+    required this.isFavorite,
+    required this.onToggleFavorite,
+    required this.favoriteButtonKey,
   });
 
   final MealAnalysisResult result;
@@ -205,6 +222,9 @@ class _Header extends StatelessWidget {
   final bool justAdded;
   final VoidCallback onTap;
   final VoidCallback? onRemove;
+  final bool isFavorite;
+  final ValueChanged<MealAnalysisResult>? onToggleFavorite;
+  final Key? favoriteButtonKey;
 
   @override
   Widget build(BuildContext context) {
@@ -256,6 +276,24 @@ class _Header extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 4),
+            if (onToggleFavorite != null)
+              IconButton(
+                key: favoriteButtonKey,
+                onPressed: () => onToggleFavorite!(result),
+                tooltip: isFavorite
+                    ? 'Aus Favoriten entfernen'
+                    : 'Als Favorit speichern',
+                visualDensity: VisualDensity.compact,
+                icon: Icon(
+                  isFavorite
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_outline_rounded,
+                  // lime ist die reservierte Aktionsfarbe — bewusst NICHT der
+                  // (oft orange) Item-Akzent.
+                  color: isFavorite ? lime : textMuted,
+                  size: 18,
+                ),
+              ),
             _Trailing(
               expanded: expanded,
               justAdded: justAdded,

@@ -17,6 +17,7 @@ class DailyLog {
     this.moodNote = '',
     this.completedBlockIds = const <String>{},
     this.completedHabitIds = const <String>{},
+    this.workoutCompleted = false,
   });
 
   final DateTime date;
@@ -26,6 +27,11 @@ class DailyLog {
   final String moodNote;
   final Set<String> completedBlockIds;
   final Set<String> completedHabitIds;
+
+  /// Robustes Streak/History-Signal: true sobald an diesem Tag der Plan
+  /// einmal voll abgehakt wurde. Bleibt true, auch wenn completedBlockIds
+  /// danach (durch _toggleBlock-Reset) wieder geleert wird.
+  final bool workoutCompleted;
 
   DailyMood get mood => DailyMood(score: moodScore, note: moodNote);
   HabitState get habitState => HabitState(completedIds: completedHabitIds);
@@ -51,27 +57,54 @@ class DailyLogSync {
       final row = await _client
           .from('daily_logs')
           .select(
-              'log_date, water_ml, steps, mood_score, mood_note, completed_block_ids, completed_habit_ids')
+              'log_date, water_ml, steps, mood_score, mood_note, completed_block_ids, completed_habit_ids, workout_completed')
           .eq('user_id', _userId)
           .eq('log_date', iso)
           .maybeSingle();
       if (row == null) return null;
-      return DailyLog(
-        date: DateTime.parse(row['log_date'] as String),
-        waterMl: (row['water_ml'] as num?)?.toInt() ?? 0,
-        steps: (row['steps'] as num?)?.toInt() ?? 0,
-        moodScore: (row['mood_score'] as num?)?.toInt() ?? 0,
-        moodNote: row['mood_note']?.toString() ?? '',
-        completedBlockIds:
-            _stringSet(row['completed_block_ids']),
-        completedHabitIds:
-            _stringSet(row['completed_habit_ids']),
-      );
+      return _fromRow(row);
     } catch (e, stack) {
       dev.log('DailyLogSync.loadForDate failed',
           error: e, stackTrace: stack, name: 'daily_log_sync');
       rethrow;
     }
+  }
+
+  /// Laedt alle Tageslogs im inklusiven Datumsbereich [from]..[to]
+  /// (date-only), aufsteigend nach log_date sortiert. Fuer Trends/Streak-
+  /// Historie. Defensiv: bei Fehler eine leere Liste statt rethrow, damit
+  /// ein fehlschlagender History-Load den Boot nicht killt.
+  Future<List<DailyLog>> loadRange(DateTime from, DateTime to) async {
+    final fromIso = _dateOnly(from);
+    final toIso = _dateOnly(to);
+    try {
+      final rows = await _client
+          .from('daily_logs')
+          .select(
+              'log_date, water_ml, steps, mood_score, mood_note, completed_block_ids, completed_habit_ids, workout_completed')
+          .eq('user_id', _userId)
+          .gte('log_date', fromIso)
+          .lte('log_date', toIso)
+          .order('log_date', ascending: true);
+      return rows.map<DailyLog>((row) => _fromRow(row)).toList();
+    } catch (e, stack) {
+      dev.log('DailyLogSync.loadRange failed',
+          error: e, stackTrace: stack, name: 'daily_log_sync');
+      return const <DailyLog>[];
+    }
+  }
+
+  static DailyLog _fromRow(Map<String, dynamic> row) {
+    return DailyLog(
+      date: DateTime.parse(row['log_date'] as String),
+      waterMl: (row['water_ml'] as num?)?.toInt() ?? 0,
+      steps: (row['steps'] as num?)?.toInt() ?? 0,
+      moodScore: (row['mood_score'] as num?)?.toInt() ?? 0,
+      moodNote: row['mood_note']?.toString() ?? '',
+      completedBlockIds: _stringSet(row['completed_block_ids']),
+      completedHabitIds: _stringSet(row['completed_habit_ids']),
+      workoutCompleted: row['workout_completed'] == true,
+    );
   }
 
   /// Debounced Upsert. setState-Hagel aus dem HomeState laufen in 400ms-
@@ -110,6 +143,7 @@ class DailyLogSync {
         'mood_note': log.moodNote,
         'completed_block_ids': log.completedBlockIds.toList(),
         'completed_habit_ids': log.completedHabitIds.toList(),
+        'workout_completed': log.workoutCompleted,
       }, onConflict: 'user_id,log_date');
     } catch (e, stack) {
       dev.log('DailyLogSync._upsert failed',
