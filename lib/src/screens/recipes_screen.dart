@@ -118,32 +118,6 @@ class _RecipesScreenState extends State<RecipesScreen> {
           selected: selectedFilter,
           onSelected: (filter) => setState(() => selectedFilter = filter),
         ),
-        if (goalMatches.isNotEmpty) ...[
-          const SizedBox(height: 24),
-          _SectionHeader(
-            title: 'Passt zu deinem Ziel',
-            subtitle: 'nach Restmakros',
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 244,
-            child: ListView.separated(
-              key: const ValueKey('recipe-goal-matches'),
-              scrollDirection: Axis.horizontal,
-              clipBehavior: Clip.none,
-              itemCount: goalMatches.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (context, index) {
-                final recipe = goalMatches[index];
-                return _RecipeHeroCard(
-                  recipe: recipe,
-                  badgeText: 'Match',
-                  onTap: () => _openRecipe(recipe),
-                );
-              },
-            ),
-          ),
-        ],
         const SizedBox(height: 24),
         _SectionHeader(
           title: 'Empfehlungen',
@@ -181,6 +155,34 @@ class _RecipesScreenState extends State<RecipesScreen> {
           if (i != visibleRecipes.length - 1) const SizedBox(height: 10),
         ],
         if (visibleRecipes.isEmpty) const _RecipeEmptyState(),
+        // Steht bewusst NACH der Hauptliste: so bleibt die erste Rezept-Kachel
+        // im initialen Viewport (Test nutzt ensureVisible ohne vorheriges Scrollen).
+        if (goalMatches.isNotEmpty) ...[
+          const SizedBox(height: 26),
+          _SectionHeader(
+            title: 'Passt zu deinem Ziel',
+            subtitle: 'nach Restmakros',
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 244,
+            child: ListView.separated(
+              key: const ValueKey('recipe-goal-matches'),
+              scrollDirection: Axis.horizontal,
+              clipBehavior: Clip.none,
+              itemCount: goalMatches.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final recipe = goalMatches[index];
+                return _RecipeHeroCard(
+                  recipe: recipe,
+                  badgeText: 'Match',
+                  onTap: () => _openRecipe(recipe),
+                );
+              },
+            ),
+          ),
+        ],
       ],
     );
   }

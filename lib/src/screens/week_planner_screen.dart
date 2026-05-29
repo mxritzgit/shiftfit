@@ -125,7 +125,23 @@ class _WeekPlannerScreenState extends State<WeekPlannerScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 22),
+        const SectionHeader(title: 'Trainingssplit', action: 'Antippen'),
+        const SizedBox(height: 10),
+        for (var dayIndex = 0; dayIndex < _days.length; dayIndex++) ...[
+          WeekDayPlannerRow(
+            day: _days[dayIndex],
+            selectedShift: widget.weekPlan[dayIndex],
+            shifts: _shifts,
+            onShiftChanged: (shift) {
+              widget.onShiftChanged(dayIndex, shift);
+              if (mounted) setState(() {});
+            },
+            onOpenDetail: () => _openDayDetail(dayIndex),
+          ),
+          if (dayIndex != _days.length - 1) const SizedBox(height: 8),
+        ],
+        const SizedBox(height: 16),
         Row(
           children: [
             Expanded(
@@ -147,22 +163,6 @@ class _WeekPlannerScreenState extends State<WeekPlannerScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 22),
-        const SectionHeader(title: 'Trainingssplit', action: 'Antippen'),
-        const SizedBox(height: 10),
-        for (var dayIndex = 0; dayIndex < _days.length; dayIndex++) ...[
-          WeekDayPlannerRow(
-            day: _days[dayIndex],
-            selectedShift: widget.weekPlan[dayIndex],
-            shifts: _shifts,
-            onShiftChanged: (shift) {
-              widget.onShiftChanged(dayIndex, shift);
-              if (mounted) setState(() {});
-            },
-            onOpenDetail: () => _openDayDetail(dayIndex),
-          ),
-          if (dayIndex != _days.length - 1) const SizedBox(height: 8),
-        ],
         if (widget.onSavePlan != null) ...[
           const SizedBox(height: 16),
           SavePlanBar(onSave: _handleSave, showSaved: _showSaved),

@@ -166,19 +166,19 @@ class _AuthScreenState extends State<AuthScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 8),
                     const _BrandMark(),
-                    const SizedBox(height: 44),
+                    const SizedBox(height: 16),
                     _Hero(isRegister: _isRegister),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 18),
                     _GoogleButton(
                       enabled: !_busy,
                       loading: _oauthLoading == FitPilotOAuthProvider.google,
                       onTap: () => _startOAuth(FitPilotOAuthProvider.google),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 14),
                     const _OrDivider(),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 14),
                     _EmailForm(
                       isRegister: _isRegister,
                       loading: _loading,
@@ -194,7 +194,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       ),
                       onSubmit: _submit,
                     ),
-                    const SizedBox(height: 22),
+                    const SizedBox(height: 14),
                     _ModeToggle(
                       isRegister: _isRegister,
                       onTap: _busy ? null : () => _setMode(!_isRegister),
