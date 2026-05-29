@@ -46,7 +46,11 @@ class WaterTrackerCard extends StatelessWidget {
               const Expanded(
                 child: Text(
                   'Trinkwasser',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
                 ),
               ),
               IconButton(
@@ -69,12 +73,14 @@ class WaterTrackerCard extends StatelessWidget {
                   fontSize: 28,
                   fontWeight: FontWeight.w700,
                   letterSpacing: -1,
+                  height: 1.0,
                   color: cyan,
+                  fontFeatures: [FontFeature.tabularFigures()],
                 ),
               ),
               const SizedBox(width: 4),
               const Padding(
-                padding: EdgeInsets.only(bottom: 4),
+                padding: EdgeInsets.only(bottom: 3),
                 child: Text(
                   'ml',
                   style: TextStyle(
@@ -89,8 +95,9 @@ class WaterTrackerCard extends StatelessWidget {
                 '$percent% · $goalMl ml Ziel',
                 style: const TextStyle(
                   color: textMuted,
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: FontWeight.w500,
+                  fontFeatures: [FontFeature.tabularFigures()],
                 ),
               ),
             ],
@@ -105,7 +112,7 @@ class WaterTrackerCard extends StatelessWidget {
               color: cyan,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
@@ -149,7 +156,7 @@ class _WaterAddButton extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(rControl),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 11),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           color: surfaceSoft,
           borderRadius: BorderRadius.circular(rControl),
@@ -162,6 +169,7 @@ class _WaterAddButton extends StatelessWidget {
             color: cyan,
             fontSize: 13,
             fontWeight: FontWeight.w600,
+            fontFeatures: [FontFeature.tabularFigures()],
           ),
         ),
       ),
@@ -205,9 +213,13 @@ class SleepLogCard extends StatelessWidget {
               children: [
                 const Text(
                   'Schlaf',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 3),
                 if (lastEntry == null)
                   Text(
                     'Noch nichts geloggt · Ziel ${goalH}h',
@@ -215,6 +227,7 @@ class SleepLogCard extends StatelessWidget {
                       color: textMuted,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
+                      fontFeatures: [FontFeature.tabularFigures()],
                     ),
                   )
                 else
@@ -227,6 +240,7 @@ class SleepLogCard extends StatelessWidget {
                           color: wellnessTone,
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
+                          fontFeatures: [FontFeature.tabularFigures()],
                         ),
                       ),
                       const SizedBox(width: 6),
@@ -236,6 +250,7 @@ class SleepLogCard extends StatelessWidget {
                           color: textMuted,
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
+                          fontFeatures: [FontFeature.tabularFigures()],
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -378,6 +393,7 @@ class _SleepLogSheetState extends State<_SleepLogSheet> {
               color: textMuted,
               fontSize: 13,
               fontWeight: FontWeight.w500,
+              fontFeatures: [FontFeature.tabularFigures()],
             ),
           ),
           const SizedBox(height: 18),
@@ -415,7 +431,7 @@ class _SleepLogSheetState extends State<_SleepLogSheet> {
               color: textMuted,
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              letterSpacing: 0.8,
+              letterSpacing: 1.2,
             ),
           ),
           const SizedBox(height: 8),
@@ -514,7 +530,11 @@ class _TimeField extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               value,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
             ),
           ],
         ),

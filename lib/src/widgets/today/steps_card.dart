@@ -66,7 +66,11 @@ class StepsCard extends StatelessWidget {
               const Expanded(
                 child: Text(
                   'Schritte',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
                 ),
               ),
               TextButton(
@@ -106,10 +110,12 @@ class StepsCard extends StatelessWidget {
                 '$steps',
                 key: const ValueKey('steps-count'),
                 style: const TextStyle(
-                  fontSize: 24,
+                  fontSize: 28,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: -0.6,
+                  letterSpacing: -1,
+                  height: 1.0,
                   color: lime,
+                  fontFeatures: [FontFeature.tabularFigures()],
                 ),
               ),
               const SizedBox(width: 4),
@@ -119,7 +125,7 @@ class StepsCard extends StatelessWidget {
                   'Schritte',
                   style: TextStyle(
                     color: textMuted,
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -131,6 +137,7 @@ class StepsCard extends StatelessWidget {
                   color: textMuted,
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
+                  fontFeatures: [FontFeature.tabularFigures()],
                 ),
               ),
             ],
@@ -210,7 +217,7 @@ class _StepsButton extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(rControl),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 11),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: surfaceSoft,
@@ -223,6 +230,7 @@ class _StepsButton extends StatelessWidget {
             color: lime,
             fontSize: 13,
             fontWeight: FontWeight.w600,
+            fontFeatures: [FontFeature.tabularFigures()],
           ),
         ),
       ),
@@ -360,6 +368,7 @@ class _HealthStatusBar extends StatelessWidget {
                   color: lime,
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
+                  fontFeatures: [FontFeature.tabularFigures()],
                 ),
               ),
             ),

@@ -55,7 +55,11 @@ class CaffeineHalfLifeCard extends StatelessWidget {
               const Expanded(
                 child: Text(
                   'Koffein im Blut',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
                 ),
               ),
               Text(
@@ -64,17 +68,19 @@ class CaffeineHalfLifeCard extends StatelessWidget {
                   color: orange,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
+                  fontFeatures: [FontFeature.tabularFigures()],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           const Text(
             'Geschätzter Wirkstoffpegel über 24h · Halbwertszeit ~5h',
             style: TextStyle(
               color: textMuted,
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: FontWeight.w500,
+              height: 1.45,
             ),
           ),
           const SizedBox(height: 12),
@@ -89,53 +95,37 @@ class CaffeineHalfLifeCard extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: const [
-              Text(
-                '00',
-                style: TextStyle(
-                  color: textMuted,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              Text(
-                '06',
-                style: TextStyle(
-                  color: textMuted,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              Text(
-                '12',
-                style: TextStyle(
-                  color: textMuted,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              Text(
-                '18',
-                style: TextStyle(
-                  color: textMuted,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              Text(
-                '24',
-                style: TextStyle(
-                  color: textMuted,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+              _AxisLabel('00'),
+              _AxisLabel('06'),
+              _AxisLabel('12'),
+              _AxisLabel('18'),
+              _AxisLabel('24'),
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AxisLabel extends StatelessWidget {
+  const _AxisLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: const TextStyle(
+        color: textMuted,
+        fontSize: 10,
+        fontWeight: FontWeight.w500,
+        fontFeatures: [FontFeature.tabularFigures()],
       ),
     );
   }

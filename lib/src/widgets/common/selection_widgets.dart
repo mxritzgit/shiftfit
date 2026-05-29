@@ -73,6 +73,7 @@ class OptionPill extends StatelessWidget {
           style: TextStyle(
             color: selected ? textPrimary : textMuted,
             fontSize: 13,
+            letterSpacing: -0.1,
             fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
           ),
         ),
@@ -115,6 +116,7 @@ class ShiftChoiceChip extends StatelessWidget {
           style: TextStyle(
             color: selected ? color : textPrimary.withValues(alpha: 0.78),
             fontSize: 13,
+            letterSpacing: -0.1,
             fontWeight: FontWeight.w600,
           ),
         ),

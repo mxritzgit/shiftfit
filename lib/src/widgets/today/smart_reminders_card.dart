@@ -140,7 +140,7 @@ class SmartRemindersCard extends StatelessWidget {
 
     return AppCard(
       key: const ValueKey('smart-reminders-card'),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -149,15 +149,16 @@ class SmartRemindersCard extends StatelessWidget {
               const Icon(
                 Icons.tips_and_updates_outlined,
                 color: orange,
-                size: 16,
+                size: 17,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 9),
               const Expanded(
                 child: Text(
                   'Tipps für jetzt',
                   style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
                   ),
                 ),
               ),
@@ -171,10 +172,10 @@ class SmartRemindersCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           for (var i = 0; i < reminders.length; i++) ...[
             _ReminderRow(reminder: reminders[i]),
-            if (i != reminders.length - 1) const SizedBox(height: 8),
+            if (i != reminders.length - 1) const SizedBox(height: 10),
           ],
         ],
       ),
@@ -193,15 +194,15 @@ class _ReminderRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 28,
-          height: 28,
+          width: 30,
+          height: 30,
           decoration: BoxDecoration(
             color: reminder.color.withValues(alpha: 0.14),
-            borderRadius: BorderRadius.circular(rChip),
+            borderRadius: BorderRadius.circular(rControl),
           ),
-          child: Icon(reminder.icon, color: reminder.color, size: 14),
+          child: Icon(reminder.icon, color: reminder.color, size: 15),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 11),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -209,17 +210,18 @@ class _ReminderRow extends StatelessWidget {
               Text(
                 reminder.title,
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
+                  letterSpacing: -0.1,
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 3),
               Text(
                 reminder.body,
                 style: const TextStyle(
                   color: textMuted,
-                  fontSize: 11,
-                  height: 1.4,
+                  fontSize: 12,
+                  height: 1.45,
                   fontWeight: FontWeight.w500,
                 ),
               ),

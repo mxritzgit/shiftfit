@@ -92,13 +92,14 @@ class _WaterQuickAddSheet extends StatelessWidget {
                   fontSize: 28,
                   fontWeight: FontWeight.w700,
                   letterSpacing: -1,
+                  height: 1.0,
                   color: cyan,
                   fontFeatures: [FontFeature.tabularFigures()],
                 ),
               ),
               const SizedBox(width: 4),
               const Padding(
-                padding: EdgeInsets.only(bottom: 4),
+                padding: EdgeInsets.only(bottom: 3),
                 child: Text(
                   'ml',
                   style: TextStyle(
@@ -113,8 +114,9 @@ class _WaterQuickAddSheet extends StatelessWidget {
                 '$percent% · $goalMl ml Ziel',
                 style: const TextStyle(
                   color: textMuted,
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: FontWeight.w500,
+                  fontFeatures: [FontFeature.tabularFigures()],
                 ),
               ),
             ],
@@ -181,6 +183,7 @@ class _WaterPresetButton extends StatelessWidget {
             color: cyan,
             fontSize: 13,
             fontWeight: FontWeight.w600,
+            fontFeatures: [FontFeature.tabularFigures()],
           ),
         ),
       ),

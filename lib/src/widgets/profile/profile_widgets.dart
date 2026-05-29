@@ -162,6 +162,7 @@ class _HeroTag extends StatelessWidget {
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.2,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
           ),
@@ -326,6 +327,8 @@ class GoalPlanCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
+                        height: 1.35,
+                        fontFeatures: [FontFeature.tabularFigures()],
                       ),
                     ),
                   ),
@@ -373,10 +376,11 @@ class _WeightPole extends StatelessWidget {
               value,
               style: TextStyle(
                 fontSize: 30,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -1,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -1.2,
                 color: color,
                 height: 1,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
             const SizedBox(width: 3),
@@ -446,6 +450,7 @@ class _PlanChip extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     color: color,
                     letterSpacing: -0.2,
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
               ],
@@ -495,7 +500,11 @@ class BodyStatsCard extends StatelessWidget {
               const Expanded(
                 child: Text(
                   'Körper',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
                 ),
               ),
               _InfoButton(
@@ -519,6 +528,7 @@ class BodyStatsCard extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                         letterSpacing: -1.4,
                         height: 1,
+                        fontFeatures: [FontFeature.tabularFigures()],
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -590,6 +600,7 @@ class BodyStatsCard extends StatelessWidget {
                     color: bmiColor,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
               ],
@@ -847,6 +858,7 @@ class _DeltaPill extends StatelessWidget {
               fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.2,
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
         ],
@@ -900,7 +912,11 @@ class WeightHistoryCard extends StatelessWidget {
               const Expanded(
                 child: Text(
                   'Verlauf',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
                 ),
               ),
               Text(
@@ -1032,7 +1048,11 @@ class GoalsOverviewCard extends StatelessWidget {
               const Expanded(
                 child: Text(
                   'Tagesziele',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
                 ),
               ),
               if (onEdit != null)
@@ -1145,6 +1165,7 @@ class _GoalTile extends StatelessWidget {
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     letterSpacing: -0.2,
+                    fontFeatures: [FontFeature.tabularFigures()],
                   ),
                 ),
               ],
@@ -1191,7 +1212,11 @@ class ShiftDistributionCard extends StatelessWidget {
         children: [
           const Text(
             'Trainings-Mix',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.2,
+            ),
           ),
           const SizedBox(height: 16),
           Row(
@@ -1215,6 +1240,8 @@ class ShiftDistributionCard extends StatelessWidget {
                             fontSize: 26,
                             fontWeight: FontWeight.w700,
                             letterSpacing: -0.8,
+                            height: 1,
+                            fontFeatures: [FontFeature.tabularFigures()],
                           ),
                         ),
                         const Text(
@@ -1281,6 +1308,7 @@ class ShiftDistributionCard extends StatelessWidget {
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.4,
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
               ],
@@ -1329,6 +1357,7 @@ class _ShiftLegendRow extends StatelessWidget {
             color: value > 0 ? color : textMuted,
             fontSize: 13,
             fontWeight: FontWeight.w700,
+            fontFeatures: const [FontFeature.tabularFigures()],
           ),
         ),
       ],
@@ -1381,7 +1410,11 @@ class LifetimeStatsCard extends StatelessWidget {
               const Expanded(
                 child: Text(
                   'Deine Session',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
                 ),
               ),
               Container(
@@ -1400,6 +1433,7 @@ class LifetimeStatsCard extends StatelessWidget {
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.2,
+                    fontFeatures: [FontFeature.tabularFigures()],
                   ),
                 ),
               ),
@@ -1482,8 +1516,11 @@ class _LifetimeTile extends StatelessWidget {
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                     letterSpacing: -0.4,
+                    height: 1.1,
+                    fontFeatures: [FontFeature.tabularFigures()],
                   ),
                 ),
+                const SizedBox(height: 1),
                 Text(
                   label,
                   style: const TextStyle(
@@ -1583,7 +1620,11 @@ class AchievementsGrid extends StatelessWidget {
               const Expanded(
                 child: Text(
                   'Achievements',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
                 ),
               ),
               Text(
@@ -1593,6 +1634,7 @@ class AchievementsGrid extends StatelessWidget {
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.4,
+                  fontFeatures: [FontFeature.tabularFigures()],
                 ),
               ),
             ],

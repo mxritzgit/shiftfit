@@ -110,7 +110,7 @@ class MealAnalysisScreen extends StatelessWidget {
           SizedBox(height: boundedHeight ? 8 : 10),
           if (boundedHeight)
             Expanded(
-              flex: 40,
+              flex: 38,
               child: CaloriesOverviewCard(
                 dailyConsumedKcal: dailyConsumedKcal,
                 kcalGoal: profile.dailyKcalGoal,
@@ -126,7 +126,7 @@ class MealAnalysisScreen extends StatelessWidget {
           const SizedBox(height: 10),
           if (boundedHeight)
             Expanded(
-              flex: 18,
+              flex: 22,
               child: MacrosOverviewCard(
                 progress: macroProgress,
                 profile: profile,
@@ -140,7 +140,7 @@ class MealAnalysisScreen extends StatelessWidget {
           const SizedBox(height: 10),
           if (boundedHeight)
             Expanded(
-              flex: 42,
+              flex: 40,
               child: MealsTodayCard(
                 meals: loggedMeals,
                 onMealTap: (slot) => _openAddSheet(context, slot),
@@ -323,7 +323,8 @@ class _FoodDateChip extends StatelessWidget {
               style: TextStyle(
                 color: selected ? bg : textPrimary,
                 fontSize: 10,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.1,
               ),
             ),
             const SizedBox(height: 2),
@@ -333,6 +334,7 @@ class _FoodDateChip extends StatelessWidget {
                 color: selected ? bg.withValues(alpha: 0.72) : textMuted,
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
           ],

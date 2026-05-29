@@ -368,7 +368,12 @@ class _AddMealSheetState extends State<AddMealSheet> {
             Flexible(
               child: SingleChildScrollView(
                 key: const ValueKey('add-meal-sheet-scroll'),
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  12,
+                  20,
+                  28 + mediaQuery.viewPadding.bottom,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -722,7 +727,7 @@ class _SectionLabel extends StatelessWidget {
       style: const TextStyle(
         color: textMuted,
         fontSize: 11,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w600,
         letterSpacing: 1.2,
       ),
     );

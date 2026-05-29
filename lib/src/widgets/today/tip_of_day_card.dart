@@ -142,29 +142,31 @@ class TipOfDayCard extends StatelessWidget {
                       child: Text(
                         tip.title,
                         style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.2,
                         ),
                       ),
                     ),
+                    const SizedBox(width: 8),
                     const Text(
-                      'Tipp',
+                      'TIPP',
                       style: TextStyle(
                         color: textMuted,
-                        fontSize: 10,
-                        letterSpacing: 0.6,
+                        fontSize: 11,
+                        letterSpacing: 1.2,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 5),
                 Text(
                   tip.body,
                   style: const TextStyle(
                     color: textMuted,
                     fontSize: 12,
-                    height: 1.4,
+                    height: 1.45,
                     fontWeight: FontWeight.w500,
                   ),
                 ),

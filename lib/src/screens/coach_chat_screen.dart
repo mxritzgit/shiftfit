@@ -430,12 +430,18 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
                 color: textPrimary,
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
               ),
             ),
             const SizedBox(height: 6),
             Text(
               '$remaining von ${_quota.dailyLimit} Fragen heute frei. Reset um Mitternacht (UTC).',
-              style: const TextStyle(color: textMuted, fontSize: 13, height: 1.4),
+              style: const TextStyle(
+                color: textMuted,
+                fontSize: 13,
+                height: 1.45,
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
             ),
             const SizedBox(height: 14),
             _QuotaBar(remaining: remaining, total: _quota.dailyLimit),
@@ -570,7 +576,7 @@ class _CoachTopBar extends StatelessWidget {
             ),
           ),
           Positioned(
-            left: 4,
+            left: 8,
             top: 0,
             bottom: 0,
             child: Center(
@@ -586,7 +592,7 @@ class _CoachTopBar extends StatelessWidget {
             ),
           ),
           Positioned(
-            right: 4,
+            right: 8,
             top: 0,
             bottom: 0,
             child: Center(
@@ -926,21 +932,26 @@ class _ErrorBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       decoration: BoxDecoration(
         color: warning.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(rCard),
         border: Border.all(color: warning.withValues(alpha: 0.35)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Icon(Icons.info_outline_rounded, size: 16, color: warning),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(color: textPrimary, fontSize: 12.5, height: 1.4),
+              style: const TextStyle(
+                color: textPrimary,
+                fontSize: 12.5,
+                height: 1.45,
+              ),
             ),
           ),
         ],
@@ -983,8 +994,9 @@ class _Composer extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 4),
         constraints: const BoxConstraints(minHeight: 52, maxHeight: 160),
-        padding: const EdgeInsets.fromLTRB(20, 4, 6, 4),
+        padding: const EdgeInsets.fromLTRB(18, 4, 6, 4),
         decoration: BoxDecoration(
           color: surface,
           borderRadius: BorderRadius.circular(rSheet),
@@ -1405,6 +1417,7 @@ class _QuotaBar extends StatelessWidget {
             color: textPrimary,
             fontSize: 12.5,
             fontWeight: FontWeight.w600,
+            fontFeatures: [FontFeature.tabularFigures()],
           ),
         ),
       ],

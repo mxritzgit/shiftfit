@@ -260,7 +260,7 @@ class _LoadingHint extends StatelessWidget {
           'FitPilot',
           style: TextStyle(
             fontSize: 22,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w700,
             letterSpacing: -0.4,
           ),
         ),
@@ -291,7 +291,7 @@ class _WelcomeText extends StatelessWidget {
           'Willkommen, $firstName.',
           style: const TextStyle(
             fontSize: 22,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w700,
             letterSpacing: -0.4,
           ),
         ),

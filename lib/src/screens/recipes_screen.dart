@@ -207,8 +207,9 @@ class _RecipesHeader extends StatelessWidget {
                 style: TextStyle(
                   color: textPrimary,
                   fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.7,
+                  height: 1.08,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -1.0,
                 ),
               ),
               const SizedBox(height: 6),
@@ -217,7 +218,7 @@ class _RecipesHeader extends StatelessWidget {
                 style: TextStyle(
                   color: textMuted.withValues(alpha: 0.92),
                   fontSize: 13,
-                  height: 1.35,
+                  height: 1.45,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -345,6 +346,8 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
       children: [
         Expanded(
           child: Text(
@@ -352,17 +355,19 @@ class _SectionHeader extends StatelessWidget {
             style: const TextStyle(
               color: textPrimary,
               fontSize: 18,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.35,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.4,
             ),
           ),
         ),
+        const SizedBox(width: 12),
         Text(
           subtitle,
           style: const TextStyle(
             color: textMuted,
             fontSize: 12,
             fontWeight: FontWeight.w600,
+            fontFeatures: [FontFeature.tabularFigures()],
           ),
         ),
       ],
@@ -446,12 +451,12 @@ class _RecipeHeroCard extends StatelessWidget {
                       style: const TextStyle(
                         color: textPrimary,
                         fontSize: 15,
-                        height: 1.15,
-                        fontWeight: FontWeight.w800,
+                        height: 1.2,
+                        fontWeight: FontWeight.w700,
                         letterSpacing: -0.2,
                       ),
                     ),
-                    const SizedBox(height: 7),
+                    const SizedBox(height: 6),
                     Text(
                       recipe.description,
                       maxLines: 2,
@@ -463,7 +468,7 @@ class _RecipeHeroCard extends StatelessWidget {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     _MacroRow(recipe: recipe, compact: true),
                   ],
                 ),
@@ -492,7 +497,7 @@ class _RecipeListTile extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(rCard),
       child: Container(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: surface,
           borderRadius: BorderRadius.circular(rCard),
@@ -501,14 +506,14 @@ class _RecipeListTile extends StatelessWidget {
         child: Row(
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(rCard),
+              borderRadius: BorderRadius.circular(rControl),
               child: SizedBox(
-                width: 74,
-                height: 74,
+                width: 72,
+                height: 72,
                 child: _RecipeImage(recipe: recipe),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -520,7 +525,7 @@ class _RecipeListTile extends StatelessWidget {
                     style: const TextStyle(
                       color: textPrimary,
                       fontSize: 14.5,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w700,
                       letterSpacing: -0.15,
                     ),
                   ),
@@ -532,7 +537,7 @@ class _RecipeListTile extends StatelessWidget {
                     style: const TextStyle(
                       color: textMuted,
                       fontSize: 11.5,
-                      height: 1.25,
+                      height: 1.3,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -620,9 +625,9 @@ class RecipeDetailScreen extends StatelessWidget {
                 style: const TextStyle(
                   color: textPrimary,
                   fontSize: 28,
-                  height: 1.06,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.8,
+                  height: 1.08,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -1.0,
                 ),
               ),
               const SizedBox(height: 10),
@@ -635,7 +640,7 @@ class RecipeDetailScreen extends StatelessWidget {
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
               _NutritionGrid(recipe: recipe),
               const SizedBox(height: 18),
               _AddToMealCard(
@@ -699,7 +704,8 @@ class _AddToMealCard extends StatelessWidget {
                       style: TextStyle(
                         color: textPrimary,
                         fontSize: 15,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
                       ),
                     ),
                     const SizedBox(height: 3),
@@ -709,6 +715,7 @@ class _AddToMealCard extends StatelessWidget {
                         color: textMuted,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
+                        fontFeatures: [FontFeature.tabularFigures()],
                       ),
                     ),
                   ],
@@ -734,7 +741,11 @@ class _AddToMealCard extends StatelessWidget {
               icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
               label: const Text(
                 'Hinzufügen',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.1,
+                ),
               ),
             ),
           ),
@@ -809,8 +820,8 @@ class _MealSlotPickerSheet extends StatelessWidget {
                         style: TextStyle(
                           color: textPrimary,
                           fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.45,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.5,
                         ),
                       ),
                       const SizedBox(height: 3),
@@ -820,6 +831,7 @@ class _MealSlotPickerSheet extends StatelessWidget {
                           color: textMuted,
                           fontSize: 12.5,
                           fontWeight: FontWeight.w600,
+                          fontFeatures: [FontFeature.tabularFigures()],
                         ),
                       ),
                     ],
@@ -850,7 +862,7 @@ class _MealSlotPickerSheet extends StatelessWidget {
                 ),
                 child: const Text(
                   'Abbrechen',
-                  style: TextStyle(fontWeight: FontWeight.w800),
+                  style: TextStyle(fontWeight: FontWeight.w700),
                 ),
               ),
             ),
@@ -913,7 +925,8 @@ class _MealSlotButton extends StatelessWidget {
                 style: TextStyle(
                   color: color,
                   fontSize: 14,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.1,
                 ),
               ),
             ),
@@ -974,18 +987,20 @@ class _NutritionTile extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: color,
-              fontSize: 15,
-              fontWeight: FontWeight.w900,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
               letterSpacing: -0.25,
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
-          const SizedBox(height: 3),
+          const SizedBox(height: 4),
           Text(
-            label,
+            label.toUpperCase(),
             style: const TextStyle(
               color: textMuted,
               fontSize: 10.5,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.8,
             ),
           ),
         ],
@@ -1033,7 +1048,8 @@ class _RecipeInfoSection extends StatelessWidget {
                   style: const TextStyle(
                     color: textPrimary,
                     fontSize: 15,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
                   ),
                 ),
               ],
@@ -1044,7 +1060,7 @@ class _RecipeInfoSection extends StatelessWidget {
               style: const TextStyle(
                 color: textMuted,
                 fontSize: 13,
-                height: 1.48,
+                height: 1.5,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -1075,7 +1091,9 @@ class _GlassBadge extends StatelessWidget {
         style: const TextStyle(
           color: textPrimary,
           fontSize: 11,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.1,
+          fontFeatures: [FontFeature.tabularFigures()],
         ),
       ),
     );
@@ -1106,7 +1124,8 @@ class _MatchBadge extends StatelessWidget {
             style: const TextStyle(
               color: bg,
               fontSize: 10.5,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
             ),
           ),
         ],
@@ -1148,21 +1167,34 @@ class _MacroRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fontSize = compact ? 10.5 : 11.2;
+    const tabular = TextStyle(fontFeatures: [FontFeature.tabularFigures()]);
     return Row(
       children: [
         Text(
           '${recipe.proteinG}g P',
-          style: TextStyle(color: lime, fontSize: fontSize, fontWeight: FontWeight.w800),
+          style: tabular.copyWith(
+            color: lime,
+            fontSize: fontSize,
+            fontWeight: FontWeight.w700,
+          ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 10),
         Text(
           '${recipe.carbsG}g KH',
-          style: TextStyle(color: textMuted, fontSize: fontSize, fontWeight: FontWeight.w700),
+          style: tabular.copyWith(
+            color: textMuted,
+            fontSize: fontSize,
+            fontWeight: FontWeight.w600,
+          ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 10),
         Text(
           '${recipe.fatG}g F',
-          style: TextStyle(color: textMuted, fontSize: fontSize, fontWeight: FontWeight.w700),
+          style: tabular.copyWith(
+            color: textMuted,
+            fontSize: fontSize,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ],
     );
@@ -1321,8 +1353,8 @@ class _CreateRecipeSheetState extends State<_CreateRecipeSheet> {
                 style: TextStyle(
                   color: textPrimary,
                   fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.4,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.5,
                 ),
               ),
               const SizedBox(height: 4),
@@ -1331,6 +1363,7 @@ class _CreateRecipeSheetState extends State<_CreateRecipeSheet> {
                 style: TextStyle(
                   color: textMuted,
                   fontSize: 12.5,
+                  height: 1.4,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -1426,7 +1459,11 @@ class _CreateRecipeSheetState extends State<_CreateRecipeSheet> {
                   icon: const Icon(Icons.check_rounded, size: 19),
                   label: const Text(
                     'Rezept speichern',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.1,
+                    ),
                   ),
                   style: FilledButton.styleFrom(
                     backgroundColor: lime,

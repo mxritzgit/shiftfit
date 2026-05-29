@@ -71,7 +71,11 @@ class CaffeineCard extends StatelessWidget {
               const Expanded(
                 child: Text(
                   'Koffein',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
                 ),
               ),
               IconButton(
@@ -95,10 +99,12 @@ class CaffeineCard extends StatelessWidget {
                 '${day.totalMg}',
                 key: const ValueKey('caffeine-total-mg'),
                 style: const TextStyle(
-                  fontSize: 24,
+                  fontSize: 28,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: -0.6,
+                  letterSpacing: -1,
+                  height: 1.0,
                   color: orange,
+                  fontFeatures: [FontFeature.tabularFigures()],
                 ),
               ),
               const SizedBox(width: 4),
@@ -108,7 +114,7 @@ class CaffeineCard extends StatelessWidget {
                   'mg',
                   style: TextStyle(
                     color: textMuted,
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -120,6 +126,7 @@ class CaffeineCard extends StatelessWidget {
                   color: textMuted,
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
+                  fontFeatures: [FontFeature.tabularFigures()],
                 ),
               ),
             ],
@@ -195,6 +202,7 @@ class CaffeineCard extends StatelessWidget {
                         color: textMuted,
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
+                        fontFeatures: [FontFeature.tabularFigures()],
                       ),
                     ),
                   ),
@@ -227,7 +235,7 @@ class _CaffeineButton extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(rControl),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           color: surfaceSoft,
           borderRadius: BorderRadius.circular(rControl),
@@ -250,6 +258,7 @@ class _CaffeineButton extends StatelessWidget {
                 color: textMuted,
                 fontSize: 10,
                 fontWeight: FontWeight.w500,
+                fontFeatures: [FontFeature.tabularFigures()],
               ),
             ),
           ],

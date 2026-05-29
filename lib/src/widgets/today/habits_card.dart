@@ -30,7 +30,11 @@ class HabitsCard extends StatelessWidget {
               const Expanded(
                 child: Text(
                   'Tagesroutinen',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
                 ),
               ),
               Text(
@@ -39,6 +43,7 @@ class HabitsCard extends StatelessWidget {
                   color: completed == habits.length ? lime : textMuted,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
             ],

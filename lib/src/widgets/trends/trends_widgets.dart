@@ -30,52 +30,69 @@ class TrendBarsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
-      child: SizedBox(
-        height: 140,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            for (final bar in bars)
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.bottomCenter,
-                        child: FractionallySizedBox(
-                          // Leerer Tag = niedriger, sichtbarer Sockel, nicht
-                          // fehlend. Mindesthoehe 0.06.
-                          heightFactor: bar.ratio.clamp(0.06, 1.0).toDouble(),
-                          child: Container(
-                            width: 10,
-                            decoration: BoxDecoration(
-                              color: bar.color.withValues(alpha: 0.85),
-                              borderRadius: BorderRadius.circular(rChip),
-                              border: bar.isToday
-                                  ? Border.all(color: lime, width: 1.4)
-                                  : null,
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: 128,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                for (final bar in bars)
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: FractionallySizedBox(
+                        // Leerer Tag = niedriger, sichtbarer Sockel, nicht
+                        // fehlend. Mindesthoehe 0.06.
+                        heightFactor: bar.ratio.clamp(0.06, 1.0).toDouble(),
+                        child: Container(
+                          width: 11,
+                          decoration: BoxDecoration(
+                            color: bar.color.withValues(
+                              alpha: bar.isToday ? 1.0 : 0.82,
                             ),
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(rChip),
+                              bottom: Radius.circular(2),
+                            ),
+                            border: bar.isToday
+                                ? Border.all(color: lime, width: 1.4)
+                                : null,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    Text(
-                      bar.label,
-                      style: TextStyle(
-                        color: bar.isToday ? textPrimary : textMuted,
-                        fontSize: 11,
-                        fontWeight:
-                            bar.isToday ? FontWeight.w700 : FontWeight.w500,
-                      ),
+                  ),
+              ],
+            ),
+          ),
+          // Feine Grundlinie verankert die Saeulen — Charts kleben nicht mehr
+          // in der Luft (Edge-Cling-Fix, rein dekorativ).
+          const SizedBox(height: 8),
+          Container(height: 1, color: hairline),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              for (final bar in bars)
+                Expanded(
+                  child: Text(
+                    bar.label,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: bar.isToday ? textPrimary : textMuted,
+                      fontSize: 11,
+                      fontWeight:
+                          bar.isToday ? FontWeight.w700 : FontWeight.w500,
+                      letterSpacing: 0.2,
+                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }

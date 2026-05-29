@@ -5,13 +5,13 @@ import 'app_colors.dart';
 
 /// Premium-Dark Theme für FitPilot.
 ///
-/// Eine Schrift (Plus Jakarta Sans) trägt die gesamte App — Hierarchie entsteht über
+/// Eine Schrift (Hanken Grotesk) trägt die gesamte App — Hierarchie entsteht über
 /// Gewicht, Größe und Tracking, nicht über Font-Wechsel. Komponenten-Themes
 /// setzen Tiefe (getönte Schatten statt Schwarz), die gelockte Radius-Skala
 /// und Lime als einzige Interaktionsfarbe zentral, damit jeder Screen ohne
 /// lokale Sonderfälle konsistent wirkt.
 ThemeData buildShiftFitTheme() {
-  final fontFamily = GoogleFonts.plusJakartaSans().fontFamily;
+  final fontFamily = GoogleFonts.hankenGrotesk().fontFamily;
 
   final base = ThemeData(
     useMaterial3: true,
@@ -29,15 +29,15 @@ ThemeData buildShiftFitTheme() {
     scaffoldBackgroundColor: bg,
   );
 
-  final textTheme = GoogleFonts.plusJakartaSansTextTheme(base.textTheme)
+  final textTheme = GoogleFonts.hankenGroteskTextTheme(base.textTheme)
       .apply(bodyColor: textPrimary, displayColor: textPrimary)
       .copyWith(
-        bodyMedium: GoogleFonts.plusJakartaSans(
+        bodyMedium: GoogleFonts.hankenGrotesk(
           color: textPrimary,
           fontSize: 14,
           height: 1.45,
         ),
-        bodySmall: GoogleFonts.plusJakartaSans(
+        bodySmall: GoogleFonts.hankenGrotesk(
           color: textMuted,
           fontSize: 13,
           height: 1.45,
@@ -66,7 +66,7 @@ ThemeData buildShiftFitTheme() {
     ),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: surfaceSoft,
-      contentTextStyle: GoogleFonts.plusJakartaSans(
+      contentTextStyle: GoogleFonts.hankenGrotesk(
         color: textPrimary,
         fontWeight: FontWeight.w600,
         fontSize: 13.5,
@@ -105,7 +105,7 @@ ThemeData buildShiftFitTheme() {
       backgroundColor: surfaceSoft,
       selectedColor: lime,
       side: BorderSide.none,
-      labelStyle: GoogleFonts.plusJakartaSans(
+      labelStyle: GoogleFonts.hankenGrotesk(
         color: textPrimary,
         fontSize: 12,
         fontWeight: FontWeight.w600,
@@ -117,8 +117,8 @@ ThemeData buildShiftFitTheme() {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: surfaceSoft,
-      hintStyle: GoogleFonts.plusJakartaSans(color: textMuted),
-      labelStyle: GoogleFonts.plusJakartaSans(color: textMuted),
+      hintStyle: GoogleFonts.hankenGrotesk(color: textMuted),
+      labelStyle: GoogleFonts.hankenGrotesk(color: textMuted),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(rControl),

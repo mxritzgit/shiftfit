@@ -167,7 +167,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       backgroundColor: bg,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -176,7 +176,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 showBack: _index > 0,
                 onBack: _back,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               Expanded(
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 240),
@@ -199,7 +199,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               _PrimaryButton(
                 keyValue: ValueKey(isSummary ? 'onboarding-finish' : 'onboarding-next'),
                 label: switch (step) {
@@ -430,10 +430,10 @@ class _StepFrame extends StatelessWidget {
         Text(
           title,
           style: const TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.6,
-            height: 1.1,
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -1.0,
+            height: 1.08,
           ),
         ),
         const SizedBox(height: 8),
@@ -443,9 +443,10 @@ class _StepFrame extends StatelessWidget {
             color: textMuted,
             fontSize: 14,
             fontWeight: FontWeight.w500,
+            height: 1.45,
           ),
         ),
-        const SizedBox(height: 28),
+        const SizedBox(height: 32),
         child,
       ],
     );
@@ -466,24 +467,25 @@ class _IntroStep extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         Container(
           width: 64,
           height: 64,
           decoration: BoxDecoration(
             color: lime.withValues(alpha: 0.16),
             borderRadius: BorderRadius.circular(rSheet),
+            border: Border.all(color: lime.withValues(alpha: 0.28)),
           ),
           child: const Icon(Icons.flag_rounded, color: lime, size: 30),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 28),
         Text(
           'Willkommen, $firstName.',
           style: const TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.6,
-            height: 1.1,
+            fontSize: 30,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -1.0,
+            height: 1.08,
           ),
         ),
         const SizedBox(height: 12),
@@ -497,17 +499,17 @@ class _IntroStep extends StatelessWidget {
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 32),
         const _IntroBullet(
           icon: Icons.calculate_rounded,
           text: 'Wissenschaftliche Mifflin-St-Jeor-Formel',
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         const _IntroBullet(
           icon: Icons.local_fire_department_rounded,
           text: 'Kalorien & Makros automatisch gesetzt',
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         const _IntroBullet(
           icon: Icons.tune_rounded,
           text: 'Jederzeit in den Einstellungen anpassbar',
@@ -527,14 +529,23 @@ class _IntroBullet extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, color: lime, size: 18),
-        const SizedBox(width: 12),
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: lime.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(rControl),
+          ),
+          child: Icon(icon, color: lime, size: 18),
+        ),
+        const SizedBox(width: 14),
         Expanded(
           child: Text(
             text,
             style: const TextStyle(
               fontSize: 14,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
+              height: 1.3,
             ),
           ),
         ),
@@ -743,19 +754,21 @@ class _NumberPicker extends StatelessWidget {
                     key: ValueKey('onboarding-$field-value'),
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      fontSize: 56,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -1.5,
+                      fontSize: 52,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -1.6,
                       height: 1,
+                      fontFeatures: [FontFeature.tabularFigures()],
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   Text(
                     unit,
                     style: const TextStyle(
                       color: textMuted,
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
+                      letterSpacing: 0.2,
                     ),
                   ),
                 ],
@@ -788,7 +801,7 @@ class _NumberPicker extends StatelessWidget {
             ),
           ),
         if (footnote != null) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
@@ -801,6 +814,7 @@ class _NumberPicker extends StatelessWidget {
                 color: lime,
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
+                fontFeatures: [FontFeature.tabularFigures()],
               ),
             ),
           ),
@@ -937,15 +951,17 @@ class _RowCard extends StatelessWidget {
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: textPrimary,
+                      letterSpacing: -0.2,
                     ),
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 4),
                   Text(
                     subtitle,
                     style: const TextStyle(
                       color: textMuted,
                       fontSize: 12.5,
                       fontWeight: FontWeight.w500,
+                      height: 1.3,
                     ),
                   ),
                 ],
@@ -959,6 +975,7 @@ class _RowCard extends StatelessWidget {
                   color: selected ? lime : textMuted,
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
             ],
@@ -1006,10 +1023,10 @@ class _SummaryStep extends StatelessWidget {
         Text(
           'Dein Plan steht, $firstName.',
           style: const TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.6,
-            height: 1.1,
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -1.0,
+            height: 1.08,
           ),
         ),
         const SizedBox(height: 8),
@@ -1019,13 +1036,14 @@ class _SummaryStep extends StatelessWidget {
             color: textMuted,
             fontSize: 14,
             fontWeight: FontWeight.w500,
+            height: 1.45,
           ),
         ),
         const SizedBox(height: 24),
         // Hero kcal card
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 28),
+          padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [lime.withValues(alpha: 0.18), surface],
@@ -1043,10 +1061,10 @@ class _SummaryStep extends StatelessWidget {
                   color: textMuted,
                   fontSize: 11,
                   letterSpacing: 1.2,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -1056,16 +1074,17 @@ class _SummaryStep extends StatelessWidget {
                     '${targets.kcal}',
                     key: const ValueKey('onboarding-summary-kcal'),
                     style: const TextStyle(
-                      fontSize: 60,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -2,
+                      fontSize: 52,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -1.8,
                       height: 1,
                       color: lime,
+                      fontFeatures: [FontFeature.tabularFigures()],
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 8),
                   const Padding(
-                    padding: EdgeInsets.only(bottom: 8),
+                    padding: EdgeInsets.only(bottom: 7),
                     child: Text(
                       'kcal',
                       style: TextStyle(
@@ -1080,18 +1099,18 @@ class _SummaryStep extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
         // Macros
         Row(
           children: [
             _MacroChip(label: 'Protein', value: '${targets.proteinG} g', color: lime),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             _MacroChip(label: 'Carbs', value: '${targets.carbsG} g', color: cyan),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             _MacroChip(label: 'Fett', value: '${targets.fatG} g', color: orange),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
         // Breakdown
         Container(
           padding: const EdgeInsets.all(16),
@@ -1121,31 +1140,35 @@ class _SummaryStep extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 20),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.timeline_rounded, color: lime, size: 18),
-            const SizedBox(width: 10),
+            const Padding(
+              padding: EdgeInsets.only(top: 1),
+              child: Icon(Icons.timeline_rounded, color: lime, size: 18),
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 timeline,
                 style: const TextStyle(
                   fontSize: 13.5,
                   fontWeight: FontWeight.w600,
-                  height: 1.35,
+                  height: 1.4,
                 ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         const Text(
           'Schätzung nach Mifflin-St Jeor. Werte sind jederzeit unter '
           'Profil › Einstellungen anpassbar.',
           style: TextStyle(
             color: textMuted,
-            fontSize: 11.5,
-            height: 1.4,
+            fontSize: 12,
+            height: 1.45,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -1165,7 +1188,7 @@ class _MacroChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
           color: surface,
           borderRadius: BorderRadius.circular(rCard),
@@ -1176,18 +1199,19 @@ class _MacroChip extends StatelessWidget {
             Text(
               value,
               style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
                 color: color,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 4),
             Text(
               label,
               style: const TextStyle(
                 color: textMuted,
                 fontSize: 12,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ],
@@ -1230,6 +1254,7 @@ class _BreakdownRow extends StatelessWidget {
             fontSize: 13.5,
             fontWeight: FontWeight.w700,
             color: highlight ? (positive ? orange : lime) : textPrimary,
+            fontFeatures: const [FontFeature.tabularFigures()],
           ),
         ),
       ],

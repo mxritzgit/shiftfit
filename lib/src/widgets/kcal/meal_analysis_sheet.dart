@@ -177,7 +177,12 @@ class _MealAnalysisSheetState extends State<MealAnalysisSheet> {
             _Header(slot: widget.slot, onClose: () => Navigator.of(context).pop()),
             Flexible(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  0,
+                  20,
+                  28 + mediaQuery.viewPadding.bottom,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -273,10 +278,14 @@ class _Header extends StatelessWidget {
                     letterSpacing: -0.3,
                   ),
                 ),
-                const SizedBox(height: 1),
+                const SizedBox(height: 2),
                 const Text(
                   'Analyse prüfen',
-                  style: TextStyle(color: textMuted, fontSize: 12),
+                  style: TextStyle(
+                    color: textMuted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),

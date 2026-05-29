@@ -108,13 +108,24 @@ Future<void> showDaySummarySheet(
                 letterSpacing: -0.4,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 6),
+            const Text(
+              'Dein Tag auf einen Blick — kopier ihn dir raus.',
+              style: TextStyle(
+                color: textMuted,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 16),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: surfaceSoft,
                 borderRadius: BorderRadius.circular(rControl),
+                border: Border.all(color: hairline),
               ),
               child: SelectableText(
                 text,
@@ -123,11 +134,11 @@ Future<void> showDaySummarySheet(
                   color: textPrimary,
                   fontSize: 12,
                   fontFamily: 'monospace',
-                  height: 1.4,
+                  height: 1.5,
                 ),
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(

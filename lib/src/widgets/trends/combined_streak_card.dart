@@ -91,7 +91,7 @@ class CombinedStreakCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           _Calendar(
             history: history,
             completedToday: completedToday,

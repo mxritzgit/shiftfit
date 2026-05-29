@@ -99,6 +99,7 @@ class _NavItem extends StatelessWidget {
               style: TextStyle(
                 color: color,
                 fontSize: 11,
+                letterSpacing: -0.1,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               ),
               child: Text(label),

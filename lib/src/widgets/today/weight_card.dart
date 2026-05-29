@@ -42,7 +42,11 @@ class WeightCard extends StatelessWidget {
               const Expanded(
                 child: Text(
                   'Gewicht',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
                 ),
               ),
               TextButton(
@@ -80,10 +84,12 @@ class WeightCard extends StatelessWidget {
                         fontSize: 28,
                         fontWeight: FontWeight.w700,
                         letterSpacing: -1,
+                        height: 1.0,
                         color: lime,
+                        fontFeatures: [FontFeature.tabularFigures()],
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 4),
                     Text(
                       latest == null
                           ? 'Noch nichts geloggt'
@@ -92,6 +98,7 @@ class WeightCard extends StatelessWidget {
                         color: textMuted,
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
+                        fontFeatures: [FontFeature.tabularFigures()],
                       ),
                     ),
                     if (delta != null) ...[
@@ -102,6 +109,7 @@ class WeightCard extends StatelessWidget {
                           color: delta.abs() < 0.001 ? textMuted : (delta > 0 ? orange : cyan),
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
+                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
                     ],

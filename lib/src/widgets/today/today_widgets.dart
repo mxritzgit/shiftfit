@@ -74,21 +74,21 @@ class ShiftFitHero extends StatelessWidget {
               Row(
                 children: [
                   const Expanded(
-                    child: _TodayEyebrow(label: 'FitPilot Coach'),
+                    child: _TodayEyebrow(label: 'FITPILOT COACH'),
                   ),
                   _HeroMetric(value: '${plan.totalMinutes} Min', label: 'Dauer'),
                 ],
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 20),
               SizedBox(
                 width: 250,
                 child: Text(
                   plan.recommendation,
                   style: const TextStyle(
-                    fontSize: 34,
-                    height: 1.04,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -1.2,
+                    fontSize: 29,
+                    height: 1.08,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -1.0,
                   ),
                 ),
               ),
@@ -109,13 +109,13 @@ class ShiftFitHero extends StatelessWidget {
                   plan.tagline,
                   style: const TextStyle(
                     color: Color(0xB3FFFFFF),
-                    fontSize: 15,
-                    height: 1.35,
+                    fontSize: 14,
+                    height: 1.45,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 20),
               Row(
                 children: [
                   Expanded(child: _HeroMetric(value: plan.intensity, label: 'Intensität')),
@@ -166,21 +166,25 @@ class _TodayEyebrow extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 8,
-          height: 8,
+          width: 7,
+          height: 7,
           decoration: const BoxDecoration(
             color: lime,
             shape: BoxShape.circle,
           ),
         ),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xB3FFFFFF),
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            letterSpacing: -0.1,
+        const SizedBox(width: 9),
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Color(0xA6FFFFFF),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.2,
+            ),
           ),
         ),
       ],
@@ -259,16 +263,16 @@ class FitPilotHubGrid extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Padding(
-            padding: EdgeInsets.fromLTRB(8, 6, 8, 10),
+            padding: EdgeInsets.fromLTRB(8, 6, 8, 12),
             child: Row(
               children: [
                 Expanded(
                   child: Text(
                     'Dein Fitness-Hub',
                     style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.3,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.2,
                     ),
                   ),
                 ),
@@ -277,7 +281,7 @@ class FitPilotHubGrid extends StatelessWidget {
                   style: TextStyle(
                     color: textMuted,
                     fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -385,11 +389,11 @@ class _HubTile extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontSize: 14,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
               letterSpacing: -0.2,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 3),
           Text(
             subtitle,
             maxLines: 1,
@@ -397,7 +401,7 @@ class _HubTile extends StatelessWidget {
             style: const TextStyle(
               color: textMuted,
               fontSize: 11,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -454,21 +458,26 @@ class QuickCheckInCard extends StatelessWidget {
                 child: Text(
                   'Körpergefühl',
                   style: TextStyle(
-                    fontSize: 17,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: -0.3,
+                    letterSpacing: -0.2,
                   ),
                 ),
               ),
               StatusPill(label: selectedShift, color: plan.accent),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             recoveryCopy,
-            style: const TextStyle(color: textMuted, fontSize: 12, height: 1.35),
+            style: const TextStyle(
+              color: textMuted,
+              fontSize: 13,
+              height: 1.45,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           const FieldLabel('FOKUS'),
           const SizedBox(height: 8),
           SegmentedOptions(
@@ -892,30 +901,31 @@ class WeeklyChallengeCard extends StatelessWidget {
                   'Strong Start Week',
                   style: TextStyle(
                     fontSize: 21,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w700,
                     letterSpacing: -0.5,
                   ),
                 ),
-                const SizedBox(height: 5),
+                const SizedBox(height: 6),
                 Text(
                   '3 Workouts, 2 Protein-Ziele und ein Mobility-Finish. Kurz genug für volle Wochen, stark genug für Fortschritt.',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.72),
-                    fontSize: 12,
-                    height: 1.35,
+                    fontSize: 13,
+                    height: 1.45,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(rPill),
                   child: LinearProgressIndicator(
                     value: ratio,
-                    minHeight: 5,
+                    minHeight: 6,
                     backgroundColor: Colors.white.withValues(alpha: 0.10),
                     color: lime,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 Row(
                   children: [
                     _ChallengeMetric(value: '$safeDone/$safeTotal', label: 'Tage'),
@@ -974,12 +984,21 @@ class _ChallengeMetric extends StatelessWidget {
         children: [
           Text(
             value,
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              letterSpacing: -0.2,
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
           ),
           const SizedBox(width: 5),
           Text(
             label,
-            style: const TextStyle(color: textMuted, fontSize: 11),
+            style: const TextStyle(
+              color: textMuted,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),

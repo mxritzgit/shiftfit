@@ -48,7 +48,11 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
         elevation: 0,
         title: const Text(
           'Barcode scannen',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.2,
+          ),
         ),
       ),
       body: Stack(
@@ -72,6 +76,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                   height: 1.4,
+                  letterSpacing: -0.1,
+                  color: textPrimary,
                 ),
               ),
             ),
@@ -96,7 +102,10 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                 icon: const Icon(Icons.close_rounded, size: 17),
                 label: const Text(
                   'Abbrechen',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.1,
+                  ),
                 ),
                 style: FilledButton.styleFrom(
                   backgroundColor: surfaceSoft,

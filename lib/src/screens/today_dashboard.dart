@@ -202,14 +202,14 @@ class TodayDashboard extends StatelessWidget {
         ),
         const SizedBox(height: 18),
         ShiftFitHero(plan: plan),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         FitPilotHubGrid(
           plan: plan,
           onTapWorkout: onOpenTraining,
           onTapNutrition: onOpenFood,
           onTapGuides: () => showPlanSheet(context, plan),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         QuickCheckInCard(
           selectedShift: selectedShift,
           selectedEnergy: selectedEnergy,
@@ -219,14 +219,14 @@ class TodayDashboard extends StatelessWidget {
           onEnergySelected: onEnergySelected,
           onStressSelected: onStressSelected,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         DayOverviewCard(
           waterRatio: waterRatio,
           sleepRatio: sleepRatio,
           workoutRatio: workoutRatio,
           stepsRatio: stepsRatio,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         DailyTrackerCard(
           stats: stats,
           healthAuthState: healthAuthState,

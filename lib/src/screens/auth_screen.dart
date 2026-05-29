@@ -264,7 +264,7 @@ class _BrandMark extends StatelessWidget {
           'FitPilot',
           style: TextStyle(
             fontSize: 21,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w700,
             letterSpacing: -0.6,
             color: textPrimary,
           ),
@@ -293,8 +293,8 @@ class _Hero extends StatelessWidget {
           isRegister ? 'KONTO ERSTELLEN' : 'WILLKOMMEN ZURÜCK',
           style: const TextStyle(
             fontSize: 11,
-            letterSpacing: 2.0,
-            fontWeight: FontWeight.w700,
+            letterSpacing: 1.2,
+            fontWeight: FontWeight.w600,
             color: lime,
           ),
         ),
@@ -302,10 +302,10 @@ class _Hero extends StatelessWidget {
         Text(
           isRegister ? 'Starte deine\nReise.' : 'Schön,\ndich zu sehen.',
           style: const TextStyle(
-            fontSize: 32,
-            height: 1.04,
-            letterSpacing: -1.4,
-            fontWeight: FontWeight.w800,
+            fontSize: 30,
+            height: 1.08,
+            letterSpacing: -1.0,
+            fontWeight: FontWeight.w700,
             color: textPrimary,
           ),
         ),
@@ -640,10 +640,10 @@ class _AuthFieldState extends State<_AuthField> {
         Text(
           widget.label.toUpperCase(),
           style: const TextStyle(
-            fontSize: 10.5,
-            letterSpacing: 1.0,
+            fontSize: 11,
+            letterSpacing: 1.2,
             color: textMuted,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: 8),
@@ -762,7 +762,7 @@ class _PrimaryCta extends StatelessWidget {
                 label,
                 style: TextStyle(
                   fontSize: 15.5,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w700,
                   color: disabled ? textMuted : _ink,
                   letterSpacing: -0.1,
                 ),

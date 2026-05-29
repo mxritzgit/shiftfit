@@ -71,7 +71,11 @@ class DailyTrackerCard extends StatelessWidget {
               const Expanded(
                 child: Text(
                   'Tageswerte',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
                 ),
               ),
               if (_healthSupported)
@@ -152,8 +156,8 @@ class _StatCell extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(stat.icon, color: stat.color, size: 12),
-            const SizedBox(width: 4),
+            Icon(stat.icon, color: stat.color, size: 13),
+            const SizedBox(width: 5),
             Expanded(
               child: Text(
                 stat.label,
@@ -168,7 +172,7 @@ class _StatCell extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         Text(
           stat.value,
           style: TextStyle(
@@ -179,7 +183,7 @@ class _StatCell extends StatelessWidget {
             fontFeatures: const [FontFeature.tabularFigures()],
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         ClipRRect(
           borderRadius: BorderRadius.circular(rPill),
           child: LinearProgressIndicator(

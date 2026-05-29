@@ -346,8 +346,8 @@ class _TrendsScreenState extends State<TrendsScreen> {
                 style: TextStyle(
                   fontSize: 30,
                   height: 1.08,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -1.1,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -1.0,
                 ),
               ),
               const SizedBox(height: 8),
@@ -356,30 +356,31 @@ class _TrendsScreenState extends State<TrendsScreen> {
                 style: TextStyle(
                   color: textMuted,
                   fontSize: 13,
-                  height: 1.4,
+                  height: 1.45,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
         TodaySnapshotCard(stats: stats),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
         CombinedStreakCard(
           workoutStreak: widget.workoutStreak,
           completedToday: widget.totalBlocksToday > 0 &&
               widget.completedTodayCount >= widget.totalBlocksToday,
           history: widget.history,
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: 24),
         SectionHeader(title: 'Progress Verlauf', action: _range),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         SegmentedOptions(
           options: const [_range7, _range30],
           selectedValue: _range,
           onSelected: (value) => setState(() => _range = value),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         if (_range == _range30)
           _RangeSummaryCard(
             days: _lastDays(30),
@@ -387,9 +388,9 @@ class _TrendsScreenState extends State<TrendsScreen> {
           )
         else
           TrendBarsCard(bars: bars),
-        const SizedBox(height: 22),
+        const SizedBox(height: 24),
         const SectionHeader(title: 'Insights', action: ''),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         InsightsCard(insights: insights),
       ],
     );

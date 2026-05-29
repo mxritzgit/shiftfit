@@ -67,8 +67,8 @@ class CaloriesOverviewCard extends StatelessWidget {
                           style: TextStyle(
                             color: textMuted,
                             fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.4,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1.2,
                           ),
                         ),
                         SizedBox(height: titleGap),
@@ -79,9 +79,9 @@ class CaloriesOverviewCard extends StatelessWidget {
                           style: TextStyle(
                             color: remainingColor,
                             fontSize: remainingSize,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w700,
                             height: 1.0,
-                            letterSpacing: compact ? -1.2 : -1.8,
+                            letterSpacing: compact ? -1.4 : -1.8,
                             fontFeatures: const [FontFeature.tabularFigures()],
                           ),
                         ),
@@ -89,9 +89,10 @@ class CaloriesOverviewCard extends StatelessWidget {
                         Text(
                           'kcal',
                           style: TextStyle(
-                            color: textPrimary,
-                            fontSize: tight ? 12 : 14,
+                            color: textMuted,
+                            fontSize: tight ? 12 : 13,
                             fontWeight: FontWeight.w500,
+                            letterSpacing: 0.2,
                           ),
                         ),
                         if (showSubtitle) ...[
@@ -383,86 +384,118 @@ class MacrosOverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      key: const ValueKey('macro-targets-card'),
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text(
-                'MAKROS HEUTE',
-                style: TextStyle(
-                  color: textMuted,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1.2,
-                ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxHeight = constraints.hasBoundedHeight
+            ? constraints.maxHeight
+            : double.infinity;
+        final compact = maxHeight < 150;
+        final tight = maxHeight < 120;
+        final padding = EdgeInsets.all(tight ? 14 : (compact ? 16 : 18));
+        final tileGap = tight ? 8.0 : (compact ? 10.0 : 12.0);
+
+        final header = Row(
+          children: [
+            const Text(
+              'MAKROS HEUTE',
+              style: TextStyle(
+                color: textMuted,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1.2,
               ),
-              const Spacer(),
-              if (onDetailsPressed != null)
-                InkWell(
-                  onTap: onDetailsPressed,
-                  borderRadius: BorderRadius.circular(rChip),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 2,
-                    ),
-                    child: Row(
-                      children: const [
-                        Text(
-                          'Details ansehen',
-                          style: TextStyle(
-                            color: lime,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                          ),
+            ),
+            const Spacer(),
+            if (onDetailsPressed != null)
+              InkWell(
+                onTap: onDetailsPressed,
+                borderRadius: BorderRadius.circular(rChip),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 2,
+                  ),
+                  child: Row(
+                    children: const [
+                      Text(
+                        'Details ansehen',
+                        style: TextStyle(
+                          color: lime,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
                         ),
-                        SizedBox(width: 2),
-                        Icon(Icons.chevron_right_rounded, color: lime, size: 14),
-                      ],
-                    ),
+                      ),
+                      SizedBox(width: 2),
+                      Icon(Icons.chevron_right_rounded, color: lime, size: 14),
+                    ],
                   ),
                 ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
+              ),
+          ],
+        );
+
+        final tiles = Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: _MacroTile(
+                label: 'PROTEIN',
+                current: progress.proteinG,
+                goal: profile.proteinGoalG.toDouble(),
+                color: lime,
+                compact: compact,
+                tight: tight,
+              ),
+            ),
+            SizedBox(width: tileGap),
+            Expanded(
+              child: _MacroTile(
+                label: 'KOHLENH.',
+                current: progress.carbsG,
+                goal: profile.carbsGoalG.toDouble(),
+                color: cyan,
+                compact: compact,
+                tight: tight,
+              ),
+            ),
+            SizedBox(width: tileGap),
+            Expanded(
+              child: _MacroTile(
+                label: 'FETT',
+                current: progress.fatG,
+                goal: profile.fatGoalG.toDouble(),
+                color: macroFat,
+                compact: compact,
+                tight: tight,
+              ),
+            ),
+          ],
+        );
+
+        // Edge-cling fix: header sits at the top, the macro tiles claim the
+        // remaining height and stay vertically centred — no dead band between
+        // a top-pinned title and bottom-pinned tiles.
+        final boundedHeight = constraints.hasBoundedHeight;
+        return AppCard(
+          key: const ValueKey('macro-targets-card'),
+          padding: padding,
+          child: Column(
+            mainAxisSize: boundedHeight ? MainAxisSize.max : MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: _MacroTile(
-                  label: 'PROTEIN',
-                  current: progress.proteinG,
-                  goal: profile.proteinGoalG.toDouble(),
-                  color: lime,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _MacroTile(
-                  label: 'KOHLENH.',
-                  current: progress.carbsG,
-                  goal: profile.carbsGoalG.toDouble(),
-                  color: cyan,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _MacroTile(
-                  label: 'FETT',
-                  current: progress.fatG,
-                  goal: profile.fatGoalG.toDouble(),
-                  color: macroFat,
-                ),
-              ),
+              header,
+              if (boundedHeight)
+                Expanded(
+                  child: Center(child: tiles),
+                )
+              else ...[
+                SizedBox(height: tight ? 10 : 12),
+                tiles,
+              ],
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -473,12 +506,16 @@ class _MacroTile extends StatelessWidget {
     required this.current,
     required this.goal,
     required this.color,
+    this.compact = false,
+    this.tight = false,
   });
 
   final String label;
   final double current;
   final double goal;
   final Color color;
+  final bool compact;
+  final bool tight;
 
   @override
   Widget build(BuildContext context) {
@@ -486,8 +523,12 @@ class _MacroTile extends StatelessWidget {
     final currentLabel = current >= 10
         ? current.round().toString()
         : current.toStringAsFixed(1).replaceAll('.', ',');
+    final ringSize = tight ? 26.0 : 30.0;
+    final labelGap = tight ? 7.0 : (compact ? 8.0 : 10.0);
+    final barGap = tight ? 8.0 : (compact ? 9.0 : 11.0);
 
     return Column(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
@@ -501,7 +542,7 @@ class _MacroTile extends StatelessWidget {
             letterSpacing: 0.8,
           ),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: labelGap),
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -511,25 +552,36 @@ class _MacroTile extends StatelessWidget {
                 children: [
                   Text(
                     '$currentLabel g',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: textPrimary,
-                      fontSize: 14,
+                      fontSize: 16,
                       fontWeight: FontWeight.w700,
+                      height: 1.1,
+                      letterSpacing: -0.2,
+                      fontFeatures: [FontFeature.tabularFigures()],
                     ),
                   ),
+                  const SizedBox(height: 1),
                   Text(
                     '/ ${goal.toStringAsFixed(0)} g',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: textMuted,
-                      fontSize: 10,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      fontFeatures: [FontFeature.tabularFigures()],
                     ),
                   ),
                 ],
               ),
             ),
+            const SizedBox(width: 4),
             SizedBox(
-              width: 30,
-              height: 30,
+              width: ringSize,
+              height: ringSize,
               child: _MiniRing(
                 progress: ratio,
                 color: color,
@@ -538,12 +590,12 @@ class _MacroTile extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: barGap),
         ClipRRect(
           borderRadius: BorderRadius.circular(rPill),
           child: LinearProgressIndicator(
             value: ratio,
-            minHeight: 3,
+            minHeight: 4,
             backgroundColor: surfaceSoft,
             valueColor: AlwaysStoppedAnimation(color),
           ),
@@ -569,9 +621,10 @@ class _MiniRing extends StatelessWidget {
     return Stack(
       alignment: Alignment.center,
       children: [
-        CustomPaint(
-          size: const Size.square(30),
-          painter: _MiniRingPainter(progress: progress, color: color),
+        Positioned.fill(
+          child: CustomPaint(
+            painter: _MiniRingPainter(progress: progress, color: color),
+          ),
         ),
         Text(
           label,
@@ -579,6 +632,7 @@ class _MiniRing extends StatelessWidget {
             color: textPrimary,
             fontSize: 8,
             fontWeight: FontWeight.w700,
+            fontFeatures: [FontFeature.tabularFigures()],
           ),
         ),
       ],
@@ -644,78 +698,99 @@ class MealsTodayCard extends StatelessWidget {
     }
     final overallTotal = totals.values.fold<int>(0, (sum, v) => sum + v);
 
-    return AppCard(
-      key: const ValueKey('kcal-meals-today-card'),
-      padding: const EdgeInsets.fromLTRB(18, 14, 18, 6),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: const [
-              Text(
-                'MAHLZEITEN HEUTE',
-                style: TextStyle(
-                  color: textMuted,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              Spacer(),
-              Text(
-                'kcal',
-                style: TextStyle(
-                  color: textMuted,
-                  fontSize: 11,
-                ),
-              ),
-            ],
+    const header = Row(
+      children: [
+        Text(
+          'MAHLZEITEN HEUTE',
+          style: TextStyle(
+            color: textMuted,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 1.2,
           ),
-          const SizedBox(height: 2),
-          for (final slot in MealSlot.values)
-            _MealRow(
-              key: ValueKey('meal-slot-${slot.name}'),
-              slot: slot,
-              kcal: totals[slot] ?? 0,
-              onTap: onMealTap == null ? null : () => onMealTap!(slot),
+        ),
+        Spacer(),
+        Text(
+          'kcal',
+          style: TextStyle(
+            color: textMuted,
+            fontSize: 11,
+          ),
+        ),
+      ],
+    );
+
+    final total = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          const Text(
+            'GESAMT',
+            style: TextStyle(
+              color: textMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.8,
             ),
-          const Divider(color: hairline, height: 1),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Row(
-              children: [
-                const Text(
-                  'GESAMT',
-                  style: TextStyle(
-                    color: textMuted,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  _formatThousands(overallTotal),
-                  style: const TextStyle(
-                    color: textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                const Text(
-                  'kcal',
-                  style: TextStyle(
-                    color: textMuted,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+          ),
+          const Spacer(),
+          Text(
+            _formatThousands(overallTotal),
+            style: const TextStyle(
+              color: textPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
+          ),
+          const SizedBox(width: 4),
+          const Text(
+            'kcal',
+            style: TextStyle(
+              color: textMuted,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
+      ),
+    );
+
+    return AppCard(
+      key: const ValueKey('kcal-meals-today-card'),
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final boundedHeight = constraints.hasBoundedHeight;
+          // Edge-cling fix: in a fixed/Expanded height the meal rows share the
+          // free space evenly (each Expanded) so the list fills the card with
+          // no dead band; when unbounded they fall back to natural height.
+          final mealRows = <Widget>[
+            for (final slot in MealSlot.values)
+              _MealRow(
+                key: ValueKey('meal-slot-${slot.name}'),
+                slot: slot,
+                kcal: totals[slot] ?? 0,
+                onTap: onMealTap == null ? null : () => onMealTap!(slot),
+              ),
+          ];
+
+          return Column(
+            mainAxisSize: boundedHeight ? MainAxisSize.max : MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              header,
+              SizedBox(height: boundedHeight ? 6 : 2),
+              if (boundedHeight)
+                for (final row in mealRows)
+                  Expanded(child: Center(child: row))
+              else
+                ...mealRows,
+              const Divider(color: hairline, height: 1),
+              total,
+            ],
+          );
+        },
       ),
     );
   }
@@ -774,6 +849,7 @@ class _MealRow extends StatelessWidget {
                 color: kcal > 0 ? textPrimary : textMuted,
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
             const SizedBox(width: 4),

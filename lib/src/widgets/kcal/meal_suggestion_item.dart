@@ -270,6 +270,7 @@ class _Header extends StatelessWidget {
                       color: textMuted,
                       fontSize: 11.5,
                       fontWeight: FontWeight.w500,
+                      fontFeatures: [FontFeature.tabularFigures()],
                     ),
                   ),
                 ],
@@ -578,6 +579,7 @@ class _GramsField extends StatelessWidget {
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 letterSpacing: -0.3,
+                fontFeatures: [FontFeature.tabularFigures()],
               ),
               decoration: const InputDecoration(
                 border: InputBorder.none,
@@ -619,22 +621,25 @@ class _LivePreview extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        Text(
-          '= ',
+        const Text(
+          '=',
           style: TextStyle(
             color: textMuted,
             fontSize: 14,
             fontWeight: FontWeight.w500,
+            height: 1.0,
           ),
         ),
+        const SizedBox(width: 8),
         Text(
           '$kcal kcal',
           style: const TextStyle(
             color: textPrimary,
             fontSize: 20,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w700,
             letterSpacing: -0.4,
             height: 1.0,
+            fontFeatures: [FontFeature.tabularFigures()],
           ),
         ),
         const SizedBox(width: 10),
@@ -649,6 +654,7 @@ class _LivePreview extends StatelessWidget {
               fontSize: 11.5,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.1,
+              fontFeatures: [FontFeature.tabularFigures()],
             ),
           ),
         ),

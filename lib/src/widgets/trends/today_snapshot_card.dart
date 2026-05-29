@@ -37,9 +37,13 @@ class TodaySnapshotCard extends StatelessWidget {
         children: [
           const Text(
             'Heute',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.2,
+            ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

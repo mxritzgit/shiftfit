@@ -177,9 +177,11 @@ class _WorkoutTimerSheetState extends State<_WorkoutTimerSheet> {
                         _finished ? 'fertig' : _formatTime(_remainingSeconds),
                         key: const ValueKey('workout-timer-remaining'),
                         style: const TextStyle(
-                          fontSize: 36,
+                          fontSize: 40,
                           fontWeight: FontWeight.w700,
                           letterSpacing: -1.5,
+                          height: 1.0,
+                          fontFeatures: [FontFeature.tabularFigures()],
                         ),
                       ),
                       const SizedBox(height: 4),

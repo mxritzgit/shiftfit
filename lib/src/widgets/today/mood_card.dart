@@ -45,7 +45,8 @@ class MoodCard extends StatelessWidget {
                   mood.isSet ? mood.label : 'Stimmung',
                   style: const TextStyle(
                     fontSize: 15,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
                   ),
                 ),
               ),
@@ -100,7 +101,7 @@ class MoodCard extends StatelessWidget {
                 style: const TextStyle(
                   color: textPrimary,
                   fontSize: 13,
-                  height: 1.4,
+                  height: 1.45,
                   fontWeight: FontWeight.w500,
                 ),
               ),

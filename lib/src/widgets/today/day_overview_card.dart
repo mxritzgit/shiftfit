@@ -52,17 +52,21 @@ class DayOverviewCard extends StatelessWidget {
                     Text(
                       '$percent%',
                       style: const TextStyle(
-                        fontSize: 18,
+                        fontSize: 20,
                         fontWeight: FontWeight.w700,
-                        letterSpacing: -0.4,
+                        letterSpacing: -0.6,
+                        height: 1.0,
+                        fontFeatures: [FontFeature.tabularFigures()],
                       ),
                     ),
+                    const SizedBox(height: 2),
                     const Text(
                       'Tag',
                       style: TextStyle(
                         color: textMuted,
                         fontSize: 10,
                         fontWeight: FontWeight.w500,
+                        letterSpacing: 0.4,
                       ),
                     ),
                   ],
@@ -70,7 +74,7 @@ class DayOverviewCard extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 18),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -78,29 +82,30 @@ class DayOverviewCard extends StatelessWidget {
                 const Text(
                   'Tagesüberblick',
                   style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 _LegendRow(
                   color: cyan,
                   label: 'Wasser',
                   ratio: waterRatio,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 7),
                 _LegendRow(
                   color: wellnessTone,
                   label: 'Schlaf',
                   ratio: sleepRatio,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 7),
                 _LegendRow(
                   color: lime,
                   label: 'Plan',
                   ratio: workoutRatio,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 7),
                 _LegendRow(
                   color: orange,
                   label: 'Schritte',
@@ -132,16 +137,16 @@ class _LegendRow extends StatelessWidget {
     return Row(
       children: [
         Container(
-          width: 6,
-          height: 6,
+          width: 7,
+          height: 7,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 8),
         Text(
           label,
           style: const TextStyle(
             color: textPrimary,
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -150,8 +155,10 @@ class _LegendRow extends StatelessWidget {
           '$percent%',
           style: const TextStyle(
             color: textMuted,
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.1,
+            fontFeatures: [FontFeature.tabularFigures()],
           ),
         ),
       ],

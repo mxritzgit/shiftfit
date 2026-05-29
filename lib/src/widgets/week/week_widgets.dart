@@ -157,6 +157,7 @@ class SummaryCard extends StatelessWidget {
               fontSize: 18,
               fontWeight: FontWeight.w700,
               letterSpacing: -0.3,
+              fontFeatures: [FontFeature.tabularFigures()],
             ),
           ),
         ],
