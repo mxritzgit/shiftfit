@@ -7,6 +7,8 @@ import '../models/meal_analysis_result.dart';
 import '../models/user_profile.dart';
 import '../services/meal_analyzer.dart';
 import '../services/meal_photo_input.dart';
+import '../services/fallback_product_service.dart';
+import '../services/meilisearch_product_service.dart';
 import '../services/open_food_facts_product_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/kcal/add_meal_sheet.dart';
@@ -32,7 +34,7 @@ class MealAnalysisScreen extends StatelessWidget {
     ValueChanged<String>? onRemoveFavorite,
     ValueChanged<String>? onRemoveMeal,
   }) : analyzer = analyzer ?? const EdgeFunctionMealAnalyzer(),
-       productService = productService ?? const OpenFoodFactsProductService(),
+       productService = productService ?? _defaultProductService(),
        photoInput = photoInput ?? DeviceMealPhotoInput(),
        selectedDate = DateUtils.dateOnly(selectedDate ?? DateTime.now()),
        onDateSelected = onDateSelected ?? _noopDate,
@@ -45,6 +47,13 @@ class MealAnalysisScreen extends StatelessWidget {
   static void _noopDate(DateTime _) {}
   static void _noopInt(int _) {}
   static void _noopString(String _) {}
+
+  // Fast EU mirror (Meilisearch via Cloud Run proxy) with live OFF as fallback.
+  static ProductLookupService _defaultProductService() =>
+      FallbackProductService(
+        MeilisearchProductService(),
+        const OpenFoodFactsProductService(),
+      );
 
   final MealAnalyzer analyzer;
   final ProductLookupService productService;
