@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
 
 /// Premium-Dark Theme für FitPilot.
 ///
-/// Eine Schrift (Hanken Grotesk) trägt die gesamte App — Hierarchie entsteht über
+/// Eine Schrift (SF Pro – Apples System-Font) trägt die gesamte App — Hierarchie entsteht über
 /// Gewicht, Größe und Tracking, nicht über Font-Wechsel. Komponenten-Themes
 /// setzen Tiefe (getönte Schatten statt Schwarz), die gelockte Radius-Skala
 /// und Lime als einzige Interaktionsfarbe zentral, damit jeder Screen ohne
 /// lokale Sonderfälle konsistent wirkt.
 ThemeData buildShiftFitTheme() {
-  final fontFamily = GoogleFonts.hankenGrotesk().fontFamily;
+  // SF Pro über Apples System-Font: 'CupertinoSystemText' löst auf iOS/macOS zu
+  // San Francisco (SF Pro) auf; andere Plattformen nutzen ihren Default-Sans.
+  // SF Pro liegt nicht auf Google Fonts und ist für Nicht-Apple-Plattformen
+  // nicht lizenziert → System-Font statt gebündeltem Asset.
+  const fontFamily = 'CupertinoSystemText';
 
   final base = ThemeData(
     useMaterial3: true,
@@ -29,15 +32,21 @@ ThemeData buildShiftFitTheme() {
     scaffoldBackgroundColor: bg,
   );
 
-  final textTheme = GoogleFonts.hankenGroteskTextTheme(base.textTheme)
-      .apply(bodyColor: textPrimary, displayColor: textPrimary)
+  final textTheme = base.textTheme
+      .apply(
+        fontFamily: fontFamily,
+        bodyColor: textPrimary,
+        displayColor: textPrimary,
+      )
       .copyWith(
-        bodyMedium: GoogleFonts.hankenGrotesk(
+        bodyMedium: const TextStyle(
+          fontFamily: fontFamily,
           color: textPrimary,
           fontSize: 14,
           height: 1.45,
         ),
-        bodySmall: GoogleFonts.hankenGrotesk(
+        bodySmall: const TextStyle(
+          fontFamily: fontFamily,
           color: textMuted,
           fontSize: 13,
           height: 1.45,
@@ -66,7 +75,8 @@ ThemeData buildShiftFitTheme() {
     ),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: surfaceSoft,
-      contentTextStyle: GoogleFonts.hankenGrotesk(
+      contentTextStyle: const TextStyle(
+        fontFamily: fontFamily,
         color: textPrimary,
         fontWeight: FontWeight.w600,
         fontSize: 13.5,
@@ -105,7 +115,8 @@ ThemeData buildShiftFitTheme() {
       backgroundColor: surfaceSoft,
       selectedColor: lime,
       side: BorderSide.none,
-      labelStyle: GoogleFonts.hankenGrotesk(
+      labelStyle: const TextStyle(
+        fontFamily: fontFamily,
         color: textPrimary,
         fontSize: 12,
         fontWeight: FontWeight.w600,
@@ -117,8 +128,8 @@ ThemeData buildShiftFitTheme() {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: surfaceSoft,
-      hintStyle: GoogleFonts.hankenGrotesk(color: textMuted),
-      labelStyle: GoogleFonts.hankenGrotesk(color: textMuted),
+      hintStyle: const TextStyle(fontFamily: fontFamily, color: textMuted),
+      labelStyle: const TextStyle(fontFamily: fontFamily, color: textMuted),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(rControl),
