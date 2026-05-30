@@ -97,6 +97,7 @@ class _AddMealSheetState extends State<AddMealSheet> {
   final Map<String, Timer> _justAddedTimers = <String, Timer>{};
 
   late List<LoggedMeal> _existing;
+  late List<FavoriteMeal> _favorites;
 
   static const Duration _productSearchDebounceDelay =
       Duration(milliseconds: 1000);
@@ -109,6 +110,7 @@ class _AddMealSheetState extends State<AddMealSheet> {
   void initState() {
     super.initState();
     _existing = List<LoggedMeal>.of(widget.existingMeals);
+    _favorites = List<FavoriteMeal>.of(widget.favorites);
   }
 
   @override
@@ -129,6 +131,14 @@ class _AddMealSheetState extends State<AddMealSheet> {
       _existing = _existing.where((m) => m.id != id).toList();
     });
     widget.onRemoveMeal?.call(id);
+  }
+
+  void _removeFavorite(String id) {
+    setState(() {
+      _favorites = _favorites.where((f) => f.id != id).toList();
+      _justAddedKeys.remove('favorite:$id');
+    });
+    widget.onRemoveFavorite(id);
   }
 
   // ─── Suche ────────────────────────────────────────────────────────────
@@ -451,7 +461,7 @@ class _AddMealSheetState extends State<AddMealSheet> {
   }
 
   Widget _buildFavorites() {
-    if (widget.favorites.isEmpty) {
+    if (_favorites.isEmpty) {
       return const _EmptyState();
     }
     return Column(
@@ -459,16 +469,16 @@ class _AddMealSheetState extends State<AddMealSheet> {
       children: [
         const _SectionLabel('Letzte Mahlzeiten'),
         const SizedBox(height: 8),
-        for (var i = 0; i < widget.favorites.length; i++) ...[
+        for (var i = 0; i < _favorites.length; i++) ...[
           _favoriteItem(i),
-          if (i != widget.favorites.length - 1) const SizedBox(height: 8),
+          if (i != _favorites.length - 1) const SizedBox(height: 8),
         ],
       ],
     );
   }
 
   Widget _favoriteItem(int index) {
-    final favorite = widget.favorites[index];
+    final favorite = _favorites[index];
     final key = 'favorite:${favorite.id}';
     return MealSuggestionItem(
       key: ValueKey('favorite-tile-$index'),
@@ -479,7 +489,7 @@ class _AddMealSheetState extends State<AddMealSheet> {
       justAdded: _justAddedKeys.contains(key),
       onTap: () => _toggleExpanded(key),
       onAdd: (result) => _handleAdd(key, result),
-      onRemove: () => widget.onRemoveFavorite(favorite.id),
+      onRemove: () => _removeFavorite(favorite.id),
       addButtonKey: ValueKey('favorite-tile-add-$index'),
     );
   }

@@ -2,7 +2,10 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY') ?? '';
-const OPENROUTER_MODEL = Deno.env.get('OPENROUTER_MODEL') ?? 'openai/gpt-5-image-mini';
+// Vision-/Analyse-Modell (Bild rein, JSON-Text raus). NICHT gpt-5-image* —
+// die "image"-Familie ist Bild-GENERIERUNG (Output image) und liefert keine
+// Foto→JSON-Analyse. gpt-5-mini: vision-fähig, json_object, gutes Preis/Genauigkeit.
+const OPENROUTER_MODEL = Deno.env.get('OPENROUTER_MODEL') ?? 'openai/gpt-5-mini';
 const ALLOWED_ORIGINS = (Deno.env.get('FITPILOT_ALLOWED_ORIGINS') ?? '')
   .split(',')
   .map((origin) => origin.trim())
