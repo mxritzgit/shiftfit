@@ -360,7 +360,10 @@ async function callOpenRouter(body: ParsedBody, prompt: string, requestId: strin
       ],
       response_format: { type: 'json_object' },
       temperature: 0.1,
-      max_tokens: 1400,
+      // 2048 statt 1400: ein voll itemisierter Teller (viele items[] + explanation)
+      // kann 1400 Tokens sprengen -> abgeschnittenes JSON -> provider_invalid_json (502)
+      // -> Client wirft -> "Analyse fehlgeschlagen". gpt-4o-mini kann 16k out, 2048 ist günstig.
+      max_tokens: 2048,
     }),
   });
 
