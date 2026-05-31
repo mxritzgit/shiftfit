@@ -28,7 +28,7 @@ class WeekPlannerScreen extends StatefulWidget {
   final void Function(int dayIndex, String shift) onShiftChanged;
 
   /// Optional save ritual. When provided, a lime "Plan speichern" pill is
-  /// shown; tapping it triggers this callback (orchestrator persists via
+  /// shown; tapping it triggers this callback (the caller persists via
   /// `sync.weeklyPlan.save(weekPlan)`) and the UI shows transient confirmation.
   final VoidCallback? onSavePlan;
 

@@ -24,7 +24,7 @@ class RecipesScreen extends StatefulWidget {
   final MacroProgress? remainingMacros;
 
   /// Optionaler Hook, mit dem ein selbst angelegtes Rezept an den
-  /// Orchestrator gemeldet wird (persistiert via user_recipes). Null → das
+  /// Aufrufer gemeldet wird (persistiert via user_recipes). Null → das
   /// Rezept lebt nur lokal in dieser Session.
   final ValueChanged<FitnessRecipe>? onCreateRecipe;
 

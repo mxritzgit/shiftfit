@@ -864,7 +864,7 @@ class WeeklyChallengeCard extends StatelessWidget {
   final ShiftFitPlan plan;
 
   /// Real challenge progress. [completed] active days out of [total]. Defaults
-  /// keep the previous static "3/7" reading until the orchestrator wires real
+  /// keep the previous static "3/7" reading until the caller supplies real
   /// data (e.g. workoutStreak clamped to 7, or active days from history).
   final int completed;
   final int total;

@@ -47,7 +47,7 @@ class TrendsScreen extends StatefulWidget {
   final int dailyConsumedKcal;
   final int kcalGoal;
 
-  /// Letzte ~28-30 Tage, aufsteigend sortiert (Orchestrator via
+  /// Letzte ~28-30 Tage, aufsteigend sortiert (vom Parent-Widget via
   /// DailyLogSync.loadRange(now-29d, now)). Defensiv: darf leer sein.
   final List<DailyLog> history;
 

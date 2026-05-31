@@ -15,7 +15,7 @@ class CombinedStreakCard extends StatelessWidget {
     this.history = const <DailyLog>[],
   });
 
-  /// Echte Streak-Zahl (kommt vom Orchestrator, aus lifetime_stats/History).
+  /// Echte Streak-Zahl (vom Parent-Widget geliefert, aus lifetime_stats/History).
   final int workoutStreak;
 
   /// Ob heute alle Bloecke abgeschlossen sind (Today-Signal, ergaenzt History

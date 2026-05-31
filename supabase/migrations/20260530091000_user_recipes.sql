@@ -5,9 +5,9 @@
 -- die authenticated-Rolle EXPLIZIT (Raw-SQL via Management-API/psql setzt sie
 -- NICHT automatisch — siehe 20260516180000_grants.sql).
 --
--- NICHT anwenden: diese Datei wird vom Orchestrator eingespielt, nicht hier.
--- Das Dart-Wiring (user_recipes_sync + FitPilotSync-Registrierung) fehlt noch
--- bewusst — siehe "needs wiring" in der SPEC.
+-- Hinweis: rein additive Migration. Das zugehoerige Dart-Client-Wiring
+-- (user_recipes_sync + FitPilotSync-Registrierung) ist bewusst noch nicht
+-- vorhanden — das Feature ist daher in der App aktuell noch nicht aktiv.
 
 -- ---------------------------------------------------------------------------
 -- 1) Tabelle
