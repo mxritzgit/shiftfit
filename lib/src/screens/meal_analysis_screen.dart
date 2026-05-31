@@ -94,11 +94,35 @@ class MealAnalysisScreen extends StatelessWidget {
     );
   }
 
+  // Slot-Heuristik fuer die Sheet-Oeffner (Suche + Action-Buttons). Deckt sich
+  // mit LoggedMeal.slot, damit ein neuer Eintrag im richtigen Slot landet.
+  MealSlot _heuristicSlot() {
+    final h = DateTime.now().hour;
+    if (h < 11) return MealSlot.breakfast;
+    if (h < 15) return MealSlot.lunch;
+    if (h < 21) return MealSlot.dinner;
+    return MealSlot.snack;
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final boundedHeight = constraints.hasBoundedHeight;
+
+        final calsCard = CaloriesOverviewCard(
+          dailyConsumedKcal: dailyConsumedKcal,
+          kcalGoal: profile.dailyKcalGoal,
+          burnedKcal: burnedKcal,
+          macroProgress: macroProgress,
+          profile: profile,
+        );
+
+        final historyCard = MealsTodayCard(
+          meals: loggedMeals,
+          onMealTap: (slot) => _openAddSheet(context, slot),
+        );
+
         final children = <Widget>[
           const _KcalHeader(),
           SizedBox(height: boundedHeight ? 6 : 4),
@@ -108,49 +132,26 @@ class MealAnalysisScreen extends StatelessWidget {
             onSelected: onDateSelected,
           ),
           SizedBox(height: boundedHeight ? 8 : 10),
+          // Glass-Kalorienkarte mit inline-Makros (hoehen-begrenzt im Tab).
           if (boundedHeight)
-            Expanded(
-              flex: 38,
-              child: CaloriesOverviewCard(
-                dailyConsumedKcal: dailyConsumedKcal,
-                kcalGoal: profile.dailyKcalGoal,
-                burnedKcal: burnedKcal,
-              ),
-            )
+            Expanded(flex: 46, child: calsCard)
           else
-            CaloriesOverviewCard(
-              dailyConsumedKcal: dailyConsumedKcal,
-              kcalGoal: profile.dailyKcalGoal,
-              burnedKcal: burnedKcal,
-            ),
+            calsCard,
           const SizedBox(height: 10),
-          if (boundedHeight)
-            Expanded(
-              flex: 22,
-              child: MacrosOverviewCard(
-                progress: macroProgress,
-                profile: profile,
-              ),
-            )
-          else
-            MacrosOverviewCard(
-              progress: macroProgress,
-              profile: profile,
-            ),
+          // Add-Block: FESTE Hoehe, NICHT Expanded -> sitzt klar oben,
+          // damit Such-Launcher + Action-Buttons ohne Scroll hit-testbar sind.
+          _FoodAddBlock(
+            onSearch: () => _openAddSheet(context, _heuristicSlot()),
+            onBarcode: () => _openAddSheet(context, _heuristicSlot()),
+            onAiScan: () => _openAddSheet(context, _heuristicSlot()),
+            onQuick: () => _openAddSheet(context, _heuristicSlot()),
+          ),
           const SizedBox(height: 10),
+          // Verlauf: einzige unten wachsende Sektion.
           if (boundedHeight)
-            Expanded(
-              flex: 40,
-              child: MealsTodayCard(
-                meals: loggedMeals,
-                onMealTap: (slot) => _openAddSheet(context, slot),
-              ),
-            )
+            Expanded(flex: 40, child: historyCard)
           else
-            MealsTodayCard(
-              meals: loggedMeals,
-              onMealTap: (slot) => _openAddSheet(context, slot),
-            ),
+            historyCard,
         ];
 
         return SizedBox(
@@ -168,6 +169,167 @@ class MealAnalysisScreen extends StatelessWidget {
   }
 }
 
+/// Add-Block (feste Hoehe): readonly Such-Launcher + 3 Action-Buttons.
+/// Alle Tap-Ziele oeffnen NUR das bestehende AddMealSheet (keine Inline-
+/// Ergebnisse, kein FAB). Keine Entrance-Opacity/Transform -> hit-testbar.
+class _FoodAddBlock extends StatelessWidget {
+  const _FoodAddBlock({
+    required this.onSearch,
+    required this.onBarcode,
+    required this.onAiScan,
+    required this.onQuick,
+  });
+
+  final VoidCallback onSearch;
+  final VoidCallback onBarcode;
+  final VoidCallback onAiScan;
+  final VoidCallback onQuick;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _FoodSearchBar(onTap: onSearch),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _FoodActionButton(
+                key: const ValueKey('food-action-barcode'),
+                icon: Icons.qr_code_scanner_rounded,
+                label: 'Barcode\nscannen',
+                filled: false,
+                onTap: onBarcode,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _FoodActionButton(
+                key: const ValueKey('food-action-ai'),
+                icon: Icons.add_a_photo_rounded,
+                label: 'KI-Scan',
+                filled: true,
+                onTap: onAiScan,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _FoodActionButton(
+                key: const ValueKey('food-action-quick'),
+                icon: Icons.bolt_rounded,
+                label: 'Schnell\nhinzufügen',
+                filled: false,
+                onTap: onQuick,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Readonly Such-Launcher (KEIN echtes TextField) -> oeffnet das Add-Sheet.
+class _FoodSearchBar extends StatelessWidget {
+  const _FoodSearchBar({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      key: const ValueKey('food-search'),
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(rControl),
+      child: Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: surface,
+          borderRadius: BorderRadius.circular(rControl),
+          border: Border.all(color: hairline),
+        ),
+        child: Row(
+          children: const [
+            Icon(Icons.search_rounded, size: 18, color: textMuted),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Lebensmittel oder Mahlzeiten suchen…',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: textMuted,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Kompakter Action-Button: Outline (filled:false) oder gefuelltes forgeLime
+/// (filled:true). Keine Entrance-Animation -> stabil hit-testbar.
+class _FoodActionButton extends StatelessWidget {
+  const _FoodActionButton({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.filled,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool filled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color fg = filled ? bg : textPrimary;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(rControl),
+      child: Container(
+        height: 64,
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+        decoration: BoxDecoration(
+          color: filled ? forgeLime : surface,
+          borderRadius: BorderRadius.circular(rControl),
+          border: Border.all(color: filled ? forgeLime : hairline),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 20, color: fg),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: fg,
+                fontSize: 11,
+                height: 1.1,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.1,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _KcalHeader extends StatelessWidget {
   const _KcalHeader();
 
@@ -176,7 +338,7 @@ class _KcalHeader extends StatelessWidget {
     return const Padding(
       padding: EdgeInsets.fromLTRB(2, 2, 0, 4),
       child: Text(
-        'Kalorien',
+        'Ernährung',
         style: TextStyle(
           color: textPrimary,
           fontSize: 18,
@@ -223,7 +385,8 @@ class _FoodDateStrip extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
             child: Row(
               children: [
-                const Icon(Icons.calendar_month_rounded, size: 15, color: lime),
+                const Icon(Icons.calendar_month_rounded,
+                    size: 15, color: forgeLime),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
@@ -307,10 +470,10 @@ class _FoodDateChip extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
         decoration: BoxDecoration(
-          color: selected ? lime : surfaceSoft,
+          color: selected ? forgeLime : surfaceSoft,
           borderRadius: BorderRadius.circular(rControl),
           border: Border.all(
-            color: selected ? lime : hairline,
+            color: selected ? forgeLime : hairline,
           ),
         ),
         child: Column(

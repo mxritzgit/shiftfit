@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 
@@ -14,11 +15,15 @@ class CaloriesOverviewCard extends StatelessWidget {
     required this.dailyConsumedKcal,
     required this.kcalGoal,
     this.burnedKcal = 0,
+    required this.macroProgress,
+    required this.profile,
   });
 
   final int dailyConsumedKcal;
   final int kcalGoal;
   final int burnedKcal;
+  final MacroProgress macroProgress;
+  final UserProfile profile;
 
   @override
   Widget build(BuildContext context) {
@@ -28,166 +33,345 @@ class CaloriesOverviewCard extends StatelessWidget {
     final adjustedGoal = goal + burned;
     final remaining = (adjustedGoal - eaten).clamp(-99999, 99999).toInt();
     final progress = (eaten / adjustedGoal).clamp(0.0, 1.0);
-    final remainingColor = remaining >= 0 ? lime : danger;
+    final remainingColor = remaining >= 0 ? forgeLime : danger;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final maxHeight = constraints.hasBoundedHeight
             ? constraints.maxHeight
             : double.infinity;
-        final compact = maxHeight < 220;
-        final tight = maxHeight < 185;
+        final compact = maxHeight < 270;
+        final tight = maxHeight < 225;
         final padding = EdgeInsets.all(tight ? 12 : (compact ? 14 : 18));
-        final ringSize = tight ? 64.0 : (compact ? 78.0 : 108.0);
-        final remainingSize = tight ? 34.0 : (compact ? 38.0 : 46.0);
-        final titleGap = tight ? 5.0 : (compact ? 7.0 : 10.0);
+        final ringSize = tight ? 60.0 : (compact ? 72.0 : 92.0);
+        final remainingSize = tight ? 32.0 : (compact ? 38.0 : 46.0);
+        final titleGap = tight ? 4.0 : (compact ? 6.0 : 8.0);
         final statsGap = tight ? 6.0 : (compact ? 8.0 : 12.0);
+        final macrosGap = tight ? 8.0 : (compact ? 10.0 : 14.0);
         final showSubtitle = !tight;
 
-        return AppCard(
-          key: const ValueKey('analyse-daily-kcal-card'),
-          padding: padding,
-          child: Column(
-            mainAxisAlignment:
-                compact ? MainAxisAlignment.start : MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
+        final content = Column(
+          mainAxisAlignment: compact
+              ? MainAxisAlignment.start
+              : MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'VERBLEIBENDE KCAL',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: textMuted,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      SizedBox(height: titleGap),
+                      Text(
+                        _formatThousands(remaining),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: remainingColor,
+                          fontSize: remainingSize,
+                          fontWeight: FontWeight.w700,
+                          height: 1.0,
+                          letterSpacing: compact ? -1.4 : -1.8,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                      SizedBox(height: tight ? 1 : 2),
+                      Text(
+                        'kcal',
+                        style: TextStyle(
+                          color: textMuted,
+                          fontSize: tight ? 12 : 13,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      if (showSubtitle) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          'Ziel: ${_formatThousands(adjustedGoal)} kcal',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: textMuted,
+                            fontSize: 13,
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                SizedBox(width: compact ? 8 : 10),
+                SizedBox(
+                  width: ringSize,
+                  height: ringSize,
+                  child: _ProgressRing(
+                    progress: progress,
+                    strokeWidth: compact ? 8 : 10,
                     child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text(
-                          'ÜBRIGE KALORIEN',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: textMuted,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                        SizedBox(height: titleGap),
                         Text(
-                          _formatThousands(remaining),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          '${(progress * 100).round()}%',
                           style: TextStyle(
-                            color: remainingColor,
-                            fontSize: remainingSize,
+                            color: textPrimary,
+                            fontSize: tight ? 15 : (compact ? 17 : 19),
                             fontWeight: FontWeight.w700,
-                            height: 1.0,
-                            letterSpacing: compact ? -1.4 : -1.8,
-                            fontFeatures: const [FontFeature.tabularFigures()],
                           ),
                         ),
-                        SizedBox(height: tight ? 1 : 2),
+                        SizedBox(height: tight ? 0 : 2),
                         Text(
-                          'kcal',
+                          'des Ziels',
                           style: TextStyle(
                             color: textMuted,
-                            fontSize: tight ? 12 : 13,
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: 0.2,
+                            fontSize: tight ? 8.5 : 10,
                           ),
                         ),
-                        if (showSubtitle) ...[
-                          const SizedBox(height: 6),
-                          Text(
-                            remaining >= 0
-                                ? '$eaten von $adjustedGoal kcal'
-                                : '${-remaining} kcal über Ziel',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: textMuted,
-                              fontSize: 11,
-                              height: 1.3,
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                   ),
-                  SizedBox(width: compact ? 8 : 10),
-                  SizedBox(
-                    width: ringSize,
-                    height: ringSize,
-                    child: _ProgressRing(
-                      progress: progress,
-                      strokeWidth: compact ? 8 : 10,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            '${(progress * 100).round()}%',
-                            style: TextStyle(
-                              color: textPrimary,
-                              fontSize: tight ? 16 : (compact ? 18 : 20),
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          SizedBox(height: tight ? 0 : 2),
-                          Text(
-                            'des Ziels',
-                            style: TextStyle(
-                              color: textMuted,
-                              fontSize: tight ? 8.5 : 10,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                ),
+              ],
+            ),
+            SizedBox(height: statsGap),
+            Row(
+              children: [
+                Expanded(
+                  child: _StatTile(
+                    icon: Icons.gps_fixed_rounded,
+                    iconColor: forgeLime,
+                    label: 'ZIEL',
+                    value: _formatThousands(goal),
+                    compact: compact,
+                    tight: tight,
                   ),
-                ],
-              ),
-              SizedBox(height: statsGap),
-              Row(
-                children: [
-                  Expanded(
-                    child: _StatTile(
-                      icon: Icons.gps_fixed_rounded,
-                      iconColor: lime,
-                      label: 'ZIEL',
-                      value: _formatThousands(goal),
-                      compact: compact,
-                      tight: tight,
-                    ),
+                ),
+                SizedBox(width: compact ? 6 : 8),
+                Expanded(
+                  child: _StatTile(
+                    icon: Icons.restaurant_rounded,
+                    iconColor: forgeLime,
+                    label: 'GEGESSEN',
+                    combinedKcal: '$eaten kcal',
+                    combinedKcalKey: const ValueKey('analyse-daily-kcal-total'),
+                    compact: compact,
+                    tight: tight,
                   ),
-                  SizedBox(width: compact ? 6 : 8),
-                  Expanded(
-                    child: _StatTile(
-                      icon: Icons.restaurant_rounded,
-                      iconColor: lime,
-                      label: 'GEGESSEN',
-                      combinedKcal: '$eaten kcal',
-                      combinedKcalKey: const ValueKey('analyse-daily-kcal-total'),
-                      compact: compact,
-                      tight: tight,
-                    ),
+                ),
+                SizedBox(width: compact ? 6 : 8),
+                Expanded(
+                  child: _StatTile(
+                    icon: Icons.local_fire_department_outlined,
+                    iconColor: cyan,
+                    label: 'VERBRANNT',
+                    value: burned == 0 ? '—' : _formatThousands(burned),
+                    showKcalSuffix: burned != 0,
+                    compact: compact,
+                    tight: tight,
                   ),
-                  SizedBox(width: compact ? 6 : 8),
-                  Expanded(
-                    child: _StatTile(
-                      icon: Icons.local_fire_department_outlined,
-                      iconColor: cyan,
-                      label: 'VERBRANNT',
-                      value: burned == 0 ? '—' : _formatThousands(burned),
-                      showKcalSuffix: burned != 0,
-                      compact: compact,
-                      tight: tight,
-                    ),
+                ),
+              ],
+            ),
+            SizedBox(height: macrosGap),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _InlineMacroBar(
+                    label: 'Proteine',
+                    current: macroProgress.proteinG,
+                    goal: profile.proteinGoalG.toDouble(),
+                    color: forgeLime,
+                    compact: compact,
+                    tight: tight,
                   ),
-                ],
-              ),
-            ],
-          ),
+                ),
+                SizedBox(width: compact ? 8 : 12),
+                Expanded(
+                  child: _InlineMacroBar(
+                    label: 'Kohlenhydrate',
+                    current: macroProgress.carbsG,
+                    goal: profile.carbsGoalG.toDouble(),
+                    color: macroCarbs,
+                    compact: compact,
+                    tight: tight,
+                  ),
+                ),
+                SizedBox(width: compact ? 8 : 12),
+                Expanded(
+                  child: _InlineMacroBar(
+                    label: 'Fette',
+                    current: macroProgress.fatG,
+                    goal: profile.fatGoalG.toDouble(),
+                    color: macroFat,
+                    compact: compact,
+                    tight: tight,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+
+        return _GlassPanel(
+          key: const ValueKey('analyse-daily-kcal-card'),
+          padding: padding,
+          child: content,
         );
       },
+    );
+  }
+}
+
+/// Translucent „Glass"-Panel im Stitch-„FORGE"-Stil: weicher forgeLime-Glow
+/// oben-rechts, darüber ein BackdropFilter-Blur und ein transluzenter Fill mit
+/// Hairline-Rand. Ersetzt die solide [AppCard] NUR für die Kalorienkarte.
+class _GlassPanel extends StatelessWidget {
+  const _GlassPanel({
+    super.key,
+    required this.child,
+    required this.padding,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        borderRadius: BorderRadius.all(Radius.circular(rCard)),
+        boxShadow: cardShadow,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(rCard),
+        child: Stack(
+          children: [
+            // 1) Dekorativer, weicher forgeLime-Glow oben-rechts.
+            Positioned(
+              top: -50,
+              right: -40,
+              child: IgnorePointer(
+                child: ImageFiltered(
+                  imageFilter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+                  child: Container(
+                    width: 150,
+                    height: 150,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: forgeLime.withValues(alpha: 0.10),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            // 2) Transluzentes Panel: Backdrop-Blur + Glass-Fill + Hairline.
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: forgeGlassFill,
+                    borderRadius: BorderRadius.circular(rCard),
+                    border: Border.all(color: forgeGlassBorder),
+                  ),
+                ),
+              ),
+            ),
+            // 3) Inhalt.
+            Padding(
+              padding: padding,
+              child: child,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Schmaler Inline-Makro-Balken (Label + aktuell/ziel-g + dünner Balken).
+class _InlineMacroBar extends StatelessWidget {
+  const _InlineMacroBar({
+    required this.label,
+    required this.current,
+    required this.goal,
+    required this.color,
+    this.compact = false,
+    this.tight = false,
+  });
+
+  final String label;
+  final double current;
+  final double goal;
+  final Color color;
+  final bool compact;
+  final bool tight;
+
+  @override
+  Widget build(BuildContext context) {
+    final ratio = goal <= 0 ? 0.0 : (current / goal).clamp(0.0, 1.0).toDouble();
+    final currentG = current.round();
+    final goalG = goal.round();
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: compact ? 10.5 : 11.5,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.1,
+                ),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: tight ? 3 : 5),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(rPill),
+          child: LinearProgressIndicator(
+            value: ratio,
+            minHeight: 6,
+            backgroundColor: surfaceSoft,
+            valueColor: AlwaysStoppedAnimation(color),
+          ),
+        ),
+        SizedBox(height: tight ? 3 : 4),
+        Text(
+          '$currentG/${goalG}g',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: textMuted,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            fontFeatures: [FontFeature.tabularFigures()],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -343,8 +527,8 @@ class _RingPainter extends CustomPainter {
       startAngle: 0,
       endAngle: 2 * math.pi,
       transform: const GradientRotation(-math.pi / 2),
-      // Energy ring is a single brand metric: lime only, soft fade-in start.
-      colors: [lime.withValues(alpha: 0.45), lime, lime, lime],
+      // Energy ring is a single brand metric: forgeLime only, soft fade-in start.
+      colors: [forgeLime.withValues(alpha: 0.45), forgeLime, forgeLime, forgeLime],
       stops: const [0.0, 0.45, 0.85, 1.0],
     );
 
@@ -361,7 +545,7 @@ class _RingPainter extends CustomPainter {
       center.dx + radius * math.cos(dotAngle),
       center.dy + radius * math.sin(dotAngle),
     );
-    final dotPaint = Paint()..color = lime.withValues(alpha: 0.9);
+    final dotPaint = Paint()..color = forgeLime.withValues(alpha: 0.9);
     canvas.drawCircle(dotPos, stroke / 2 + 2, dotPaint);
   }
 
@@ -420,13 +604,13 @@ class MacrosOverviewCard extends StatelessWidget {
                       Text(
                         'Details ansehen',
                         style: TextStyle(
-                          color: lime,
+                          color: forgeLime,
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                       SizedBox(width: 2),
-                      Icon(Icons.chevron_right_rounded, color: lime, size: 14),
+                      Icon(Icons.chevron_right_rounded, color: forgeLime, size: 14),
                     ],
                   ),
                 ),
@@ -442,7 +626,7 @@ class MacrosOverviewCard extends StatelessWidget {
                 label: 'PROTEIN',
                 current: progress.proteinG,
                 goal: profile.proteinGoalG.toDouble(),
-                color: lime,
+                color: forgeLime,
                 compact: compact,
                 tight: tight,
               ),
@@ -690,173 +874,193 @@ class MealsTodayCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final totals = <MealSlot, int>{
-      for (final slot in MealSlot.values) slot: 0,
-    };
-    for (final meal in meals) {
-      totals[meal.slot] = (totals[meal.slot] ?? 0) + meal.result.caloriesKcal;
-    }
-    final overallTotal = totals.values.fold<int>(0, (sum, v) => sum + v);
+    final overallTotal =
+        meals.fold<int>(0, (sum, m) => sum + m.result.caloriesKcal);
+    // Kopie absteigend nach Zeitpunkt sortieren — Original nicht mutieren.
+    final sorted = List<LoggedMeal>.of(meals)
+      ..sort((a, b) => b.loggedAt.compareTo(a.loggedAt));
 
-    const header = Row(
+    final header = Row(
       children: [
-        Text(
-          'MAHLZEITEN HEUTE',
+        const Text(
+          'Verlauf',
           style: TextStyle(
-            color: textMuted,
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 1.2,
+            color: textPrimary,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.2,
           ),
         ),
-        Spacer(),
-        Text(
-          'kcal',
-          style: TextStyle(
-            color: textMuted,
-            fontSize: 11,
-          ),
-        ),
-      ],
-    );
-
-    final total = Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        children: [
-          const Text(
-            'GESAMT',
-            style: TextStyle(
+        const Spacer(),
+        if (sorted.isNotEmpty)
+          Text(
+            '${_formatThousands(overallTotal)} kcal',
+            style: const TextStyle(
               color: textMuted,
               fontSize: 12,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.8,
-            ),
-          ),
-          const Spacer(),
-          Text(
-            _formatThousands(overallTotal),
-            style: const TextStyle(
-              color: textPrimary,
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w500,
               fontFeatures: [FontFeature.tabularFigures()],
             ),
           ),
-          const SizedBox(width: 4),
-          const Text(
-            'kcal',
-            style: TextStyle(
-              color: textMuted,
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
+      ],
     );
 
     return AppCard(
       key: const ValueKey('kcal-meals-today-card'),
       padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final boundedHeight = constraints.hasBoundedHeight;
-          // Edge-cling fix: in a fixed/Expanded height the meal rows share the
-          // free space evenly (each Expanded) so the list fills the card with
-          // no dead band; when unbounded they fall back to natural height.
-          final mealRows = <Widget>[
-            for (final slot in MealSlot.values)
-              _MealRow(
-                key: ValueKey('meal-slot-${slot.name}'),
-                slot: slot,
-                kcal: totals[slot] ?? 0,
-                onTap: onMealTap == null ? null : () => onMealTap!(slot),
-              ),
-          ];
-
-          return Column(
-            mainAxisSize: boundedHeight ? MainAxisSize.max : MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              header,
-              SizedBox(height: boundedHeight ? 6 : 2),
-              if (boundedHeight)
-                for (final row in mealRows)
-                  Expanded(child: Center(child: row))
-              else
-                ...mealRows,
-              const Divider(color: hairline, height: 1),
-              total,
-            ],
-          );
-        },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          header,
+          const SizedBox(height: 8),
+          Expanded(
+            child: sorted.isEmpty
+                ? const _HistoryEmptyState()
+                : ListView.builder(
+                    key: const ValueKey('food-history'),
+                    padding: EdgeInsets.zero,
+                    itemCount: sorted.length,
+                    itemBuilder: (context, index) {
+                      final meal = sorted[index];
+                      return _HistoryEntry(
+                        key: ValueKey('food-history-entry-$index'),
+                        meal: meal,
+                        onTap: onMealTap == null
+                            ? null
+                            : () => onMealTap!(meal.slot),
+                      );
+                    },
+                  ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _MealRow extends StatelessWidget {
-  const _MealRow({
+class _HistoryEmptyState extends StatelessWidget {
+  const _HistoryEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Noch nichts geloggt',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: textMuted,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          SizedBox(height: 4),
+          Text(
+            'Tippe oben auf KI-Scan, Barcode oder Suche.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: textMuted,
+              fontSize: 12,
+              height: 1.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HistoryEntry extends StatelessWidget {
+  const _HistoryEntry({
     super.key,
-    required this.slot,
-    required this.kcal,
+    required this.meal,
     required this.onTap,
   });
 
-  final MealSlot slot;
-  final int kcal;
+  final LoggedMeal meal;
   final VoidCallback? onTap;
 
-  IconData get _icon => switch (slot) {
-        MealSlot.breakfast => Icons.wb_sunny_outlined,
-        MealSlot.lunch => Icons.light_mode_outlined,
-        MealSlot.dinner => Icons.nights_stay_outlined,
-        MealSlot.snack => Icons.cookie_outlined,
-      };
-
-  Color get _color => switch (slot) {
-        MealSlot.breakfast => orange,
-        MealSlot.lunch => lime,
-        MealSlot.dinner => slotDinner,
-        MealSlot.snack => cyan,
+  IconData get _slotIcon => switch (meal.slot) {
+        MealSlot.breakfast => Icons.bakery_dining_rounded,
+        MealSlot.lunch => Icons.lunch_dining_rounded,
+        MealSlot.dinner => Icons.dinner_dining_rounded,
+        MealSlot.snack => Icons.coffee_rounded,
       };
 
   @override
   Widget build(BuildContext context) {
+    final grams = meal.result.estimatedGrams;
+    final amount = grams > 0 ? '~$grams g' : '1 Portion';
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(rControl),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 6),
         child: Row(
           children: [
-            Icon(_icon, color: _color, size: 20),
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: surfaceSoft,
+                borderRadius: BorderRadius.circular(rControl),
+              ),
+              child: Icon(_slotIcon, color: textMuted, size: 22),
+            ),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                slot.label,
-                style: const TextStyle(
-                  color: textPrimary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    meal.result.mealName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${meal.slot.label} • $amount',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: textMuted,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${meal.result.caloriesKcal}',
+                  style: const TextStyle(
+                    color: forgeLime,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
                 ),
-              ),
-            ),
-            Text(
-              kcal.toString(),
-              style: TextStyle(
-                color: kcal > 0 ? textPrimary : textMuted,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
-            ),
-            const SizedBox(width: 4),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: textMuted,
-              size: 16,
+                const Text(
+                  'kcal',
+                  style: TextStyle(
+                    color: textMuted,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
             ),
           ],
         ),

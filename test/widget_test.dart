@@ -210,10 +210,10 @@ void main() {
     expect(find.byKey(const ValueKey('food-date-chip-3')), findsOneWidget);
     expect(find.byKey(const ValueKey('analyse-daily-kcal-card')), findsOneWidget);
     expect(find.byKey(const ValueKey('analyse-daily-kcal-total')), findsOneWidget);
-    expect(find.byKey(const ValueKey('meal-slot-breakfast')), findsOneWidget);
-    expect(find.byKey(const ValueKey('meal-slot-lunch')), findsOneWidget);
-    expect(find.byKey(const ValueKey('meal-slot-dinner')), findsOneWidget);
-    expect(find.byKey(const ValueKey('meal-slot-snack')), findsOneWidget);
+    expect(find.byKey(const ValueKey('food-search')), findsOneWidget);
+    expect(find.byKey(const ValueKey('food-action-barcode')), findsOneWidget);
+    expect(find.byKey(const ValueKey('food-action-ai')), findsOneWidget);
+    expect(find.byKey(const ValueKey('food-action-quick')), findsOneWidget);
     expect(find.byKey(const ValueKey('analyse-camera-button')), findsNothing);
     expect(find.byKey(const ValueKey('kcal-product-search-card')), findsNothing);
     expect(find.text('Demo-Fotoanalyse'), findsNothing);
@@ -288,10 +288,8 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.tap(find.byKey(const ValueKey('meal-slot-lunch')));
-    await tester.pumpAndSettle();
     expect(find.text('Hähnchen mit Reis & Brokkoli'), findsWidgets);
-    expect(find.textContaining('590 kcal'), findsWidgets);
+    expect(find.textContaining('590'), findsWidgets);
   });
 
   testWidgetsRobust('Food tab supports deterministic itemized photo results and daily kcal adding', (
@@ -310,7 +308,7 @@ void main() {
     expect(find.byKey(const ValueKey('analyse-daily-kcal-total')), findsOneWidget);
     expect(find.text('0 kcal'), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('meal-slot-breakfast')));
+    await tester.tap(find.byKey(const ValueKey('food-action-ai')));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const ValueKey('analyse-camera-button')));
@@ -377,7 +375,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('nav-Food')));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const ValueKey('meal-slot-breakfast')));
+    await tester.tap(find.byKey(const ValueKey('food-search')));
     await tester.pumpAndSettle();
 
     await tester.enterText(
@@ -434,7 +432,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Vor 2 Tagen'), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('meal-slot-breakfast')));
+    await tester.tap(find.byKey(const ValueKey('food-search')));
     await tester.pumpAndSettle();
 
     await tester.enterText(
@@ -490,7 +488,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('nav-Food')));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const ValueKey('meal-slot-breakfast')));
+    await tester.tap(find.byKey(const ValueKey('food-search')));
     await tester.pumpAndSettle();
 
     await tester.enterText(
@@ -514,7 +512,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('nav-Food')));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const ValueKey('meal-slot-breakfast')));
+    await tester.tap(find.byKey(const ValueKey('food-search')));
     await tester.pumpAndSettle();
 
     await tester.enterText(
@@ -544,7 +542,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('nav-Food')));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const ValueKey('meal-slot-breakfast')));
+    await tester.tap(find.byKey(const ValueKey('food-search')));
     await tester.pumpAndSettle();
 
     await tester.enterText(

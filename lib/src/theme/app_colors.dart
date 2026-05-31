@@ -23,6 +23,17 @@ const Color lime = Color(0xFFB6F36A);
 // Use [lime, limeBright] instead of any multi-hue gradient.
 const Color limeBright = Color(0xFFD8FF9E);
 
+// --- STITCH "FORGE" FOOD-TAB PALETTE (food-tab-scoped) -----------------------
+// Helleres Lime aus dem Stitch-"FORGE"-Ernährungs-Entwurf. Bricht BEWUSST den
+// app-weiten Lime-Lock NUR im Food-Tab (User-freigegeben). Falls es gut wirkt,
+// kann es später app-weit nachgezogen werden.
+const Color forgeLime = Color(0xFFC3F400);      // primärer Food-Tab-Akzent
+const Color forgeLimeDim = Color(0xFFABD600);   // gedämpfte Variante
+// Translucent-Panel-Fill der Glass-Kalorienkarte (~rgba(42,42,42,0.6)).
+const Color forgeGlassFill = Color(0x992A2A2A);
+// Hairline-Rand der Glass-Karte (~rgba(255,255,255,0.05)).
+const Color forgeGlassBorder = Color(0x0DFFFFFF);
+
 // --- DATA ENCODING ----------------------------------------------------------
 // Reserved EXCLUSIVELY for macro/metric coding. Never an interaction color,
 // never decoration. One macro, one color, everywhere.
