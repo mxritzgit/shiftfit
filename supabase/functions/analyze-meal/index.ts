@@ -336,6 +336,9 @@ function buildPrompt(portionHint: string, freeTextHint?: string): string {
 }
 
 async function callOpenRouter(body: ParsedBody, prompt: string, requestId: string): Promise<Record<string, unknown>> {
+  // Modellname (KEIN Key) loggen — damit ein falsch gesetztes OPENROUTER_MODEL-Secret
+  // (z. B. ein Reasoning-Modell, das leeren Content liefert) sofort sichtbar ist.
+  console.log('analyze-meal openrouter request', { requestId, model: OPENROUTER_MODEL });
   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -360,10 +363,10 @@ async function callOpenRouter(body: ParsedBody, prompt: string, requestId: strin
       ],
       response_format: { type: 'json_object' },
       temperature: 0.1,
-      // 2048 statt 1400: ein voll itemisierter Teller (viele items[] + explanation)
-      // kann 1400 Tokens sprengen -> abgeschnittenes JSON -> provider_invalid_json (502)
-      // -> Client wirft -> "Analyse fehlgeschlagen". gpt-4o-mini kann 16k out, 2048 ist günstig.
-      max_tokens: 2048,
+      // 4096: ein realer, voll itemisierter Teller (viele items[] + lange explanation)
+      // sprengte 1400/2048 -> abgeschnittenes JSON -> provider_invalid_json (502) ->
+      // Client wirft -> "Analyse fehlgeschlagen". gpt-4o-mini kann 16k out, 4096 ist günstig.
+      max_tokens: 4096,
     }),
   });
 
@@ -382,6 +385,7 @@ async function callOpenRouter(body: ParsedBody, prompt: string, requestId: strin
 
   const choices = completion.choices;
   const first = Array.isArray(choices) ? choices[0] : undefined;
+  const finishReason = isRecord(first) ? first.finish_reason : undefined;
   const message = isRecord(first) && isRecord(first.message) ? first.message : undefined;
   const content = message?.content;
   const rawContent = Array.isArray(content)
@@ -390,13 +394,32 @@ async function callOpenRouter(body: ParsedBody, prompt: string, requestId: strin
       ? content
       : '';
 
+  // Leerer Content = Modell hat nichts in 'content' gelegt (typisch für Reasoning-
+  // Modelle, die das Token-Budget mit Reasoning verbrauchen). Klare, eigene Fehlermeldung
+  // + Diagnostik (Modell, finishReason, usage), statt es als "invalid_json" zu tarnen.
+  if (!rawContent.trim()) {
+    console.error('Empty model content', {
+      requestId,
+      model: OPENROUTER_MODEL,
+      finishReason,
+      usage: completion.usage,
+    });
+    throw new HttpError(502, 'provider_empty_response', 'Analyse-Antwort war leer.');
+  }
+
   const jsonText = extractJson(rawContent);
   try {
     const parsed = JSON.parse(jsonText) as unknown;
     if (!isRecord(parsed)) throw new Error('not an object');
     return parsed;
   } catch (_) {
-    console.error('Invalid model JSON', { requestId, raw: rawContent.slice(0, 500) });
+    console.error('Invalid model JSON', {
+      requestId,
+      model: OPENROUTER_MODEL,
+      finishReason,
+      len: rawContent.length,
+      raw: rawContent.slice(0, 500),
+    });
     throw new HttpError(502, 'provider_invalid_json', 'Analyse-Antwort war ungültig.');
   }
 }
