@@ -786,6 +786,14 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
 
     return Scaffold(
       backgroundColor: bg,
+      // Food-Tab (3): Eingabe läuft nur über das modale AddMealSheet, das seine
+      // Tastatur-Anpassung selbst macht (Padding bottom: keyboardInset). Würde der
+      // Home-Scaffold zusätzlich auf die Tastatur resizen, schöbe sich der Hintergrund
+      // sichtbar hinter dem halbtransparenten Barrier (wirkte unprofessionell). Die
+      // MealAnalysisScreen hat kein eigenes Inline-Feld, daher hier gefahrlos aus.
+      // Andere Tabs behalten das Default-Verhalten (Recipes hat eigenen Scaffold,
+      // Coach braucht das Resize für sein Chat-Eingabefeld).
+      resizeToAvoidBottomInset: selectedTab != 3,
       bottomNavigationBar: ShiftFitBottomNav(
         selectedIndex: selectedTab,
         onSelected: (index) => setState(() => selectedTab = index),
