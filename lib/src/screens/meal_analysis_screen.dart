@@ -72,16 +72,21 @@ class MealAnalysisScreen extends StatelessWidget {
   final ValueChanged<String> onRemoveFavorite;
   final ValueChanged<String> onRemoveMeal;
 
-  void _openAddSheet(BuildContext context, MealSlot slot) {
-    // Bereits geloggte Eintraege fuer DIESEN Slot UND das aktuell
-    // angezeigte Datum - das Sheet zeigt sie oben mit X-Button.
-    final existingForSlot = loggedMeals
-        .where((m) =>
-            DateUtils.isSameDay(m.loggedAt, selectedDate) && m.slot == slot)
-        .toList(growable: false);
+  void _openAddSheet(BuildContext context, MealSlot slot,
+      {bool searchMode = false}) {
+    // Bereits geloggte Eintraege fuer DIESEN Slot UND das aktuell angezeigte
+    // Datum - das Sheet zeigt sie oben mit X-Button. Im Such-Modus entfaellt
+    // dieses Slot-Framing (reine Suche, kein "Fruehstueck hinzufuegen").
+    final existingForSlot = searchMode
+        ? const <LoggedMeal>[]
+        : loggedMeals
+            .where((m) =>
+                DateUtils.isSameDay(m.loggedAt, selectedDate) && m.slot == slot)
+            .toList(growable: false);
     showAddMealSheet(
       context,
       slot: slot,
+      searchMode: searchMode,
       analyzer: analyzer,
       productService: productService,
       photoInput: photoInput,
@@ -141,7 +146,8 @@ class MealAnalysisScreen extends StatelessWidget {
           // Add-Block: FESTE Hoehe, NICHT Expanded -> sitzt klar oben,
           // damit Such-Launcher + Action-Buttons ohne Scroll hit-testbar sind.
           _FoodAddBlock(
-            onSearch: () => _openAddSheet(context, _heuristicSlot()),
+            onSearch: () => _openAddSheet(context, _heuristicSlot(),
+                searchMode: true),
             onBarcode: () => _openAddSheet(context, _heuristicSlot()),
             onAiScan: () => _openAddSheet(context, _heuristicSlot()),
             onQuick: () => _openAddSheet(context, _heuristicSlot()),

@@ -19,6 +19,7 @@ import 'meal_suggestion_item.dart';
 Future<void> showAddMealSheet(
   BuildContext context, {
   required MealSlot slot,
+  bool searchMode = false,
   required MealAnalyzer analyzer,
   required ProductLookupService productService,
   required MealPhotoInput photoInput,
@@ -37,6 +38,7 @@ Future<void> showAddMealSheet(
     builder: (sheetContext) {
       return AddMealSheet(
         slot: slot,
+        searchMode: searchMode,
         analyzer: analyzer,
         productService: productService,
         photoInput: photoInput,
@@ -55,6 +57,7 @@ class AddMealSheet extends StatefulWidget {
   const AddMealSheet({
     super.key,
     required this.slot,
+    this.searchMode = false,
     required this.analyzer,
     required this.productService,
     required this.photoInput,
@@ -67,6 +70,7 @@ class AddMealSheet extends StatefulWidget {
   });
 
   final MealSlot slot;
+  final bool searchMode;
   final MealAnalyzer analyzer;
   final ProductLookupService productService;
   final MealPhotoInput photoInput;
@@ -363,6 +367,7 @@ class _AddMealSheetState extends State<AddMealSheet> {
             const _SheetHandle(),
             _SheetHeader(
               slot: widget.slot,
+              searchMode: widget.searchMode,
               onClose: () => Navigator.of(context).pop(),
               onCamera: () => _pickAndAnalyze(ImageSource.camera),
               onGallery: () => _pickAndAnalyze(ImageSource.gallery),
@@ -519,6 +524,7 @@ class _SheetHandle extends StatelessWidget {
 class _SheetHeader extends StatelessWidget {
   const _SheetHeader({
     required this.slot,
+    this.searchMode = false,
     required this.onClose,
     required this.onCamera,
     required this.onGallery,
@@ -526,6 +532,7 @@ class _SheetHeader extends StatelessWidget {
   });
 
   final MealSlot slot;
+  final bool searchMode;
   final VoidCallback onClose;
   final VoidCallback onCamera;
   final VoidCallback onGallery;
@@ -547,6 +554,9 @@ class _SheetHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final accent = searchMode ? lime : _color;
+    final headerIcon = searchMode ? Icons.search_rounded : _icon;
+    final title = searchMode ? 'Lebensmittel suchen' : slot.label;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 6, 10),
       child: Row(
@@ -555,15 +565,15 @@ class _SheetHeader extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: _color.withValues(alpha: 0.16),
+              color: accent.withValues(alpha: 0.16),
               borderRadius: BorderRadius.circular(rControl),
             ),
-            child: Icon(_icon, color: _color, size: 18),
+            child: Icon(headerIcon, color: accent, size: 18),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              slot.label,
+              title,
               style: const TextStyle(
                 color: textPrimary,
                 fontSize: 18,
@@ -572,28 +582,33 @@ class _SheetHeader extends StatelessWidget {
               ),
             ),
           ),
-          _HeaderIconButton(
-            keyValue: const ValueKey('analyse-camera-button'),
-            icon: Icons.photo_camera_rounded,
-            color: orange,
-            tooltip: 'Foto aufnehmen',
-            onPressed: onCamera,
-          ),
-          _HeaderIconButton(
-            keyValue: const ValueKey('analyse-gallery-button'),
-            icon: Icons.photo_library_outlined,
-            color: wellnessTone,
-            tooltip: 'Aus Galerie',
-            onPressed: onGallery,
-          ),
-          _HeaderIconButton(
-            keyValue: const ValueKey('analyse-barcode-button'),
-            icon: Icons.qr_code_scanner_rounded,
-            color: cyan,
-            tooltip: 'Barcode scannen',
-            onPressed: onBarcode,
-          ),
-          const SizedBox(width: 2),
+          // Foto/Galerie/Barcode nur im normalen Add-Modus. Im Such-Modus
+          // bleibt der Kopf schlank — die Suche hat ihre eigenen Aktions-
+          // Buttons im Food-Tab, hier wird nur gesucht.
+          if (!searchMode) ...[
+            _HeaderIconButton(
+              keyValue: const ValueKey('analyse-camera-button'),
+              icon: Icons.photo_camera_rounded,
+              color: orange,
+              tooltip: 'Foto aufnehmen',
+              onPressed: onCamera,
+            ),
+            _HeaderIconButton(
+              keyValue: const ValueKey('analyse-gallery-button'),
+              icon: Icons.photo_library_outlined,
+              color: wellnessTone,
+              tooltip: 'Aus Galerie',
+              onPressed: onGallery,
+            ),
+            _HeaderIconButton(
+              keyValue: const ValueKey('analyse-barcode-button'),
+              icon: Icons.qr_code_scanner_rounded,
+              color: cyan,
+              tooltip: 'Barcode scannen',
+              onPressed: onBarcode,
+            ),
+            const SizedBox(width: 2),
+          ],
           IconButton(
             key: const ValueKey('add-meal-sheet-close'),
             onPressed: onClose,
