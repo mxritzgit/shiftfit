@@ -86,12 +86,15 @@ class CaffeineHalfLifeCard extends StatelessWidget {
           const SizedBox(height: 12),
           SizedBox(
             height: 80,
-            child: CustomPaint(
-              size: const Size.fromHeight(80),
-              painter: _CurvePainter(
-                samples: samples,
-                maxScale: maxScale,
-                nowIndex: now.hour + now.minute / 60.0,
+            // RepaintBoundary: eigener Layer fuer die Halbwertszeit-Kurve.
+            child: RepaintBoundary(
+              child: CustomPaint(
+                size: const Size.fromHeight(80),
+                painter: _CurvePainter(
+                  samples: samples,
+                  maxScale: maxScale,
+                  nowIndex: now.hour + now.minute / 60.0,
+                ),
               ),
             ),
           ),

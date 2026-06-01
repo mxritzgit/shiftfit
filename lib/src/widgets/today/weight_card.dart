@@ -120,8 +120,10 @@ class WeightCard extends StatelessWidget {
                 SizedBox(
                   width: 100,
                   height: 50,
-                  child: CustomPaint(
-                    painter: _WeightSparkline(entries: log.entries),
+                  child: RepaintBoundary(
+                    child: CustomPaint(
+                      painter: _WeightSparkline(entries: log.entries),
+                    ),
                   ),
                 ),
             ],

@@ -35,41 +35,44 @@ class DayOverviewCard extends StatelessWidget {
           SizedBox(
             width: 84,
             height: 84,
-            child: CustomPaint(
-              painter: _DayRingPainter(
-                segments: [
-                  (waterRatio.clamp(0.0, 1.0).toDouble(), cyan),
-                  (sleepRatio.clamp(0.0, 1.0).toDouble(), wellnessTone),
-                  (workoutRatio.clamp(0.0, 1.0).toDouble(), lime),
-                  (stepsRatio.clamp(0.0, 1.0).toDouble(), orange),
-                ],
-                trackColor: hairline,
-              ),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '$percent%',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.6,
-                        height: 1.0,
-                        fontFeatures: [FontFeature.tabularFigures()],
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      'Tag',
-                      style: TextStyle(
-                        color: textMuted,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 0.4,
-                      ),
-                    ),
+            // RepaintBoundary: eigener Layer fuer den Tages-Ring.
+            child: RepaintBoundary(
+              child: CustomPaint(
+                painter: _DayRingPainter(
+                  segments: [
+                    (waterRatio.clamp(0.0, 1.0).toDouble(), cyan),
+                    (sleepRatio.clamp(0.0, 1.0).toDouble(), wellnessTone),
+                    (workoutRatio.clamp(0.0, 1.0).toDouble(), lime),
+                    (stepsRatio.clamp(0.0, 1.0).toDouble(), orange),
                   ],
+                  trackColor: hairline,
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '$percent%',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.6,
+                          height: 1.0,
+                          fontFeatures: [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'Tag',
+                        style: TextStyle(
+                          color: textMuted,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

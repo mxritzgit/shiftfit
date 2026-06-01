@@ -879,28 +879,32 @@ class _ThinkingRowState extends State<_ThinkingRow>
         children: [
           const _GradientDot(size: 8),
           const SizedBox(width: 8),
-          AnimatedBuilder(
-            animation: _c,
-            builder: (_, __) {
-              return Row(
-                mainAxisSize: MainAxisSize.min,
-                children: List.generate(3, (i) {
-                  final phase = (_c.value + i * 0.18) % 1.0;
-                  final t = math.sin(phase * math.pi).abs();
-                  return Padding(
-                    padding: EdgeInsets.only(right: i == 2 ? 0 : 5),
-                    child: Container(
-                      width: 5,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: textMuted.withValues(alpha: 0.28 + 0.55 * t),
-                        shape: BoxShape.circle,
+          // RepaintBoundary: die Dauer-Animation (1,2s ..repeat()) haelt ihren
+          // Re-Paint in einem eigenen Layer und invalidiert nicht die Chat-Liste.
+          RepaintBoundary(
+            child: AnimatedBuilder(
+              animation: _c,
+              builder: (_, __) {
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: List.generate(3, (i) {
+                    final phase = (_c.value + i * 0.18) % 1.0;
+                    final t = math.sin(phase * math.pi).abs();
+                    return Padding(
+                      padding: EdgeInsets.only(right: i == 2 ? 0 : 5),
+                      child: Container(
+                        width: 5,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: textMuted.withValues(alpha: 0.28 + 0.55 * t),
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                    ),
-                  );
-                }),
-              );
-            },
+                    );
+                  }),
+                );
+              },
+            ),
           ),
         ],
       ),

@@ -252,52 +252,57 @@ class _GlassPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        borderRadius: BorderRadius.all(Radius.circular(rCard)),
-        boxShadow: cardShadow,
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(rCard),
-        child: Stack(
-          children: [
-            // 1) Dekorativer, weicher forgeLime-Glow oben-rechts.
-            Positioned(
-              top: -50,
-              right: -40,
-              child: IgnorePointer(
-                child: ImageFiltered(
-                  imageFilter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
-                  child: Container(
-                    width: 150,
-                    height: 150,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: forgeLime.withValues(alpha: 0.10),
+    // RepaintBoundary: das doppelte Blur (BackdropFilter sigma 20 +
+    // ImageFiltered sigma 40) ist teuer. Eigener Layer -> kein erneutes Blur-
+    // Re-Raster, nur weil ein umgebender Repaint stattfindet.
+    return RepaintBoundary(
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          borderRadius: BorderRadius.all(Radius.circular(rCard)),
+          boxShadow: cardShadow,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(rCard),
+          child: Stack(
+            children: [
+              // 1) Dekorativer, weicher forgeLime-Glow oben-rechts.
+              Positioned(
+                top: -50,
+                right: -40,
+                child: IgnorePointer(
+                  child: ImageFiltered(
+                    imageFilter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+                    child: Container(
+                      width: 150,
+                      height: 150,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: forgeLime.withValues(alpha: 0.10),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-            // 2) Transluzentes Panel: Backdrop-Blur + Glass-Fill + Hairline.
-            Positioned.fill(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: forgeGlassFill,
-                    borderRadius: BorderRadius.circular(rCard),
-                    border: Border.all(color: forgeGlassBorder),
+              // 2) Transluzentes Panel: Backdrop-Blur + Glass-Fill + Hairline.
+              Positioned.fill(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: forgeGlassFill,
+                      borderRadius: BorderRadius.circular(rCard),
+                      border: Border.all(color: forgeGlassBorder),
+                    ),
                   ),
                 ),
               ),
-            ),
-            // 3) Inhalt.
-            Padding(
-              padding: padding,
-              child: child,
-            ),
-          ],
+              // 3) Inhalt.
+              Padding(
+                padding: padding,
+                child: child,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -492,9 +497,13 @@ class _ProgressRing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _RingPainter(progress: progress, strokeWidth: strokeWidth),
-      child: Center(child: child),
+    // RepaintBoundary: eigener Layer fuer den Ring, damit scrollende/animierte
+    // Geschwister ihn nicht mit-rasterisieren.
+    return RepaintBoundary(
+      child: CustomPaint(
+        painter: _RingPainter(progress: progress, strokeWidth: strokeWidth),
+        child: Center(child: child),
+      ),
     );
   }
 }
@@ -806,8 +815,10 @@ class _MiniRing extends StatelessWidget {
       alignment: Alignment.center,
       children: [
         Positioned.fill(
-          child: CustomPaint(
-            painter: _MiniRingPainter(progress: progress, color: color),
+          child: RepaintBoundary(
+            child: CustomPaint(
+              painter: _MiniRingPainter(progress: progress, color: color),
+            ),
           ),
         ),
         Text(

@@ -560,7 +560,9 @@ class BodyStatsCard extends StatelessWidget {
               SizedBox(
                 width: 140,
                 height: 110,
-                child: CustomPaint(painter: BMIGaugePainter(bmi: bmi)),
+                child: RepaintBoundary(
+                  child: CustomPaint(painter: BMIGaugePainter(bmi: bmi)),
+                ),
               ),
             ],
           ),
@@ -932,12 +934,14 @@ class WeightHistoryCard extends StatelessWidget {
           const SizedBox(height: 8),
           SizedBox(
             height: 130,
-            child: CustomPaint(
-              painter: WeightLineChartPainter(
-                entries: log.entries,
-                accent: accent,
+            child: RepaintBoundary(
+              child: CustomPaint(
+                painter: WeightLineChartPainter(
+                  entries: log.entries,
+                  accent: accent,
+                ),
+                size: Size.infinite,
               ),
-              size: Size.infinite,
             ),
           ),
           if (hasData) ...[
@@ -1134,9 +1138,12 @@ class _GoalTile extends StatelessWidget {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                CustomPaint(
-                  size: const Size(38, 38),
-                  painter: MiniRingPainter(value: goal.ratio, color: goal.color),
+                RepaintBoundary(
+                  child: CustomPaint(
+                    size: const Size(38, 38),
+                    painter:
+                        MiniRingPainter(value: goal.ratio, color: goal.color),
+                  ),
                 ),
                 Icon(goal.icon, color: goal.color, size: 14),
               ],
@@ -1227,9 +1234,11 @@ class ShiftDistributionCard extends StatelessWidget {
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    CustomPaint(
-                      size: const Size(112, 112),
-                      painter: ShiftDonutPainter(counts: counts),
+                    RepaintBoundary(
+                      child: CustomPaint(
+                        size: const Size(112, 112),
+                        painter: ShiftDonutPainter(counts: counts),
+                      ),
                     ),
                     Column(
                       mainAxisSize: MainAxisSize.min,
