@@ -4,8 +4,10 @@ import '../../theme/app_colors.dart';
 
 /// Standard-Toast-Dauern — bewusst kurz, damit nichts „hängen bleibt".
 const Duration kSnackShort = Duration(milliseconds: 1600); // einfache Bestätigung
-const Duration kSnackAction = Duration(milliseconds: 3200); // mit Aktion (Undo)
-const Duration kSnackError = Duration(milliseconds: 3200);
+const Duration kSnackAction = Duration(milliseconds: 2200); // mit Aktion (Undo) —
+// kurz genug, dass der Toast klar von selbst verschwindet, lang genug um die
+// „Rückgängig"-Aktion noch zu treffen.
+const Duration kSnackError = Duration(milliseconds: 3000);
 
 /// Zeigt einen kurzen, floating Toast. Entfernt IMMER zuerst den aktuellen
 /// Toast, damit sich Snackbars bei schnellen Aktionen NICHT stapeln — das war
