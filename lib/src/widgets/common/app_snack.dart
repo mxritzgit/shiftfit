@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
@@ -10,10 +12,17 @@ const Duration kSnackAction = Duration(milliseconds: 2200); // mit Aktion (Undo)
 const Duration kSnackError = Duration(milliseconds: 3000);
 
 /// Zeigt einen kurzen, floating Toast. Entfernt IMMER zuerst den aktuellen
-/// Toast, damit sich Snackbars bei schnellen Aktionen NICHT stapeln — das war
-/// die Ursache für „bleibt 20–30 s sichtbar / geht nicht weg" (jeder ungekürzte
-/// Default-Toast hängte 4 s in der Queue). Optionales Leading-Icon poppt beim
-/// Erscheinen kurz auf (kleine Animation), optionale [action] (z. B. Undo).
+/// Toast, damit sich Snackbars bei schnellen Aktionen NICHT stapeln. Optionales
+/// Leading-Icon poppt beim Erscheinen kurz auf (kleine Animation), optionale
+/// [action] (z. B. Undo).
+///
+/// Auto-Dismiss: Flutters eingebauter Snackbar-Timer feuert NICHT zuverlässig,
+/// wenn die System-Animation aus ist („Bewegung reduzieren") — dann schließt die
+/// Entrance synchron ab und der Timer wird nie gestartet, die Snackbar bleibt
+/// stehen. Wir hängen deshalb einen eigenen Dismiss-Timer an den Lifecycle des
+/// Snackbar-Inhalts ([_AutoDismiss]): er greift unabhängig von der Animation-
+/// Einstellung und wird bei Widget-Dispose sauber abgeräumt (kein dangling Timer
+/// in Tests).
 void showAppSnack(
   BuildContext context,
   String message, {
@@ -26,37 +35,65 @@ void showAppSnack(
   if (messenger == null) return;
   messenger.removeCurrentSnackBar();
   final effective = duration ?? (action != null ? kSnackAction : kSnackShort);
-  final controller = messenger.showSnackBar(
+  messenger.showSnackBar(
     SnackBar(
       duration: effective,
-      content: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            _SnackIcon(icon: icon, accent: accent),
-            const SizedBox(width: 10),
+      content: _AutoDismiss(
+        duration: effective,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              _SnackIcon(icon: icon, accent: accent),
+              const SizedBox(width: 10),
+            ],
+            Flexible(child: Text(message)),
           ],
-          Flexible(child: Text(message)),
-        ],
+        ),
       ),
       action: action,
     ),
   );
+}
 
-  // Safety-Net NUR bei deaktivierter System-Animation („Bewegung reduzieren"):
-  // dann schließt die Snackbar-Entrance synchron ab und Flutters eingebauter
-  // Auto-Dismiss-Timer feuert teils NICHT → die Snackbar bleibt bis zum
-  // manuellen Wegwischen stehen. Wir schließen sie daher selbst nach Ablauf der
-  // Dauer (sofern nicht schon weg). Bei aktiver Animation übernimmt der
-  // eingebaute Timer (der bei Widget-Dispose sauber abgeräumt wird) — wichtig,
-  // damit kein freier Timer in Widget-Tests hängen bleibt.
-  if (WidgetsBinding.instance.accessibilityFeatures.disableAnimations) {
-    var closed = false;
-    controller.closed.then((_) => closed = true);
-    Future<void>.delayed(effective + const Duration(milliseconds: 350), () {
-      if (!closed) controller.close();
-    });
+/// Hängt einen Dismiss-Timer an den Snackbar-Inhalt. Greift auch dann, wenn der
+/// eingebaute Auto-Dismiss ausbleibt (Animation aus). Da der Timer am State des
+/// Snackbar-Inhalts hängt, wird er bei Dispose (Snackbar weg / von neuer ersetzt
+/// / Test-Teardown) automatisch gecancelt — daher kein hängender Timer in Tests.
+class _AutoDismiss extends StatefulWidget {
+  const _AutoDismiss({required this.child, required this.duration});
+
+  final Widget child;
+  final Duration duration;
+
+  @override
+  State<_AutoDismiss> createState() => _AutoDismissState();
+}
+
+class _AutoDismissState extends State<_AutoDismiss> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Etwas nach der Snackbar-Dauer: lässt dem eingebauten Timer den Vortritt,
+    // springt aber ein, wenn der ausbleibt.
+    _timer = Timer(
+      widget.duration + const Duration(milliseconds: 400),
+      () {
+        if (mounted) ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
+      },
+    );
   }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 /// Kleines, beim Erscheinen kurz aufpoppendes Icon (easeOutBack-Scale).
