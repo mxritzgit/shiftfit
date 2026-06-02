@@ -74,15 +74,12 @@ class MealAnalysisScreen extends StatelessWidget {
 
   void _openAddSheet(BuildContext context, MealSlot slot,
       {bool searchMode = false}) {
-    // Bereits geloggte Eintraege fuer DIESEN Slot UND das aktuell angezeigte
-    // Datum - das Sheet zeigt sie oben mit X-Button. Im Such-Modus entfaellt
-    // dieses Slot-Framing (reine Suche, kein "Fruehstueck hinzufuegen").
-    final existingForSlot = searchMode
-        ? const <LoggedMeal>[]
-        : loggedMeals
-            .where((m) =>
-                DateUtils.isSameDay(m.loggedAt, selectedDate) && m.slot == slot)
-            .toList(growable: false);
+    // Alle Eintraege des angezeigten Tages - das Sheet filtert die Anzeige
+    // selbst nach dem im Selector gewaehlten Slot (bleibt so synchron, wenn
+    // der User den Slot im Sheet wechselt). `slot` ist nur der Default-Slot.
+    final existingForDay = loggedMeals
+        .where((m) => DateUtils.isSameDay(m.loggedAt, selectedDate))
+        .toList(growable: false);
     showAddMealSheet(
       context,
       slot: slot,
@@ -91,7 +88,7 @@ class MealAnalysisScreen extends StatelessWidget {
       productService: productService,
       photoInput: photoInput,
       favorites: favorites,
-      existingMeals: existingForSlot,
+      existingMeals: existingForDay,
       onAdd: onAddMeal,
       onAdjustDailyKcal: onAdjustDailyKcal,
       onRemoveFavorite: onRemoveFavorite,

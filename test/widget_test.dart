@@ -408,6 +408,65 @@ void main() {
     );
   });
 
+  testWidgetsRobust('Food add lets the user pick the meal slot, not the clock', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      ShiftFitApp(productService: _FakeProductLookupService()),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('nav-Food')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('food-search')));
+    await tester.pumpAndSettle();
+
+    // Der Slot-Selector ist im Add-Sheet vorhanden, alle vier Slots wählbar.
+    expect(find.byKey(const ValueKey('add-meal-slot-select')), findsOneWidget);
+    expect(find.byKey(const ValueKey('slot-select-breakfast')), findsOneWidget);
+    expect(find.byKey(const ValueKey('slot-select-lunch')), findsOneWidget);
+    expect(find.byKey(const ValueKey('slot-select-dinner')), findsOneWidget);
+    expect(find.byKey(const ValueKey('slot-select-snack')), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('kcal-product-search-input')),
+      'Dr Oetker Salami',
+    );
+    await tester.tap(find.byKey(const ValueKey('kcal-product-search-button')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    // 1) Slot "Snack" wählen -> Eintrag landet in Snacks.
+    await tester.tap(find.byKey(const ValueKey('slot-select-snack')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('kcal-product-suggestion-0')));
+    await tester.pumpAndSettle();
+    final addSnack = find.byKey(const ValueKey('kcal-product-suggestion-add-0'));
+    await tester.ensureVisible(addSnack);
+    await tester.tap(addSnack);
+    await tester.pumpAndSettle();
+    expect(find.text('252 kcal zu Snacks hinzugefügt.'), findsOneWidget);
+
+    // Erste Snackbar auslaufen lassen, damit die nächste nicht in der Queue
+    // wartet (sonst verdeckt sie die zweite Bestätigung).
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+
+    // 2) Im selben Sheet "Frühstück" wählen -> nächster Eintrag landet dort.
+    // Zwei verschiedene Slots beweisen: der Selector steuert den Slot, nicht
+    // die Uhrzeit-Heuristik (deren Default ist immer nur EIN Slot).
+    await tester.tap(find.byKey(const ValueKey('slot-select-breakfast')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('kcal-product-suggestion-0')));
+    await tester.pumpAndSettle();
+    final addBreakfast =
+        find.byKey(const ValueKey('kcal-product-suggestion-add-0'));
+    await tester.ensureVisible(addBreakfast);
+    await tester.tap(addBreakfast);
+    await tester.pumpAndSettle();
+    expect(find.text('252 kcal zu Frühstück hinzugefügt.'), findsOneWidget);
+  });
+
   testWidgetsRobust('Food calendar keeps past days separate from today', (
     WidgetTester tester,
   ) async {

@@ -100,6 +100,9 @@ class _AddMealSheetState extends State<AddMealSheet> {
   final Set<String> _justAddedKeys = <String>{};
   final Map<String, Timer> _justAddedTimers = <String, Timer>{};
 
+  // Der Slot ist Sheet-Zustand, nicht ein fixer Input: Default ist der
+  // übergebene (Uhrzeit-)Vorschlag, der User kann ihn im Selector ändern.
+  late MealSlot _selectedSlot;
   late List<LoggedMeal> _existing;
   late List<FavoriteMeal> _favorites;
 
@@ -113,9 +116,21 @@ class _AddMealSheetState extends State<AddMealSheet> {
   @override
   void initState() {
     super.initState();
+    _selectedSlot = widget.slot;
     _existing = List<LoggedMeal>.of(widget.existingMeals);
     _favorites = List<FavoriteMeal>.of(widget.favorites);
   }
+
+  void _selectSlot(MealSlot slot) {
+    if (slot == _selectedSlot) return;
+    setState(() => _selectedSlot = slot);
+  }
+
+  // Geloggte Einträge des aktuell gewählten Slots (aus der vollen Tagesliste,
+  // die das Sheet als existingMeals erhält) — der Kopfbereich bleibt so immer
+  // zum Selector synchron.
+  List<LoggedMeal> get _slotMeals =>
+      _existing.where((m) => m.slot == _selectedSlot).toList(growable: false);
 
   @override
   void dispose() {
@@ -287,7 +302,7 @@ class _AddMealSheetState extends State<AddMealSheet> {
 
     await showMealAnalysisSheet(
       context,
-      slot: widget.slot,
+      slot: _selectedSlot,
       resultFuture: widget.analyzer.analyze(selection.request),
       previewImage: selection.previewBytes,
       onAdd: widget.onAdd,
@@ -306,7 +321,7 @@ class _AddMealSheetState extends State<AddMealSheet> {
 
     await showMealAnalysisSheet(
       context,
-      slot: widget.slot,
+      slot: _selectedSlot,
       resultFuture: widget.productService.lookupBarcode(trimmed),
       previewImage: null,
       onAdd: widget.onAdd,
@@ -319,11 +334,11 @@ class _AddMealSheetState extends State<AddMealSheet> {
   // ─── Hinzufuegen ──────────────────────────────────────────────────────
 
   void _handleAdd(String itemKey, MealAnalysisResult result) {
-    widget.onAdd(result, widget.slot);
+    widget.onAdd(result, _selectedSlot);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(
-          '${result.caloriesKcal} kcal zu ${widget.slot.label} hinzugefügt.',
+          '${result.caloriesKcal} kcal zu ${_selectedSlot.label} hinzugefügt.',
         )),
       );
     }
@@ -366,7 +381,7 @@ class _AddMealSheetState extends State<AddMealSheet> {
           children: [
             const _SheetHandle(),
             _SheetHeader(
-              slot: widget.slot,
+              slot: _selectedSlot,
               searchMode: widget.searchMode,
               onClose: () => Navigator.of(context).pop(),
               onCamera: () => _pickAndAnalyze(ImageSource.camera),
@@ -380,6 +395,10 @@ class _AddMealSheetState extends State<AddMealSheet> {
               onSubmitted: (_) => _searchProducts(),
               onSearchPressed: _searchProducts,
             ),
+            _SlotSelector(
+              selected: _selectedSlot,
+              onSelected: _selectSlot,
+            ),
             Flexible(
               child: SingleChildScrollView(
                 key: const ValueKey('add-meal-sheet-scroll'),
@@ -392,10 +411,10 @@ class _AddMealSheetState extends State<AddMealSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (_existing.isNotEmpty) ...[
+                    if (_slotMeals.isNotEmpty) ...[
                       ExistingMealsList(
-                        meals: _existing,
-                        slot: widget.slot,
+                        meals: _slotMeals,
+                        slot: _selectedSlot,
                         onRemove: widget.onRemoveMeal == null
                             ? null
                             : _removeExisting,
@@ -500,6 +519,124 @@ class _AddMealSheetState extends State<AddMealSheet> {
   }
 }
 
+// ─── Slot-Helfer + Selector ─────────────────────────────────────────────
+
+Color _slotColor(MealSlot slot) => switch (slot) {
+      MealSlot.breakfast => orange,
+      MealSlot.lunch => lime,
+      MealSlot.dinner => slotDinner,
+      MealSlot.snack => cyan,
+    };
+
+IconData _slotIcon(MealSlot slot) => switch (slot) {
+      MealSlot.breakfast => Icons.wb_sunny_outlined,
+      MealSlot.lunch => Icons.light_mode_outlined,
+      MealSlot.dinner => Icons.nights_stay_outlined,
+      MealSlot.snack => Icons.cookie_outlined,
+    };
+
+// Kurzlabel nur für den Selector (das Modell-Label „Mittagessen"/„Snacks" ist
+// für 4 Segmente nebeneinander zu breit).
+String _slotShortLabel(MealSlot slot) => switch (slot) {
+      MealSlot.breakfast => 'Frühstück',
+      MealSlot.lunch => 'Mittag',
+      MealSlot.dinner => 'Abend',
+      MealSlot.snack => 'Snack',
+    };
+
+/// Segmented-Control: legt fest, in welchen Slot der nächste Eintrag wandert.
+/// Default ist der (Uhrzeit-)Vorschlag, bleibt aber jederzeit änderbar.
+class _SlotSelector extends StatelessWidget {
+  const _SlotSelector({required this.selected, required this.onSelected});
+
+  final MealSlot selected;
+  final ValueChanged<MealSlot> onSelected;
+
+  static const List<MealSlot> _slots = <MealSlot>[
+    MealSlot.breakfast,
+    MealSlot.lunch,
+    MealSlot.dinner,
+    MealSlot.snack,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      key: const ValueKey('add-meal-slot-select'),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+      child: Row(
+        children: [
+          for (var i = 0; i < _slots.length; i++) ...[
+            Expanded(
+              child: _SlotSegment(
+                slot: _slots[i],
+                selected: _slots[i] == selected,
+                onTap: () => onSelected(_slots[i]),
+              ),
+            ),
+            if (i != _slots.length - 1) const SizedBox(width: 8),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SlotSegment extends StatelessWidget {
+  const _SlotSegment({
+    required this.slot,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final MealSlot slot;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _slotColor(slot);
+    return InkWell(
+      key: ValueKey('slot-select-${slot.name}'),
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(rControl),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        height: 56,
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? color.withValues(alpha: 0.16) : surfaceSoft,
+          borderRadius: BorderRadius.circular(rControl),
+          border: Border.all(color: selected ? color : hairline),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              _slotIcon(slot),
+              size: 18,
+              color: selected ? color : textMuted,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _slotShortLabel(slot),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: selected ? textPrimary : textMuted,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.1,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ─── Header ─────────────────────────────────────────────────────────────
 
 class _SheetHandle extends StatelessWidget {
@@ -538,24 +675,10 @@ class _SheetHeader extends StatelessWidget {
   final VoidCallback onGallery;
   final VoidCallback onBarcode;
 
-  Color get _color => switch (slot) {
-        MealSlot.breakfast => orange,
-        MealSlot.lunch => lime,
-        MealSlot.dinner => slotDinner,
-        MealSlot.snack => cyan,
-      };
-
-  IconData get _icon => switch (slot) {
-        MealSlot.breakfast => Icons.wb_sunny_outlined,
-        MealSlot.lunch => Icons.light_mode_outlined,
-        MealSlot.dinner => Icons.nights_stay_outlined,
-        MealSlot.snack => Icons.cookie_outlined,
-      };
-
   @override
   Widget build(BuildContext context) {
-    final accent = searchMode ? lime : _color;
-    final headerIcon = searchMode ? Icons.search_rounded : _icon;
+    final accent = searchMode ? lime : _slotColor(slot);
+    final headerIcon = searchMode ? Icons.search_rounded : _slotIcon(slot);
     final title = searchMode ? 'Lebensmittel suchen' : slot.label;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 6, 10),
