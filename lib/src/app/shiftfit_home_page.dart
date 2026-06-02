@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer' as dev;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/caffeine_entry.dart';
 import '../models/daily_mood.dart';
@@ -69,7 +70,8 @@ class ShiftFitHomePage extends StatefulWidget {
   State<ShiftFitHomePage> createState() => _ShiftFitHomePageState();
 }
 
-class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
+class _ShiftFitHomePageState extends State<ShiftFitHomePage>
+    with WidgetsBindingObserver {
   String selectedShift = 'Muskelaufbau';
   String selectedEnergy = 'Normal';
   String selectedStress = 'Mittel';
@@ -123,6 +125,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     userName = widget.initialUserName;
     // Ohne Sync (Preview/Test) ueberspringen wir Boot- und Welcome-Phase
     // direkt - tests pumpen einen Frame und erwarten sofort das Home.
@@ -255,6 +258,35 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
     ));
   }
 
+  /// Fire-and-forget Sync-Write MIT Rollback: schlägt der Write fehl, wird der
+  /// Fehler sichtbar gemeldet UND der optimistische lokale State via [restore]
+  /// zurückgerollt — sonst driften lokal und Remote auseinander (beim nächsten
+  /// Kaltstart überschreibt _bootFromSupabase den lokalen Stand mit dem Remote).
+  void _syncWithRollback(
+    String operation,
+    Future<void>? future,
+    VoidCallback restore,
+  ) {
+    future?.catchError((Object e) {
+      _reportSyncError(operation, e);
+      if (mounted) setState(restore);
+    });
+  }
+
+  /// Zeigt eine Undo-Snackbar nach einer Löschung; [onUndo] stellt den Eintrag
+  /// wieder her (lokal + Remote). Vereinheitlicht destruktive Aktionen.
+  void _showUndoSnackBar(String label, VoidCallback onUndo) {
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+    messenger.removeCurrentSnackBar();
+    messenger.showSnackBar(SnackBar(
+      duration: const Duration(seconds: 4),
+      content: Text(label),
+      action: SnackBarAction(label: 'Rückgängig', onPressed: onUndo),
+    ));
+  }
+
   /// Sammelt das aktuelle Daily-Log und schickt es debounced an
   /// daily_logs (Tagesziel-State: water_ml, steps, mood, blocks, habits).
   void _queueDailyLogSync() {
@@ -295,10 +327,38 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _statsSaveDebounce?.cancel();
     _profileRefresh.dispose();
     widget.sync?.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // App geht in den Hintergrund / wird beendet: ausstehende debounced Writes
+    // (DailyLog 400ms, LifetimeStats 600ms) sofort flushen, damit ein Kill im
+    // Debounce-Fenster keine Quick-Logs (Wasser/Schritte/Mood/Streak) verliert.
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
+      _flushPendingWrites();
+    }
+  }
+
+  /// Schreibt ausstehende debounced Writes sofort weg (kein Warten auf den
+  /// Timer mehr). Wird beim App-Backgrounding/-Beenden aufgerufen.
+  void _flushPendingWrites() {
+    final sync = widget.sync;
+    if (sync == null) return;
+    if (_statsSaveDebounce?.isActive ?? false) {
+      _statsSaveDebounce!.cancel();
+      sync.lifetimeStats
+          .save(lifetimeStats)
+          .catchError((Object e) => _reportSyncError('Statistik', e));
+    }
+    sync.dailyLog.flush();
   }
 
   HealthService get _health =>
@@ -348,6 +408,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
   }
 
   void _addWater(int ml) {
+    HapticFeedback.selectionClick();
     setState(() {
       dailyWaterMl = (dailyWaterMl + ml).clamp(0, 15000);
       if (ml > 0) lifetimeStats = lifetimeStats.addWater(ml);
@@ -357,19 +418,24 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
   }
 
   void _toggleHabit(String id) {
+    HapticFeedback.selectionClick();
     setState(() => habits = habits.toggle(id));
     _queueDailyLogSync();
   }
 
   void _logWeight(double kg) {
+    HapticFeedback.lightImpact();
     final ts = DateTime.now();
+    final prevWeightLog = weightLog;
+    final prevStats = lifetimeStats;
     setState(() {
       weightLog = weightLog.add(kg);
       lifetimeStats = lifetimeStats.incrementWeightLogs();
     });
-    widget.sync?.tracking
-        .insertWeight(kg, ts)
-        .catchError((e) => _reportSyncError('Gewicht', e));
+    _syncWithRollback('Gewicht', widget.sync?.tracking.insertWeight(kg, ts), () {
+      weightLog = prevWeightLog;
+      lifetimeStats = prevStats;
+    });
     _saveLifetimeStats();
   }
 
@@ -380,17 +446,23 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
 
   void _addCaffeine(int mg) {
     final ts = DateTime.now();
+    final prev = caffeineDay;
     setState(() => caffeineDay = caffeineDay.add(mg));
-    widget.sync?.tracking
-        .insertCaffeine(mg, ts)
-        .catchError((e) => _reportSyncError('Koffein', e));
+    _syncWithRollback(
+      'Koffein',
+      widget.sync?.tracking.insertCaffeine(mg, ts),
+      () => caffeineDay = prev,
+    );
   }
 
   void _resetCaffeine() {
+    final prev = caffeineDay;
     setState(() => caffeineDay = caffeineDay.reset());
-    widget.sync?.tracking
-        .resetCaffeineDay(DateTime.now())
-        .catchError((e) => _reportSyncError('Koffein-Reset', e));
+    _syncWithRollback(
+      'Koffein-Reset',
+      widget.sync?.tracking.resetCaffeineDay(DateTime.now()),
+      () => caffeineDay = prev,
+    );
   }
 
   void _addSteps(int amount) {
@@ -423,14 +495,18 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
   Future<void> _logSleep() async {
     final entry = await showSleepLogSheet(context, initial: lastSleep);
     if (entry != null && mounted) {
+      final prev = lastSleep;
       setState(() => lastSleep = entry);
-      widget.sync?.tracking
-          .upsertSleep(entry)
-          .catchError((e) => _reportSyncError('Schlaf', e));
+      _syncWithRollback(
+        'Schlaf',
+        widget.sync?.tracking.upsertSleep(entry),
+        () => lastSleep = prev,
+      );
     }
   }
 
   void _toggleBlock(String id) {
+    HapticFeedback.selectionClick();
     final next = {...completedBlockIds};
     if (next.contains(id)) {
       next.remove(id);
@@ -542,6 +618,11 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
       forcedSlot: slot,
     );
     final targetIsToday = _isSameFoodDate(targetDate, DateTime.now());
+    HapticFeedback.lightImpact();
+    final prevMeals = loggedMeals;
+    final prevKcal = dailyConsumedKcal;
+    final prevMacros = macroProgress;
+    final prevStats = lifetimeStats;
     setState(() {
       lifetimeStats = lifetimeStats.incrementMeals();
       _rememberFavorite(result);
@@ -551,13 +632,26 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         macroProgress = _macroProgressForFoodDate(DateTime.now());
       }
     });
-    widget.sync?.meals
-        .insertLoggedMeal(entry)
-        .catchError((e) => _reportSyncError('Mahlzeit', e));
+    _syncWithRollback(
+      'Mahlzeit',
+      widget.sync?.meals.insertLoggedMeal(entry),
+      () {
+        loggedMeals = prevMeals;
+        lifetimeStats = prevStats;
+        dailyConsumedKcal = prevKcal;
+        macroProgress = prevMacros;
+      },
+    );
     _saveLifetimeStats();
   }
 
   void _removeLoggedMeal(String id) {
+    final matches = loggedMeals.where((m) => m.id == id);
+    final removed = matches.isEmpty ? null : matches.first;
+    HapticFeedback.lightImpact();
+    final prevMeals = loggedMeals;
+    final prevKcal = dailyConsumedKcal;
+    final prevMacros = macroProgress;
     setState(() {
       loggedMeals = loggedMeals.where((m) => m.id != id).toList();
       if (_selectedFoodDateIsToday) {
@@ -565,12 +659,47 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
         macroProgress = _macroProgressForFoodDate(DateTime.now());
       }
     });
-    widget.sync?.meals
-        .deleteLoggedMeal(id)
-        .catchError((e) => _reportSyncError('Mahlzeit-Delete', e));
+    _syncWithRollback(
+      'Mahlzeit-Delete',
+      widget.sync?.meals.deleteLoggedMeal(id),
+      () {
+        loggedMeals = prevMeals;
+        dailyConsumedKcal = prevKcal;
+        macroProgress = prevMacros;
+      },
+    );
+    if (removed != null) {
+      _showUndoSnackBar('Mahlzeit gelöscht', () => _restoreLoggedMeal(removed));
+    }
+  }
+
+  /// Stellt eine per Swipe gelöschte Mahlzeit wieder her (lokal + Remote).
+  void _restoreLoggedMeal(LoggedMeal meal) {
+    if (loggedMeals.any((m) => m.id == meal.id)) return; // schon zurück
+    setState(() {
+      loggedMeals = [meal, ...loggedMeals];
+      if (_selectedFoodDateIsToday) {
+        dailyConsumedKcal = _consumedKcalForFoodDate(DateTime.now());
+        macroProgress = _macroProgressForFoodDate(DateTime.now());
+      }
+    });
+    _syncWithRollback(
+      'Mahlzeit-Restore',
+      widget.sync?.meals.insertLoggedMeal(meal),
+      () {
+        loggedMeals = loggedMeals.where((m) => m.id != meal.id).toList();
+        if (_selectedFoodDateIsToday) {
+          dailyConsumedKcal = _consumedKcalForFoodDate(DateTime.now());
+          macroProgress = _macroProgressForFoodDate(DateTime.now());
+        }
+      },
+    );
   }
 
   void _adjustDailyTotalDelta(int delta) {
+    final prevMeals = loggedMeals;
+    final prevKcal = dailyConsumedKcal;
+    final prevMacros = macroProgress;
     LoggedMeal? updated;
     setState(() {
       final index = loggedMeals.indexWhere(
@@ -596,9 +725,15 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
     });
     final remoteUpdate = updated;
     if (remoteUpdate != null) {
-      widget.sync?.meals
-          .updateLoggedMeal(remoteUpdate)
-          .catchError((e) => _reportSyncError('Mahlzeit-Update', e));
+      _syncWithRollback(
+        'Mahlzeit-Update',
+        widget.sync?.meals.updateLoggedMeal(remoteUpdate),
+        () {
+          loggedMeals = prevMeals;
+          dailyConsumedKcal = prevKcal;
+          macroProgress = prevMacros;
+        },
+      );
     }
   }
 
@@ -612,12 +747,32 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage> {
   }
 
   void _removeFavorite(String id) {
+    final matches = favorites.where((f) => f.id == id);
+    final removed = matches.isEmpty ? null : matches.first;
+    final prev = favorites;
     setState(() {
       favorites = favorites.where((f) => f.id != id).toList();
     });
-    widget.sync?.meals
-        .deleteFavorite(id)
-        .catchError((e) => _reportSyncError('Favorit-Delete', e));
+    _syncWithRollback(
+      'Favorit-Delete',
+      widget.sync?.meals.deleteFavorite(id),
+      () => favorites = prev,
+    );
+    if (removed != null) {
+      _showUndoSnackBar('Favorit entfernt', () => _restoreFavorite(removed));
+    }
+  }
+
+  void _restoreFavorite(FavoriteMeal fav) {
+    if (favorites.any((f) => f.id == fav.id)) return;
+    setState(() {
+      favorites = [fav, ...favorites].take(5).toList();
+    });
+    _syncWithRollback(
+      'Favorit-Restore',
+      widget.sync?.meals.upsertFavorite(fav),
+      () => favorites = favorites.where((f) => f.id != fav.id).toList(),
+    );
   }
 
   Future<void> _openSettings() async {

@@ -16,7 +16,10 @@ class MeilisearchProductService implements ProductLookupService {
 
   final String baseUrl;
 
-  static const Duration _connectTimeout = Duration(seconds: 6);
+  // Connect bewusst knapp: ein toter/ausgelaufener Mirror (GCP-Trial endet
+  // 2026-08-29) soll schnell auf die live OFF-API zurückfallen statt pro Suche
+  // lange zu hängen. Read-Timeout bleibt großzügiger für echte Antworten.
+  static const Duration _connectTimeout = Duration(seconds: 3);
   static const Duration _readTimeout = Duration(seconds: 8);
 
   @override

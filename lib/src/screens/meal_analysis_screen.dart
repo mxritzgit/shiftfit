@@ -10,6 +10,7 @@ import '../services/meal_photo_input.dart';
 import '../services/fallback_product_service.dart';
 import '../services/meilisearch_product_service.dart';
 import '../services/open_food_facts_product_service.dart';
+import '../config/search_config.dart';
 import '../theme/app_colors.dart';
 import '../widgets/kcal/add_meal_sheet.dart';
 import '../widgets/kcal/calories_overview_card.dart';
@@ -49,11 +50,13 @@ class MealAnalysisScreen extends StatelessWidget {
   static void _noopString(String _) {}
 
   // Fast EU mirror (Meilisearch via Cloud Run proxy) with live OFF as fallback.
-  static ProductLookupService _defaultProductService() =>
-      FallbackProductService(
-        MeilisearchProductService(),
-        const OpenFoodFactsProductService(),
-      );
+  // Ist der Mirror per Kill-Switch deaktiviert (leere OFF_PROXY_URL, z.B. nach
+  // GCP-Trial-Ablauf 2026-08-29), wird OFF direkt genutzt — kein Mirror-Timeout.
+  static ProductLookupService _defaultProductService() {
+    const off = OpenFoodFactsProductService();
+    if (!SearchConfig.mirrorEnabled) return off;
+    return FallbackProductService(MeilisearchProductService(), off);
+  }
 
   final MealAnalyzer analyzer;
   final ProductLookupService productService;
