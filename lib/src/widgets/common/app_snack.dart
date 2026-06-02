@@ -25,9 +25,10 @@ void showAppSnack(
   final messenger = ScaffoldMessenger.maybeOf(context);
   if (messenger == null) return;
   messenger.removeCurrentSnackBar();
-  messenger.showSnackBar(
+  final effective = duration ?? (action != null ? kSnackAction : kSnackShort);
+  final controller = messenger.showSnackBar(
     SnackBar(
-      duration: duration ?? (action != null ? kSnackAction : kSnackShort),
+      duration: effective,
       content: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -41,6 +42,21 @@ void showAppSnack(
       action: action,
     ),
   );
+
+  // Safety-Net NUR bei deaktivierter System-Animation („Bewegung reduzieren"):
+  // dann schließt die Snackbar-Entrance synchron ab und Flutters eingebauter
+  // Auto-Dismiss-Timer feuert teils NICHT → die Snackbar bleibt bis zum
+  // manuellen Wegwischen stehen. Wir schließen sie daher selbst nach Ablauf der
+  // Dauer (sofern nicht schon weg). Bei aktiver Animation übernimmt der
+  // eingebaute Timer (der bei Widget-Dispose sauber abgeräumt wird) — wichtig,
+  // damit kein freier Timer in Widget-Tests hängen bleibt.
+  if (WidgetsBinding.instance.accessibilityFeatures.disableAnimations) {
+    var closed = false;
+    controller.closed.then((_) => closed = true);
+    Future<void>.delayed(effective + const Duration(milliseconds: 350), () {
+      if (!closed) controller.close();
+    });
+  }
 }
 
 /// Kleines, beim Erscheinen kurz aufpoppendes Icon (easeOutBack-Scale).

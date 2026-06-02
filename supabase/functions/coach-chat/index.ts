@@ -640,9 +640,14 @@ Deno.serve(async (req: Request) => {
   // Faktischer App-Kontext (Profil + Tagesbilanz) vom Client. Control-Chars
   // entfernt + gekappt; wird im System-Prompt explizit als Daten (NICHT als
   // Anweisung) gerahmt, damit er nicht als Injection-Vektor missbraucht wird.
-  const userContext = typeof body?.user_context === "string"
-    ? Array.from(body.user_context).filter((ch) => ch.charCodeAt(0) >= 32 && ch.charCodeAt(0) !== 127).join("").trim().slice(0, 600)
+  const rawContext = typeof body?.user_context === "string"
+    ? body.user_context as string
     : "";
+  const userContext = Array.from(rawContext)
+    .filter((ch) => ch.charCodeAt(0) >= 32 && ch.charCodeAt(0) !== 127)
+    .join("")
+    .trim()
+    .slice(0, 600);
 
   // Session sicherstellen (vor Pre-Filter, damit auch Refusals der richtigen
   // Konversation zugeordnet werden).
