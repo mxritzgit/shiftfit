@@ -6,6 +6,7 @@ import '../models/logged_meal.dart';
 import '../models/macro_progress.dart';
 import '../models/meal_analysis_result.dart';
 import '../theme/app_colors.dart';
+import '../theme/meal_slot_style.dart';
 
 class RecipesScreen extends StatefulWidget {
   const RecipesScreen({
@@ -879,19 +880,9 @@ class _MealSlotButton extends StatelessWidget {
   final MealSlot slot;
   final VoidCallback onTap;
 
-  Color get color => switch (slot) {
-        MealSlot.breakfast => orange,
-        MealSlot.lunch => lime,
-        MealSlot.dinner => slotDinner,
-        MealSlot.snack => cyan,
-      };
+  Color get color => slot.accent;
 
-  IconData get icon => switch (slot) {
-        MealSlot.breakfast => Icons.wb_sunny_outlined,
-        MealSlot.lunch => Icons.light_mode_outlined,
-        MealSlot.dinner => Icons.nights_stay_outlined,
-        MealSlot.snack => Icons.cookie_outlined,
-      };
+  IconData get icon => slot.icon;
 
   @override
   Widget build(BuildContext context) {

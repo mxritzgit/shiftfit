@@ -12,6 +12,7 @@ import '../../services/meal_analyzer.dart';
 import '../../services/meal_photo_input.dart';
 import '../../services/open_food_facts_product_service.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/meal_slot_style.dart';
 import 'existing_meals_list.dart';
 import 'meal_analysis_sheet.dart';
 import 'meal_suggestion_item.dart';
@@ -519,30 +520,7 @@ class _AddMealSheetState extends State<AddMealSheet> {
   }
 }
 
-// ─── Slot-Helfer + Selector ─────────────────────────────────────────────
-
-Color _slotColor(MealSlot slot) => switch (slot) {
-      MealSlot.breakfast => orange,
-      MealSlot.lunch => lime,
-      MealSlot.dinner => slotDinner,
-      MealSlot.snack => cyan,
-    };
-
-IconData _slotIcon(MealSlot slot) => switch (slot) {
-      MealSlot.breakfast => Icons.wb_sunny_outlined,
-      MealSlot.lunch => Icons.light_mode_outlined,
-      MealSlot.dinner => Icons.nights_stay_outlined,
-      MealSlot.snack => Icons.cookie_outlined,
-    };
-
-// Kurzlabel nur für den Selector (das Modell-Label „Mittagessen"/„Snacks" ist
-// für 4 Segmente nebeneinander zu breit).
-String _slotShortLabel(MealSlot slot) => switch (slot) {
-      MealSlot.breakfast => 'Frühstück',
-      MealSlot.lunch => 'Mittag',
-      MealSlot.dinner => 'Abend',
-      MealSlot.snack => 'Snack',
-    };
+// ─── Slot-Selector ──────────────────────────────────────────────────────
 
 /// Segmented-Control: legt fest, in welchen Slot der nächste Eintrag wandert.
 /// Default ist der (Uhrzeit-)Vorschlag, bleibt aber jederzeit änderbar.
@@ -595,7 +573,7 @@ class _SlotSegment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _slotColor(slot);
+    final color = slot.accent;
     return InkWell(
       key: ValueKey('slot-select-${slot.name}'),
       onTap: onTap,
@@ -614,13 +592,13 @@ class _SlotSegment extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              _slotIcon(slot),
+              slot.icon,
               size: 18,
               color: selected ? color : textMuted,
             ),
             const SizedBox(height: 4),
             Text(
-              _slotShortLabel(slot),
+              slot.shortLabel,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -677,8 +655,8 @@ class _SheetHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = searchMode ? lime : _slotColor(slot);
-    final headerIcon = searchMode ? Icons.search_rounded : _slotIcon(slot);
+    final accent = searchMode ? lime : slot.accent;
+    final headerIcon = searchMode ? Icons.search_rounded : slot.icon;
     final title = searchMode ? 'Lebensmittel suchen' : slot.label;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 6, 10),

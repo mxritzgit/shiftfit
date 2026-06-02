@@ -6,6 +6,7 @@ import '../../models/logged_meal.dart';
 import '../../models/meal_analysis_result.dart';
 import '../../models/meal_component.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/meal_slot_style.dart';
 import '../meal/meal_widgets.dart';
 
 /// Sub-Sheet fuer die Foto-/Barcode-Analyse. Wird vom AddMealSheet
@@ -235,19 +236,9 @@ class _Header extends StatelessWidget {
   final MealSlot slot;
   final VoidCallback onClose;
 
-  Color get _color => switch (slot) {
-        MealSlot.breakfast => orange,
-        MealSlot.lunch => lime,
-        MealSlot.dinner => slotDinner,
-        MealSlot.snack => cyan,
-      };
+  Color get _color => slot.accent;
 
-  IconData get _icon => switch (slot) {
-        MealSlot.breakfast => Icons.wb_sunny_outlined,
-        MealSlot.lunch => Icons.light_mode_outlined,
-        MealSlot.dinner => Icons.nights_stay_outlined,
-        MealSlot.snack => Icons.cookie_outlined,
-      };
+  IconData get _icon => slot.icon;
 
   @override
   Widget build(BuildContext context) {

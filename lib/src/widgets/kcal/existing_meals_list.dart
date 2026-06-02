@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/logged_meal.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/meal_slot_style.dart';
 
 /// Zeigt die bereits geloggten Mahlzeiten fuer den aktuellen Slot+Tag
 /// oben im AddMealSheet — mit X-Button zum Entfernen.
@@ -17,12 +18,7 @@ class ExistingMealsList extends StatelessWidget {
   final MealSlot slot;
   final ValueChanged<String>? onRemove;
 
-  Color get _accent => switch (slot) {
-        MealSlot.breakfast => orange,
-        MealSlot.lunch => lime,
-        MealSlot.dinner => slotDinner,
-        MealSlot.snack => cyan,
-      };
+  Color get _accent => slot.accent;
 
   @override
   Widget build(BuildContext context) {
