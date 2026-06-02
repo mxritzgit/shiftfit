@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../auth/auth_repository.dart';
 import '../theme/app_colors.dart';
@@ -196,6 +198,8 @@ class _AuthScreenState extends State<AuthScreen> {
                       isRegister: _isRegister,
                       onTap: _busy ? null : () => _setMode(!_isRegister),
                     ),
+                    const SizedBox(height: 16),
+                    const _ConsentNotice(),
                   ],
                 ),
               ),
@@ -870,6 +874,52 @@ class _InlineNote extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Datenschutz-Hinweis + tappbarer Link zur Policy (DSGVO Art. 13 / App-Store).
+class _ConsentNotice extends StatelessWidget {
+  const _ConsentNotice();
+
+  static final Uri _privacyUrl =
+      Uri.parse('https://github.com/mxritzgit/shiftfit/blob/main/PRIVACY.md');
+
+  Future<void> _openPrivacy() async {
+    await launchUrl(_privacyUrl, mode: LaunchMode.externalApplication);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Text.rich(
+        key: const ValueKey('auth-consent-notice'),
+        TextSpan(
+          style: const TextStyle(
+            color: textMuted,
+            fontSize: 11.5,
+            height: 1.4,
+            fontWeight: FontWeight.w500,
+          ),
+          children: [
+            const TextSpan(
+              text: 'Mit der Anmeldung stimmst du der Verarbeitung deiner '
+                  'Gesundheits- und Ernährungsdaten gemäß der ',
+            ),
+            TextSpan(
+              text: 'Datenschutzerklärung',
+              style: const TextStyle(
+                color: forgeLime,
+                fontWeight: FontWeight.w700,
+              ),
+              recognizer: TapGestureRecognizer()..onTap = _openPrivacy,
+            ),
+            const TextSpan(text: ' zu.'),
+          ],
+        ),
+        textAlign: TextAlign.center,
       ),
     );
   }

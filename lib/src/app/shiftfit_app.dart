@@ -35,6 +35,19 @@ class ShiftFitApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'FitPilot',
       theme: buildShiftFitTheme(),
+      // A11y: System-Großschrift respektieren, aber deckeln. Die App nutzt
+      // viele feste fontSize in fixen Containern (Kalorienring, Bottom-Nav);
+      // ungebremste Skalierung (iOS bis 235%) würde sie zerbrechen. 1.3x ist
+      // ein verträglicher Kompromiss zwischen Lesbarkeit und Layout-Stabilität.
+      builder: (context, child) {
+        final mq = MediaQuery.of(context);
+        return MediaQuery(
+          data: mq.copyWith(
+            textScaler: mq.textScaler.clamp(maxScaleFactor: 1.3),
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       home: AuthGate(
         authRepository: repository,
         builder: (context, user, freshLogin) => ShiftFitHomePage(

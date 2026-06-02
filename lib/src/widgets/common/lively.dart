@@ -46,6 +46,11 @@ class _LivelyEntranceState extends State<LivelyEntrance>
 
   @override
   Widget build(BuildContext context) {
+    // A11y: "Bewegung reduzieren" respektieren — den Auftritt überspringen und
+    // den Inhalt sofort statisch zeigen (kein Fade/Slide).
+    if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+      return widget.child;
+    }
     // FadeTransition statt eines roh animierten Opacity-Widgets: Letzteres
     // erzwingt pro Frame ein saveLayer (Offscreen-Rasterung der GANZEN Seite)
     // — 60x/s ueber die Auftrittsdauer, bei jedem Tab-Wechsel. FadeTransition
