@@ -81,7 +81,15 @@ class _AutoDismissState extends State<_AutoDismiss> {
     _timer = Timer(
       widget.duration + const Duration(milliseconds: 400),
       () {
-        if (mounted) ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
+        // removeCurrentSnackBar (statt hideCurrentSnackBar): entfernt SOFORT
+        // ohne Exit-Animation -> auch dann garantiert weg, wenn Animationen
+        // aus/kaputt sind. Greift nur wenn diese Snackbar noch aktuell ist
+        // (sonst ist dieses Widget längst disposed + der Timer gecancelt).
+        if (mounted) {
+          ScaffoldMessenger.maybeOf(context)?.removeCurrentSnackBar(
+            reason: SnackBarClosedReason.timeout,
+          );
+        }
       },
     );
   }
