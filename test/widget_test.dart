@@ -467,6 +467,69 @@ void main() {
     expect(find.text('252 kcal zu Frühstück hinzugefügt.'), findsOneWidget);
   });
 
+  testWidgetsRobust('Food history row can be swiped to delete and updates live', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      ShiftFitApp(productService: _FakeProductLookupService()),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('nav-Food')));
+    await tester.pumpAndSettle();
+
+    // Einen Eintrag über die Suche hinzufügen.
+    await tester.tap(find.byKey(const ValueKey('food-search')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('kcal-product-search-input')),
+      'Dr Oetker Salami',
+    );
+    await tester.tap(find.byKey(const ValueKey('kcal-product-search-button')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('kcal-product-suggestion-0')));
+    await tester.pumpAndSettle();
+    final addButton =
+        find.byKey(const ValueKey('kcal-product-suggestion-add-0'));
+    await tester.ensureVisible(addButton);
+    await tester.tap(addButton);
+    await tester.pumpAndSettle();
+
+    // Sheet schließen, um an die Verlauf-Karte zu kommen.
+    await tester.tap(find.byKey(const ValueKey('add-meal-sheet-close')));
+    await tester.pumpAndSettle();
+
+    // Eintrag ist im Verlauf, Tages-kcal zeigt ihn.
+    expect(find.byKey(const ValueKey('food-history-entry-0')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('analyse-daily-kcal-card')),
+        matching: find.text('252 kcal'),
+      ),
+      findsOneWidget,
+    );
+
+    // Von rechts nach links swipen -> Lösch-Aktion erscheint -> antippen.
+    await tester.drag(
+      find.byKey(const ValueKey('food-history-entry-0')),
+      const Offset(-300, 0),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('food-history-delete-0')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('food-history-delete-0')));
+    await tester.pumpAndSettle();
+
+    // Eintrag ist sofort weg und die Tagessumme aktualisiert direkt auf 0.
+    expect(find.byKey(const ValueKey('food-history-entry-0')), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('analyse-daily-kcal-card')),
+        matching: find.text('0 kcal'),
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgetsRobust('Food calendar keeps past days separate from today', (
     WidgetTester tester,
   ) async {

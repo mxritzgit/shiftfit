@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 
 import '../../models/logged_meal.dart';
 import '../../models/macro_progress.dart';
@@ -878,10 +879,12 @@ class MealsTodayCard extends StatelessWidget {
     super.key,
     required this.meals,
     this.onMealTap,
+    this.onRemoveMeal,
   });
 
   final List<LoggedMeal> meals;
   final ValueChanged<MealSlot>? onMealTap;
+  final ValueChanged<String>? onRemoveMeal;
 
   @override
   Widget build(BuildContext context) {
@@ -927,20 +930,48 @@ class MealsTodayCard extends StatelessWidget {
           Expanded(
             child: sorted.isEmpty
                 ? const _HistoryEmptyState()
-                : ListView.builder(
-                    key: const ValueKey('food-history'),
-                    padding: EdgeInsets.zero,
-                    itemCount: sorted.length,
-                    itemBuilder: (context, index) {
-                      final meal = sorted[index];
-                      return _HistoryEntry(
-                        key: ValueKey('food-history-entry-$index'),
-                        meal: meal,
-                        onTap: onMealTap == null
-                            ? null
-                            : () => onMealTap!(meal.slot),
-                      );
-                    },
+                : SlidableAutoCloseBehavior(
+                    child: ListView.builder(
+                      key: const ValueKey('food-history'),
+                      padding: EdgeInsets.zero,
+                      itemCount: sorted.length,
+                      itemBuilder: (context, index) {
+                        final meal = sorted[index];
+                        final entry = _HistoryEntry(
+                          key: ValueKey('food-history-entry-$index'),
+                          meal: meal,
+                          onTap: onMealTap == null
+                              ? null
+                              : () => onMealTap!(meal.slot),
+                        );
+                        // Ohne Lösch-Callback: schlichte Zeile (kein Swipe).
+                        if (onRemoveMeal == null) return entry;
+                        // Rechts-nach-links-Swipe enthüllt die Lösch-Aktion;
+                        // Tap darauf -> sofortiges onRemoveMeal (entfernt den
+                        // Eintrag + rechnet Kalorien/Makros direkt neu).
+                        return Slidable(
+                          key: ValueKey('slide-${meal.id}'),
+                          groupTag: 'food-history',
+                          endActionPane: ActionPane(
+                            motion: const DrawerMotion(),
+                            extentRatio: 0.28,
+                            children: [
+                              SlidableAction(
+                                key: ValueKey('food-history-delete-$index'),
+                                onPressed: (_) => onRemoveMeal!(meal.id),
+                                backgroundColor: danger,
+                                foregroundColor: bg,
+                                icon: Icons.delete_outline_rounded,
+                                label: 'Löschen',
+                                borderRadius: BorderRadius.circular(rControl),
+                                padding: EdgeInsets.zero,
+                              ),
+                            ],
+                          ),
+                          child: entry,
+                        );
+                      },
+                    ),
                   ),
           ),
         ],

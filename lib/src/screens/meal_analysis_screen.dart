@@ -123,6 +123,7 @@ class MealAnalysisScreen extends StatelessWidget {
         final historyCard = MealsTodayCard(
           meals: loggedMeals,
           onMealTap: (slot) => _openAddSheet(context, slot),
+          onRemoveMeal: onRemoveMeal,
         );
 
         final children = <Widget>[
