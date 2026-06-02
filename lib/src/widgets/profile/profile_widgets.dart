@@ -1885,6 +1885,7 @@ class ProfileActionsCard extends StatelessWidget {
     required this.onExport,
     required this.onAbout,
     this.onSignOut,
+    this.onDeleteAccount,
   });
 
   final VoidCallback onEditProfile;
@@ -1892,6 +1893,7 @@ class ProfileActionsCard extends StatelessWidget {
   final VoidCallback onExport;
   final VoidCallback onAbout;
   final VoidCallback? onSignOut;
+  final VoidCallback? onDeleteAccount;
 
   @override
   Widget build(BuildContext context) {
@@ -1943,6 +1945,17 @@ class ProfileActionsCard extends StatelessWidget {
               subtitle: 'Zurück zum Login',
               onTap: onSignOut!,
               keyValue: const ValueKey('profile-action-logout'),
+            ),
+          ],
+          if (onDeleteAccount != null) ...[
+            const _Divider(),
+            _ActionRow(
+              icon: Icons.delete_forever_rounded,
+              color: danger,
+              title: 'Konto löschen',
+              subtitle: 'Account + alle Daten unwiderruflich',
+              onTap: onDeleteAccount!,
+              keyValue: const ValueKey('profile-action-delete'),
             ),
           ],
         ],

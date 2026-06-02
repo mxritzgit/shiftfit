@@ -181,6 +181,7 @@ class CoachChatService {
     required String sessionId,
     String? imageBase64,
     String? imageMimeType,
+    String? userContext,
   }) async {
     try {
       final res = await _client.functions.invoke(
@@ -192,6 +193,8 @@ class CoachChatService {
             'image_base64': imageBase64,
           if (imageMimeType != null && imageMimeType.isNotEmpty)
             'image_mime_type': imageMimeType,
+          if (userContext != null && userContext.trim().isNotEmpty)
+            'user_context': userContext.trim(),
         },
       );
       final status = res.status;

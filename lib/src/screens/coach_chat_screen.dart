@@ -22,12 +22,19 @@ class CoachChatScreen extends StatefulWidget {
     super.key,
     required this.service,
     this.userName = 'Moritz',
+    this.userContext,
     this.imagePicker,
     this.speechInput = const CoachSpeechInput(),
   });
 
   final CoachChatService? service;
   final String userName;
+
+  /// Kompakter Snapshot von Profil + Tagesbilanz (Restmakros/kcal/Gewicht/
+  /// Streak), den der Coach als Kontext erhält, damit er konkret beraten kann
+  /// ("dir fehlen heute 38 g Protein") statt generisch zu antworten.
+  final String? userContext;
+
   final ImagePicker? imagePicker;
   final CoachSpeechInput speechInput;
 
@@ -228,6 +235,7 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
         sessionId: sessionId,
         imageBase64: hasImage ? base64Encode(imageBytes) : null,
         imageMimeType: hasImage ? (imageMimeType ?? 'image/jpeg') : null,
+        userContext: widget.userContext,
       );
       if (!mounted) return;
       setState(() {

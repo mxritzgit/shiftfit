@@ -116,6 +116,24 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
 
   int get stepsGoal => profile.dailyStepsGoal;
 
+  /// Kompakter Tages-/Profil-Snapshot für den AI-Coach, damit er konkret statt
+  /// generisch beraten kann (z.B. „dir fehlen heute 38 g Protein").
+  String get _coachContext {
+    final p = profile;
+    final remKcal = p.dailyKcalGoal - dailyConsumedKcal;
+    final remProt = (p.proteinGoalG - macroProgress.proteinG).round();
+    final remCarbs = (p.carbsGoalG - macroProgress.carbsG).round();
+    final remFat = (p.fatGoalG - macroProgress.fatG).round();
+    return [
+      'Körpergewicht: ${p.weightKg} kg (Ziel ${p.targetWeightKg} kg).',
+      'Heute gegessen: $dailyConsumedKcal von ${p.dailyKcalGoal} kcal '
+          '(noch $remKcal kcal übrig).',
+      'Makros heute noch offen: Protein $remProt g, Kohlenhydrate $remCarbs g, '
+          'Fett $remFat g.',
+      'Aktueller Workout-Streak: $workoutStreak Tage.',
+    ].join(' ');
+  }
+
   @override
   void setState(VoidCallback fn) {
     super.setState(fn);
@@ -285,6 +303,18 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
       content: Text(label),
       action: SnackBarAction(label: 'Rückgängig', onPressed: onUndo),
     ));
+  }
+
+  /// DSGVO Art. 17: löscht Konto + alle Daten serverseitig (RPC), dann ausloggen.
+  /// Bei Fehler NICHT ausloggen, damit der User es erneut versuchen kann.
+  Future<void> _deleteAccount() async {
+    try {
+      await widget.sync?.deleteAccount();
+    } catch (e) {
+      if (mounted) _reportSyncError('Konto-Löschung', e);
+      return;
+    }
+    await widget.onSignOut?.call();
   }
 
   /// Sammelt das aktuelle Daily-Log und schickt es debounced an
@@ -866,6 +896,8 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
             onConnectHealth: _connectHealth,
             onRefreshHealth: _refreshHealthSteps,
             onSignOut: widget.onSignOut,
+            onDeleteAccount:
+                widget.sync != null ? _deleteAccount : null,
           ),
         ),
       ),
@@ -1000,6 +1032,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
       5 => CoachChatScreen(
         service: widget.sync?.coachChat,
         userName: userName,
+        userContext: widget.sync != null ? _coachContext : null,
       ),
       3 => MealAnalysisScreen(
         analyzer: widget.mealAnalyzer,

@@ -34,6 +34,7 @@ class ProfileScreen extends StatelessWidget {
     required this.onConnectHealth,
     required this.onRefreshHealth,
     this.onSignOut,
+    this.onDeleteAccount,
   });
 
   final String name;
@@ -56,6 +57,7 @@ class ProfileScreen extends StatelessWidget {
   final VoidCallback onConnectHealth;
   final VoidCallback onRefreshHealth;
   final Future<void> Function()? onSignOut;
+  final Future<void> Function()? onDeleteAccount;
 
   @override
   Widget build(BuildContext context) {
@@ -152,6 +154,9 @@ class ProfileScreen extends StatelessWidget {
                         Navigator.maybePop(context);
                         await onSignOut!.call();
                       },
+                onDeleteAccount: onDeleteAccount == null
+                    ? null
+                    : () => _confirmDeleteAccount(context),
               ),
               const SizedBox(height: 18),
               const _FooterCredit(),
@@ -161,6 +166,40 @@ class ProfileScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _confirmDeleteAccount(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: surface,
+        title: const Text(
+          'Konto wirklich löschen?',
+          style: TextStyle(color: textPrimary),
+        ),
+        content: const Text(
+          'Dein Account und ALLE Daten (Profil, Mahlzeiten, Gewicht, Schlaf, '
+          'Coach-Verlauf) werden unwiderruflich gelöscht. Das lässt sich nicht '
+          'rückgängig machen.',
+          style: TextStyle(color: textMuted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Abbrechen'),
+          ),
+          TextButton(
+            key: const ValueKey('confirm-delete-account'),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: TextButton.styleFrom(foregroundColor: danger),
+            child: const Text('Endgültig löschen'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    if (context.mounted) Navigator.maybePop(context);
+    await onDeleteAccount!.call();
   }
 
   void _showExportSheet(BuildContext context) {
