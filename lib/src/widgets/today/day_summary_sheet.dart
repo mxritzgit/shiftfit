@@ -7,6 +7,7 @@ import '../../models/habit.dart';
 import '../../models/sleep_entry.dart';
 import '../../models/weight_log.dart';
 import '../../theme/app_colors.dart';
+import '../common/app_snack.dart';
 
 class DaySummary {
   const DaySummary({
@@ -147,11 +148,8 @@ Future<void> showDaySummarySheet(
                   await Clipboard.setData(ClipboardData(text: text));
                   if (sheetContext.mounted) {
                     Navigator.pop(sheetContext);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Zusammenfassung kopiert.'),
-                      ),
-                    );
+                    showAppSnack(context, 'Zusammenfassung kopiert.',
+                        icon: Icons.content_copy_rounded, accent: cyan);
                   }
                 },
                 icon: const Icon(Icons.copy_rounded, size: 17),

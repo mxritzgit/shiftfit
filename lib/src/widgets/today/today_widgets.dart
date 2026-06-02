@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/plan_block.dart';
 import '../../models/shift_fit_plan.dart';
 import '../../theme/app_colors.dart';
+import '../common/app_snack.dart';
 import '../common/basic_widgets.dart';
 import '../common/selection_widgets.dart';
 
@@ -1135,9 +1136,8 @@ void showPlanSheet(BuildContext context, ShiftFitPlan plan) {
                 ),
                 onPressed: () {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('${plan.recommendation} ist vorgemerkt.')),
-                  );
+                  showAppSnack(context, '${plan.recommendation} ist vorgemerkt.',
+                      icon: Icons.event_available_rounded, accent: lime);
                 },
                 child: const Text(
                   'Für heute starten',

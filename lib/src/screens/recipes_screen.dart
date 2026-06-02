@@ -7,6 +7,7 @@ import '../models/macro_progress.dart';
 import '../models/meal_analysis_result.dart';
 import '../theme/app_colors.dart';
 import '../theme/meal_slot_style.dart';
+import '../widgets/common/app_snack.dart';
 
 class RecipesScreen extends StatefulWidget {
   const RecipesScreen({
@@ -92,9 +93,8 @@ class _RecipesScreenState extends State<RecipesScreen> {
     if (recipe == null || !mounted) return;
     setState(() => _userRecipes.insert(0, recipe));
     widget.onCreateRecipe?.call(recipe);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('„${recipe.title}" gespeichert.')),
-    );
+    showAppSnack(context, '„${recipe.title}" gespeichert.',
+        icon: Icons.bookmark_added_rounded, accent: forgeLime);
   }
 
   @override
@@ -580,10 +580,11 @@ class RecipeDetailScreen extends StatelessWidget {
 
   void _add(BuildContext context, MealSlot slot) {
     onAddMeal(recipe.toMealResult(), slot);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${recipe.caloriesKcal} kcal zu ${slot.label} hinzugefügt.'),
-      ),
+    showAppSnack(
+      context,
+      '${recipe.caloriesKcal} kcal zu ${slot.label} hinzugefügt.',
+      icon: Icons.check_circle_rounded,
+      accent: lime,
     );
   }
 

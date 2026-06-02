@@ -8,6 +8,7 @@ import '../models/user_profile.dart';
 import '../models/weight_log.dart';
 import '../services/health_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/common/app_snack.dart';
 import '../widgets/common/lively.dart';
 import '../widgets/profile/profile_widgets.dart';
 
@@ -300,11 +301,8 @@ class _ExportSheet extends StatelessWidget {
                     onPressed: () async {
                       await Clipboard.setData(ClipboardData(text: snapshot));
                       if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Snapshot in Zwischenablage'),
-                          ),
-                        );
+                        showAppSnack(context, 'Snapshot in Zwischenablage',
+                            icon: Icons.content_copy_rounded, accent: cyan);
                       }
                     },
                     icon: const Icon(Icons.copy_rounded, size: 14),

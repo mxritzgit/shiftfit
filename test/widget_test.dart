@@ -354,7 +354,12 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('analyse-save-weight-button')));
     await tester.pumpAndSettle();
     expect(find.text('815 kcal'), findsWidgets);
-    expect(find.textContaining('550 g über Einzelposten angepasst'), findsOneWidget);
+    // Exakter Match auf das persistente "angepasst"-Label der Ergebniskarte
+    // (meal_widgets), bewusst NICHT textContaining: die Bestätigungs-Snackbar
+    // ("… angepasst. Tageswert aktualisiert.") enthält denselben Teilstring und
+    // rendert mit dem neuen no-stacking-Toast sofort -> textContaining wäre
+    // mehrdeutig. Das exakte Label ist timing-unabhängig.
+    expect(find.text('550 g über Einzelposten angepasst'), findsOneWidget);
     expect(find.text('Zu heute hinzugefügt'), findsOneWidget);
     expect(
       find.descendant(

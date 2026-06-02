@@ -13,6 +13,7 @@ import '../../services/meal_photo_input.dart';
 import '../../services/open_food_facts_product_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/meal_slot_style.dart';
+import '../common/app_snack.dart';
 import 'existing_meals_list.dart';
 import 'meal_analysis_sheet.dart';
 import 'meal_suggestion_item.dart';
@@ -290,12 +291,14 @@ class _AddMealSheetState extends State<AddMealSheet> {
       selection = await widget.photoInput.pick(source);
     } on PlatformException catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(
-          source == ImageSource.camera
-              ? 'Kamera konnte nicht geöffnet werden. Prüfe die Berechtigung.'
-              : 'Galerie konnte nicht geöffnet werden. Prüfe die Berechtigung.',
-        )),
+      showAppSnack(
+        context,
+        source == ImageSource.camera
+            ? 'Kamera konnte nicht geöffnet werden. Prüfe die Berechtigung.'
+            : 'Galerie konnte nicht geöffnet werden. Prüfe die Berechtigung.',
+        icon: Icons.error_outline_rounded,
+        accent: danger,
+        duration: kSnackError,
       );
       return;
     }
@@ -337,10 +340,11 @@ class _AddMealSheetState extends State<AddMealSheet> {
   void _handleAdd(String itemKey, MealAnalysisResult result) {
     widget.onAdd(result, _selectedSlot);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(
-          '${result.caloriesKcal} kcal zu ${_selectedSlot.label} hinzugefügt.',
-        )),
+      showAppSnack(
+        context,
+        '${result.caloriesKcal} kcal zu ${_selectedSlot.label} hinzugefügt.',
+        icon: Icons.check_circle_rounded,
+        accent: lime,
       );
     }
     setState(() {
@@ -425,7 +429,14 @@ class _AddMealSheetState extends State<AddMealSheet> {
                     if (_searchActive)
                       _buildSearchResults()
                     else
-                      _buildFavorites(),
+                      // Beim Entfernen eines Favoriten fällt die Liste sanft
+                      // zusammen statt hart zu springen.
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeInOut,
+                        alignment: Alignment.topCenter,
+                        child: _buildFavorites(),
+                      ),
                   ],
                 ),
               ),

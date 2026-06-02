@@ -7,6 +7,7 @@ import '../../models/meal_analysis_result.dart';
 import '../../models/meal_component.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/meal_slot_style.dart';
+import '../common/app_snack.dart';
 import '../meal/meal_widgets.dart';
 
 /// Sub-Sheet fuer die Foto-/Barcode-Analyse. Wird vom AddMealSheet
@@ -85,9 +86,10 @@ class _MealAnalysisSheetState extends State<MealAnalysisSheet> {
     } catch (_) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(widget.failureMessage)),
-      );
+      showAppSnack(context, widget.failureMessage,
+          icon: Icons.error_outline_rounded,
+          accent: danger,
+          duration: kSnackError);
       Navigator.of(context).maybePop();
     }
   }
@@ -100,10 +102,11 @@ class _MealAnalysisSheetState extends State<MealAnalysisSheet> {
       _addedToDailyTotal = true;
       _addedCaloriesSnapshot = result.caloriesKcal;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(
-        '${result.caloriesKcal} kcal zu ${widget.slot.label} hinzugefügt.',
-      )),
+    showAppSnack(
+      context,
+      '${result.caloriesKcal} kcal zu ${widget.slot.label} hinzugefügt.',
+      icon: Icons.check_circle_rounded,
+      accent: lime,
     );
   }
 
@@ -144,16 +147,14 @@ class _MealAnalysisSheetState extends State<MealAnalysisSheet> {
       final message = wasAdded
           ? '$adjustment g angepasst. Tageswert aktualisiert.'
           : '$adjustment g angepasst.';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      showAppSnack(context, message,
+          icon: Icons.tune_rounded, accent: lime);
     } else if (adjustment is List<MealComponent>) {
       final message = wasAdded
           ? '${updated.estimatedGrams} g über Einzelposten angepasst. Tageswert aktualisiert.'
           : '${updated.estimatedGrams} g über Einzelposten angepasst.';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      showAppSnack(context, message,
+          icon: Icons.tune_rounded, accent: lime);
     }
   }
 

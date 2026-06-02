@@ -35,6 +35,7 @@ import '../screens/week_planner_screen.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_shell/shiftfit_bottom_nav.dart';
 import '../widgets/auth/welcome_screen.dart';
+import '../widgets/common/app_snack.dart';
 import '../widgets/common/lively.dart';
 import '../widgets/shared/settings_sheet.dart';
 import '../widgets/today/mood_card.dart';
@@ -265,15 +266,15 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
     dev.log('$operation failed',
         error: error, name: 'fitpilot_sync');
     if (!mounted) return;
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    if (messenger == null) return;
-    messenger.removeCurrentSnackBar();
     final msg = error.toString();
     final short = msg.length > 140 ? '${msg.substring(0, 140)}…' : msg;
-    messenger.showSnackBar(SnackBar(
-      duration: const Duration(seconds: 4),
-      content: Text('Sync ($operation): $short'),
-    ));
+    showAppSnack(
+      context,
+      'Sync ($operation): $short',
+      icon: Icons.error_outline_rounded,
+      accent: danger,
+      duration: kSnackError,
+    );
   }
 
   /// Fire-and-forget Sync-Write MIT Rollback: schlägt der Write fehl, wird der
@@ -295,14 +296,13 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
   /// wieder her (lokal + Remote). Vereinheitlicht destruktive Aktionen.
   void _showUndoSnackBar(String label, VoidCallback onUndo) {
     if (!mounted) return;
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    if (messenger == null) return;
-    messenger.removeCurrentSnackBar();
-    messenger.showSnackBar(SnackBar(
-      duration: const Duration(seconds: 4),
-      content: Text(label),
+    showAppSnack(
+      context,
+      label,
+      icon: Icons.delete_outline_rounded,
+      accent: danger,
       action: SnackBarAction(label: 'Rückgängig', onPressed: onUndo),
-    ));
+    );
   }
 
   /// DSGVO Art. 17: löscht Konto + alle Daten serverseitig (RPC), dann ausloggen.
@@ -572,8 +572,11 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
 
     if (allDone && !wasCompletedToday) {
       _saveLifetimeStats();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Plan abgehakt · Streak: $workoutStreak')),
+      showAppSnack(
+        context,
+        'Plan abgehakt · Streak: $workoutStreak',
+        icon: Icons.local_fire_department_rounded,
+        accent: forgeLime,
       );
     }
   }
@@ -838,16 +841,16 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Profil-Sync: $e')),
-          );
+          showAppSnack(context, 'Profil-Sync: $e',
+              icon: Icons.error_outline_rounded,
+              accent: danger,
+              duration: kSnackError);
         }
       }
     }
     if (wasReset && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tagesdaten zurückgesetzt.')),
-      );
+      showAppSnack(context, 'Tagesdaten zurückgesetzt.',
+          icon: Icons.restart_alt_rounded, accent: orange);
     }
   }
 
@@ -865,9 +868,8 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
       workoutCompletedToday = false;
       selectedFoodDate = DateUtils.dateOnly(DateTime.now());
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Tagesdaten zurückgesetzt.')),
-    );
+    showAppSnack(context, 'Tagesdaten zurückgesetzt.',
+        icon: Icons.restart_alt_rounded, accent: orange);
   }
 
   Future<void> _openProfile() async {
@@ -924,9 +926,10 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
       await sync.profile.save(finished);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Profil-Sync: $e')),
-        );
+        showAppSnack(context, 'Profil-Sync: $e',
+            icon: Icons.error_outline_rounded,
+            accent: danger,
+            duration: kSnackError);
       }
     }
   }
