@@ -22,6 +22,7 @@ import '../services/health_service.dart';
 import '../services/kcal_calculator.dart';
 import '../services/meal_analyzer.dart';
 import '../services/meal_photo_input.dart';
+import '../services/meal_totals.dart' as totals;
 import '../services/open_food_facts_product_service.dart';
 import '../services/uuid.dart';
 import '../screens/coach_chat_screen.dart';
@@ -595,48 +596,22 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
     return DateTime(day.year, day.month, day.day, now.hour, now.minute);
   }
 
-  List<LoggedMeal> _mealsForFoodDate(DateTime date) {
-    final day = DateUtils.dateOnly(date);
-    return loggedMeals
-        .where((meal) => _isSameFoodDate(meal.loggedAt, day))
-        .toList(growable: false);
-  }
+  // Reine Aggregation lebt in services/meal_totals.dart (unit-getestet) — hier
+  // nur dünne Wrapper, die den aktuellen loggedMeals-Stand binden.
+  List<LoggedMeal> _mealsForFoodDate(DateTime date) =>
+      totals.mealsForFoodDate(loggedMeals, date);
 
-  int _consumedKcalForFoodDate(DateTime date) {
-    return _mealsForFoodDate(date).fold<int>(
-      0,
-      (sum, meal) => sum + meal.result.caloriesKcal,
-    );
-  }
+  int _consumedKcalForFoodDate(DateTime date) =>
+      totals.consumedKcalForFoodDate(loggedMeals, date);
 
-  MacroProgress _macroProgressForFoodDate(DateTime date) {
-    return _mealsForFoodDate(date).fold<MacroProgress>(
-      MacroProgress.empty,
-      (progress, meal) => progress.add(meal.result),
-    );
-  }
+  MacroProgress _macroProgressForFoodDate(DateTime date) =>
+      totals.macroProgressForFoodDate(loggedMeals, date);
 
   MealAnalysisResult _copyResultWithKcal(
     MealAnalysisResult original,
     int caloriesKcal,
-  ) {
-    return MealAnalysisResult(
-      mealName: original.mealName,
-      caloriesKcal: caloriesKcal,
-      estimatedGrams: original.estimatedGrams,
-      kcalPer100G: original.kcalPer100G,
-      protein: original.protein,
-      carbs: original.carbs,
-      fat: original.fat,
-      confidence: original.confidence,
-      portionNotes: original.portionNotes,
-      items: original.items,
-      isAdjusted: true,
-      sourceLabel: original.sourceLabel,
-      barcode: original.barcode,
-      brand: original.brand,
-    );
-  }
+  ) =>
+      totals.copyResultWithKcal(original, caloriesKcal);
 
   void _addResultToDailyTotal(
     MealAnalysisResult result, {
@@ -815,17 +790,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
     setState(() {
       profile = result.profile;
       if (wasReset) {
-        dailyConsumedKcal = 0;
-        dailyWaterMl = 0;
-        dailySteps = 0;
-        macroProgress = MacroProgress.empty;
-        completedBlockIds = <String>{};
-        caffeineDay = const CaffeineDay();
-        mood = DailyMood.empty;
-        habits = const HabitState();
-        loggedMeals = <LoggedMeal>[];
-        workoutCompletedToday = false;
-        selectedFoodDate = DateUtils.dateOnly(DateTime.now());
+        _clearTodayState();
       }
     });
     // Profil-Save AWAIT damit Fehler sichtbar werden (Snackbar). Vorher
@@ -854,20 +819,24 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
     }
   }
 
+  /// Setzt alle Tages-Zustände zurück. Gemeinsam genutzt vom Settings-Reset und
+  /// vom manuellen Reset. MUSS innerhalb eines setState aufgerufen werden.
+  void _clearTodayState() {
+    dailyConsumedKcal = 0;
+    dailyWaterMl = 0;
+    dailySteps = 0;
+    macroProgress = MacroProgress.empty;
+    completedBlockIds = <String>{};
+    caffeineDay = const CaffeineDay();
+    mood = DailyMood.empty;
+    habits = const HabitState();
+    loggedMeals = <LoggedMeal>[];
+    workoutCompletedToday = false;
+    selectedFoodDate = DateUtils.dateOnly(DateTime.now());
+  }
+
   void _resetTodayData() {
-    setState(() {
-      dailyConsumedKcal = 0;
-      dailyWaterMl = 0;
-      dailySteps = 0;
-      macroProgress = MacroProgress.empty;
-      completedBlockIds = <String>{};
-      caffeineDay = const CaffeineDay();
-      mood = DailyMood.empty;
-      habits = const HabitState();
-      loggedMeals = <LoggedMeal>[];
-      workoutCompletedToday = false;
-      selectedFoodDate = DateUtils.dateOnly(DateTime.now());
-    });
+    setState(_clearTodayState);
     showAppSnack(context, 'Tagesdaten zurückgesetzt.',
         icon: Icons.restart_alt_rounded, accent: orange);
   }
