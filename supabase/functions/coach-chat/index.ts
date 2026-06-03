@@ -30,6 +30,12 @@ const HISTORY_LIMIT          = 10;
 const REQUEST_USER_LIMIT     = 60;
 const REQUEST_IP_LIMIT       = 120;
 
+// Session-IDs sind serverseitig erzeugte UUIDs. Strikt validieren, bevor der
+// Wert in PostgREST-Query-URLs interpoliert wird — sonst koennte ein Client
+// ueber Sonderzeichen zusaetzliche Filter/Operatoren einschleusen.
+const SESSION_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const ALLOWED_ORIGINS = (Deno.env.get("FITPILOT_ALLOWED_ORIGINS") ?? "")
   .split(",")
   .map((origin) => origin.trim())
@@ -349,7 +355,10 @@ async function rpcClaimQuota(
   if (!resp.ok) {
     const text = await resp.text();
     if (text.includes("EX_QUOTA_EXCEEDED")) return { error: "quota_exceeded" };
-    return { error: `rpc_failed: ${resp.status} ${text.slice(0, 200)}` };
+    // Postgres/PostgREST-Details NUR server-seitig loggen (function_logs);
+    // dem Client nur einen generischen Code geben (kein Info-Leak).
+    console.error(`claim_chat_quota rpc failed: ${resp.status} ${text.slice(0, 200)}`);
+    return { error: "rpc_unavailable" };
   }
   const data = await resp.json();
   // Supabase liefert Tabellen-Returns als Array zurueck.
@@ -381,7 +390,8 @@ async function rpcConsumeEdgeRateLimit(
   });
   if (!resp.ok) {
     const text = await resp.text();
-    return { error: `edge_rate_limit_failed: ${resp.status} ${text.slice(0, 200)}` };
+    console.error(`consume_edge_rate_limit failed: ${resp.status} ${text.slice(0, 200)}`);
+    return { error: "rate_limit_unavailable" };
   }
   const data = await resp.json();
   return {
@@ -634,9 +644,10 @@ Deno.serve(async (req: Request) => {
     ? safeImageMimeType(body.image_mime_type)
     : "image/jpeg";
   const hasImage = imageBase64.length > 0;
-  const requestedSessionId = typeof body?.session_id === "string" && body.session_id.length > 0
-    ? body.session_id
-    : null;
+  const requestedSessionId =
+    typeof body?.session_id === "string" && SESSION_ID_RE.test(body.session_id)
+      ? body.session_id
+      : null;
   // Faktischer App-Kontext (Profil + Tagesbilanz) vom Client. Control-Chars
   // entfernt + gekappt; wird im System-Prompt explizit als Daten (NICHT als
   // Anweisung) gerahmt, damit er nicht als Injection-Vektor missbraucht wird.
