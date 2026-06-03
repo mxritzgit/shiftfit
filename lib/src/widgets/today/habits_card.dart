@@ -116,7 +116,7 @@ class _HabitRow extends StatelessWidget {
                 ),
               ),
               child: done
-                  ? Icon(Icons.check_rounded, color: bg, size: 14)
+                  ? const Icon(Icons.check_rounded, color: bg, size: 14)
                   : null,
             ),
           ],

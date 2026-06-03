@@ -258,8 +258,8 @@ class _FoodSearchBar extends StatelessWidget {
           borderRadius: BorderRadius.circular(rControl),
           border: Border.all(color: hairline),
         ),
-        child: Row(
-          children: const [
+        child: const Row(
+          children: [
             Icon(Icons.search_rounded, size: 18, color: textMuted),
             SizedBox(width: 10),
             Expanded(

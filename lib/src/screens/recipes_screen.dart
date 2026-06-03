@@ -160,7 +160,7 @@ class _RecipesScreenState extends State<RecipesScreen> {
         // im initialen Viewport (Test nutzt ensureVisible ohne vorheriges Scrollen).
         if (goalMatches.isNotEmpty) ...[
           const SizedBox(height: 26),
-          _SectionHeader(
+          const _SectionHeader(
             title: 'Passt zu deinem Ziel',
             subtitle: 'nach Restmakros',
           ),
@@ -608,7 +608,7 @@ class RecipeDetailScreen extends StatelessWidget {
                     onTap: () => Navigator.of(context).pop(),
                   ),
                   const Spacer(),
-                  _GlassBadge(text: 'FitPilot Rezept', dark: true),
+                  const _GlassBadge(text: 'FitPilot Rezept', dark: true),
                 ],
               ),
               const SizedBox(height: 16),

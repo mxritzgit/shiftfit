@@ -99,9 +99,9 @@ class CaffeineHalfLifeCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Row(
+          const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
+            children: [
               _AxisLabel('00'),
               _AxisLabel('06'),
               _AxisLabel('12'),

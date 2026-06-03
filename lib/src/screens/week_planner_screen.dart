@@ -97,14 +97,14 @@ class _WeekPlannerScreenState extends State<WeekPlannerScreen> {
           profileInitial: widget.profileInitial,
         ),
         const SizedBox(height: 20),
-        AppCard(
-          padding: const EdgeInsets.all(20),
+        const AppCard(
+          padding: EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const StatusPill(label: 'FitnessPlan', color: cyan),
-              const SizedBox(height: 16),
-              const Text(
+              StatusPill(label: 'FitnessPlan', color: cyan),
+              SizedBox(height: 16),
+              Text(
                 'Trainingswoche,\nsmart geplant.',
                 style: TextStyle(
                   fontSize: 30,
@@ -113,8 +113,8 @@ class _WeekPlannerScreenState extends State<WeekPlannerScreen> {
                   letterSpacing: -1.0,
                 ),
               ),
-              const SizedBox(height: 8),
-              const Text(
+              SizedBox(height: 8),
+              Text(
                 'Kraft, Ausdauer und Recovery so verteilen, dass Fortschritt planbar bleibt.',
                 style: TextStyle(
                   color: textMuted,

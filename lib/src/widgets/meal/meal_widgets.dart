@@ -30,7 +30,7 @@ class MealPreviewCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(rCard),
             ),
             child: imageBytes == null
-                ? Column(
+                ? const Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
@@ -38,8 +38,8 @@ class MealPreviewCard extends StatelessWidget {
                         color: textMuted,
                         size: 32,
                       ),
-                      const SizedBox(height: 8),
-                      const Text(
+                      SizedBox(height: 8),
+                      Text(
                         'Noch kein Bild ausgewählt',
                         style: TextStyle(
                           color: textMuted,

@@ -382,9 +382,9 @@ class SavePlanBar extends StatelessWidget {
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 200),
             child: showSaved
-                ? Row(
-                    key: const ValueKey('week-save-confirm'),
-                    children: const [
+                ? const Row(
+                    key: ValueKey('week-save-confirm'),
+                    children: [
                       Icon(Icons.check_circle_rounded, color: lime, size: 18),
                       SizedBox(width: 8),
                       Text(

@@ -683,7 +683,7 @@ class PlanBlockTile extends StatelessWidget {
                     ),
                   ),
                   child: done
-                      ? Icon(Icons.check_rounded, color: bg, size: 16)
+                      ? const Icon(Icons.check_rounded, color: bg, size: 16)
                       : null,
                 ),
               ),
@@ -896,7 +896,7 @@ class WeeklyChallengeCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                StatusPill(label: 'WEEKLY CHALLENGE', color: lime),
+                const StatusPill(label: 'WEEKLY CHALLENGE', color: lime),
                 const SizedBox(height: 12),
                 const Text(
                   'Strong Start Week',

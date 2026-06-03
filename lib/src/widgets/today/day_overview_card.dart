@@ -178,8 +178,8 @@ class _DayRingPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = size.center(Offset.zero);
-    final stroke = 6.0;
-    final gapDeg = 6.0;
+    const stroke = 6.0;
+    const gapDeg = 6.0;
     final segmentSpan = (360 - segments.length * gapDeg) / segments.length;
 
     for (var i = 0; i < segments.length; i++) {

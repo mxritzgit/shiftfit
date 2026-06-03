@@ -766,7 +766,7 @@ class _InfoNote extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.info_outline_rounded, size: 15, color: textMuted),
+          const Icon(Icons.info_outline_rounded, size: 15, color: textMuted),
           const SizedBox(width: 9),
           Expanded(
             child: Text(

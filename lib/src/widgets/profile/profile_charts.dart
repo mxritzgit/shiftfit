@@ -17,7 +17,7 @@ class WeightLineChartPainter extends CustomPainter {
       ..color = hairline
       ..strokeWidth = 1;
 
-    final padding = const EdgeInsets.fromLTRB(8, 12, 8, 18);
+    const padding = EdgeInsets.fromLTRB(8, 12, 8, 18);
     final inner = Rect.fromLTWH(
       padding.left,
       padding.top,
@@ -168,7 +168,7 @@ class BMIGaugePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final stroke = 12.0;
+    const stroke = 12.0;
     final center = Offset(size.width / 2, size.height - 6);
     final radius = math.min(size.width / 2 - stroke, size.height - stroke - 4);
     if (radius <= 0) return;
@@ -183,7 +183,7 @@ class BMIGaugePainter extends CustomPainter {
 
     const lo = 15.0;
     const hi = 40.0;
-    final totalSpan = hi - lo;
+    const totalSpan = hi - lo;
     double cursor = lo;
     for (final zone in _zones) {
       final segStart = (cursor - lo) / totalSpan;
@@ -300,7 +300,7 @@ class ShiftDonutPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final stroke = 14.0;
+    const stroke = 14.0;
     final center = Offset(size.width / 2, size.height / 2);
     final radius = math.min(size.width, size.height) / 2 - stroke;
     if (radius <= 0) return;

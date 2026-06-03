@@ -1293,7 +1293,7 @@ class ShiftDistributionCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(Icons.balance_rounded, color: textMuted, size: 14),
+                const Icon(Icons.balance_rounded, color: textMuted, size: 14),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -1737,7 +1737,7 @@ class _AchievementTile extends StatelessWidget {
                   data.subtitle,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: textMuted,
                     fontSize: 10.5,
                     height: 1.35,

@@ -34,7 +34,7 @@ class EdgeFunctionMealAnalyzer implements MealAnalyzer {
     final session = Supabase.instance.client.auth.currentSession;
     final accessToken = session?.accessToken;
     if (accessToken == null || accessToken.isEmpty) {
-      throw AuthException(
+      throw const AuthException(
         'Bitte erneut anmelden, bevor du ein Foto analysierst.',
       );
     }
@@ -60,7 +60,7 @@ class EdgeFunctionMealAnalyzer implements MealAnalyzer {
       final decoded = _decodeResponse(responseBody);
 
       if (response.statusCode == 401 || response.statusCode == 403) {
-        throw AuthException(
+        throw const AuthException(
           'Bitte erneut anmelden, bevor du ein Foto analysierst.',
         );
       }

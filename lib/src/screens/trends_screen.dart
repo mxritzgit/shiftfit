@@ -162,7 +162,7 @@ class _TrendsScreenState extends State<TrendsScreen> {
   /// Readiness fuer einen vergangenen History-Tag (ohne Live-Today-Signale) —
   /// nur fuer den „vs. gestern"-Delta-Vergleich.
   int _readinessForLog(DailyLog log) {
-    final sleep = 0.0; // History traegt keinen Schlaf; neutral gewichtet.
+    const sleep = 0.0; // History traegt keinen Schlaf; neutral gewichtet.
     final water = widget.waterGoalMl <= 0
         ? 0.0
         : (log.waterMl / widget.waterGoalMl).clamp(0.0, 1.0).toDouble();
@@ -336,12 +336,12 @@ class _TrendsScreenState extends State<TrendsScreen> {
           profileInitial: widget.profileInitial,
         ),
         const SizedBox(height: 20),
-        AppCard(
-          padding: const EdgeInsets.all(20),
+        const AppCard(
+          padding: EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Fortschritt bleibt\nsichtbar.',
                 style: TextStyle(
                   fontSize: 30,
@@ -350,8 +350,8 @@ class _TrendsScreenState extends State<TrendsScreen> {
                   letterSpacing: -1.0,
                 ),
               ),
-              const SizedBox(height: 8),
-              const Text(
+              SizedBox(height: 8),
+              Text(
                 'Training, Recovery und Routinen auf einen Blick.',
                 style: TextStyle(
                   color: textMuted,
