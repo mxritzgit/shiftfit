@@ -779,11 +779,22 @@ class _MessageView extends StatelessWidget {
                     if (imageBytes != null) ...[
                       ClipRRect(
                         borderRadius: BorderRadius.circular(rCard),
-                        child: Image.memory(
-                          imageBytes,
-                          height: 160,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            // Gepickte Bilder sind bis 1600px breit — Decode auf
+                            // die Bubble-Breite begrenzen statt voll im Speicher.
+                            final dpr = MediaQuery.devicePixelRatioOf(context);
+                            final w = constraints.maxWidth.isFinite
+                                ? constraints.maxWidth
+                                : 320.0;
+                            return Image.memory(
+                              imageBytes,
+                              height: 160,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              cacheWidth: (w * dpr).round().clamp(1, 1600),
+                            );
+                          },
                         ),
                       ),
                       const SizedBox(height: 8),

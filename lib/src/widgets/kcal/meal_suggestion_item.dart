@@ -321,6 +321,9 @@ class _Avatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 42px-Avatar: Remote-Produktbilder kommen voll aufgelöst von OpenFoodFacts
+    // — Decode auf die Avatar-Größe begrenzen (spart Speicher pro Suchtreffer).
+    final cachePx = (42 * MediaQuery.devicePixelRatioOf(context)).round();
     return Container(
       width: 42,
       height: 42,
@@ -334,6 +337,8 @@ class _Avatar extends StatelessWidget {
           : Image.network(
               imageUrl!,
               fit: BoxFit.cover,
+              cacheWidth: cachePx,
+              cacheHeight: cachePx,
               errorBuilder: (_, __, ___) =>
                   Icon(fallbackIcon, color: accent, size: 19),
             ),

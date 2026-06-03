@@ -1146,7 +1146,21 @@ class _RecipeImage extends StatelessWidget {
         ),
       );
     }
-    return Image.asset(recipe.imageAsset, fit: BoxFit.cover);
+    // Decode-Auflösung an die tatsächliche Slot-Breite koppeln: die Rezept-PNGs
+    // sind ~1800px/2.4MB groß und würden sonst voll dekodiert (Hero, Liste,
+    // Picker, Detail teilen sich dieses Widget bei sehr unterschiedlicher Größe).
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final dpr = MediaQuery.devicePixelRatioOf(context);
+        final logicalWidth =
+            constraints.maxWidth.isFinite ? constraints.maxWidth : 400.0;
+        return Image.asset(
+          recipe.imageAsset,
+          fit: BoxFit.cover,
+          cacheWidth: (logicalWidth * dpr).round().clamp(1, 1600),
+        );
+      },
+    );
   }
 }
 
