@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../config/legal_links.dart';
 import '../models/lifetime_stats.dart';
 import '../models/shift_fit_plan.dart';
 import '../models/sleep_entry.dart';
@@ -429,7 +431,56 @@ class _AboutSheet extends StatelessWidget {
           const _AboutRow(label: 'Build', value: '1'),
           const SizedBox(height: 6),
           const _AboutRow(label: 'Quellen', value: 'OpenFoodFacts · HealthKit · wger'),
+          const SizedBox(height: 14),
+          // DSGVO Art. 13 / App-Store: Datenschutz auch nach dem Login
+          // erreichbar, nicht nur auf dem Auth-Screen.
+          const _PrivacyLinkRow(),
         ],
+      ),
+    );
+  }
+}
+
+/// Tappbare Datenschutz-Zeile. Oeffnet die Policy extern (url_launcher).
+class _PrivacyLinkRow extends StatelessWidget {
+  const _PrivacyLinkRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      key: const ValueKey('profile-privacy-link'),
+      onTap: () => launchUrl(
+        Uri.parse(kPrivacyUrl),
+        mode: LaunchMode.externalApplication,
+      ),
+      borderRadius: BorderRadius.circular(rControl),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: surfaceSoft,
+          borderRadius: BorderRadius.circular(rControl),
+          border: Border.all(color: hairline),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.shield_outlined, color: textMuted, size: 16),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'Datenschutzerklärung',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Icon(
+              Icons.open_in_new_rounded,
+              color: textMuted.withValues(alpha: 0.7),
+              size: 15,
+            ),
+          ],
+        ),
       ),
     );
   }

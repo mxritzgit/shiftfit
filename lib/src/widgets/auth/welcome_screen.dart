@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
+import '../common/motion.dart';
 
 /// Soft handoff vom OAuth-Browser zurueck in die App: erst Lade-Spinner
 /// waehrend ProfileSync.load() laeuft, dann Check-Icon + "Willkommen, X"
@@ -56,6 +57,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
   Future<void> _onProfileReady(void _) async {
     if (!mounted) return;
+    // A11y: bei reduzierter Bewegung Animationen + Halte-Pause auf ~instant
+    // kollabieren — der User soll nicht aufs Intro-Gate warten.
+    _checkController.duration =
+        motionDuration(context, const Duration(milliseconds: 520));
+    _exitController.duration =
+        motionDuration(context, const Duration(milliseconds: 320));
+    final holdDelay =
+        motionDelay(context, const Duration(milliseconds: 900));
     if (!widget.celebrateLogin) {
       // Session-Restore: kurz ausfaden und direkt zum Home.
       await _exitController.forward();
@@ -65,7 +74,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     }
     setState(() => _showCheck = true);
     await _checkController.forward();
-    await Future<void>.delayed(const Duration(milliseconds: 900));
+    if (holdDelay > Duration.zero) await Future<void>.delayed(holdDelay);
     if (!mounted) return;
     await _exitController.forward();
     if (!mounted) return;

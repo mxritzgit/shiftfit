@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../config/legal_links.dart';
 import '../../models/user_profile.dart';
 import '../../services/kcal_calculator.dart';
 import '../../theme/app_colors.dart';
@@ -449,6 +451,24 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 ),
               ),
             ),
+            const SizedBox(height: 8),
+            // DSGVO Art. 13 / App-Store: Datenschutz auch in den Settings
+            // erreichbar (nach dem Login), nicht nur auf dem Auth-Screen.
+            Center(
+              child: TextButton.icon(
+                key: const ValueKey('settings-privacy-link'),
+                onPressed: () => launchUrl(
+                  Uri.parse(kPrivacyUrl),
+                  mode: LaunchMode.externalApplication,
+                ),
+                icon: const Icon(Icons.shield_outlined, size: 15),
+                label: const Text(
+                  'Datenschutzerklärung',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                ),
+                style: TextButton.styleFrom(foregroundColor: textMuted),
+              ),
+            ),
           ],
         ),
       ),
@@ -727,21 +747,25 @@ class _ManualToggle extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 4),
-        Transform.scale(
-          scale: 0.8,
-          child: Switch(
-            key: const ValueKey('settings-manual-energy'),
-            value: value,
-            onChanged: onChanged,
-            thumbColor: WidgetStateProperty.resolveWith(
-              (states) =>
-                  states.contains(WidgetState.selected) ? bg : null,
+        // A11y: 0.8 skaliert nur die Optik; volle 48er Tap-Flaeche bleibt
+        // (padded statt shrinkWrap). Label fuer Screenreader ergaenzt.
+        Semantics(
+          label: 'Energie & Makros manuell setzen',
+          child: Transform.scale(
+            scale: 0.8,
+            child: Switch(
+              key: const ValueKey('settings-manual-energy'),
+              value: value,
+              onChanged: onChanged,
+              thumbColor: WidgetStateProperty.resolveWith(
+                (states) =>
+                    states.contains(WidgetState.selected) ? bg : null,
+              ),
+              trackColor: WidgetStateProperty.resolveWith(
+                (states) =>
+                    states.contains(WidgetState.selected) ? lime : null,
+              ),
             ),
-            trackColor: WidgetStateProperty.resolveWith(
-              (states) =>
-                  states.contains(WidgetState.selected) ? lime : null,
-            ),
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
         ),
       ],

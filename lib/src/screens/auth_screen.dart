@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../auth/auth_repository.dart';
+import '../config/legal_links.dart';
 import '../theme/app_colors.dart';
 
 /// FitPilot Auth - ruhiger, immersiver Dark-Screen.
@@ -883,8 +884,7 @@ class _InlineNote extends StatelessWidget {
 class _ConsentNotice extends StatelessWidget {
   const _ConsentNotice();
 
-  static final Uri _privacyUrl =
-      Uri.parse('https://github.com/mxritzgit/shiftfit/blob/main/PRIVACY.md');
+  static final Uri _privacyUrl = Uri.parse(kPrivacyUrl);
 
   Future<void> _openPrivacy() async {
     await launchUrl(_privacyUrl, mode: LaunchMode.externalApplication);

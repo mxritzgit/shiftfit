@@ -92,9 +92,17 @@ class CombinedStreakCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          _Calendar(
-            history: history,
-            completedToday: completedToday,
+          // A11y: 28-Tage-Raster ansagen statt 28 einzelne Tooltip-Knoten.
+          Semantics(
+            label: 'Workout-Kalender, letzte 4 Wochen',
+            value: '$activeCount von 28 Tagen trainiert, '
+                'aktuelle Streak $workoutStreak Tage',
+            child: ExcludeSemantics(
+              child: _Calendar(
+                history: history,
+                completedToday: completedToday,
+              ),
+            ),
           ),
         ],
       ),

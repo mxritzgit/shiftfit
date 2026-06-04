@@ -27,18 +27,28 @@ class DayOverviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final percent = (overall * 100).round();
+    final waterPct = (waterRatio.clamp(0.0, 1.0) * 100).round();
+    final sleepPct = (sleepRatio.clamp(0.0, 1.0) * 100).round();
+    final planPct = (workoutRatio.clamp(0.0, 1.0) * 100).round();
+    final stepsPct = (stepsRatio.clamp(0.0, 1.0) * 100).round();
     return AppCard(
       key: const ValueKey('day-overview-card'),
       padding: const EdgeInsets.all(18),
       child: Row(
         children: [
-          SizedBox(
-            width: 84,
-            height: 84,
-            // RepaintBoundary: eigener Layer fuer den Tages-Ring.
-            child: RepaintBoundary(
-              child: CustomPaint(
-                painter: _DayRingPainter(
+          // A11y: der reine Mal-Ring traegt sonst keine Bedeutung -> Gesamt-
+          // wert + Segmente als Sprachausgabe verfuegbar machen.
+          Semantics(
+            label: 'Tagesüberblick',
+            value: '$percent% gesamt. Wasser $waterPct%, Schlaf $sleepPct%, '
+                'Plan $planPct%, Schritte $stepsPct%.',
+            child: SizedBox(
+              width: 84,
+              height: 84,
+              // RepaintBoundary: eigener Layer fuer den Tages-Ring.
+              child: RepaintBoundary(
+                child: CustomPaint(
+                  painter: _DayRingPainter(
                   segments: [
                     (waterRatio.clamp(0.0, 1.0).toDouble(), cyan),
                     (sleepRatio.clamp(0.0, 1.0).toDouble(), wellnessTone),
@@ -73,6 +83,7 @@ class DayOverviewCard extends StatelessWidget {
                       ),
                     ],
                   ),
+                ),
                 ),
               ),
             ),

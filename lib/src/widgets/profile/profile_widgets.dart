@@ -8,6 +8,7 @@ import '../../services/health_service.dart';
 import '../../services/kcal_calculator.dart';
 import '../../theme/app_colors.dart';
 import '../common/basic_widgets.dart';
+import '../common/motion.dart';
 import 'profile_charts.dart';
 
 class ProfileHero extends StatelessWidget {
@@ -247,10 +248,11 @@ class GoalPlanCard extends StatelessWidget {
                 ),
               ),
               if (onEdit != null)
+                // A11y: volle 48er Tap-Flaeche (kein compact), Glyph bleibt 18.
                 IconButton(
                   key: const ValueKey('profile-goalplan-edit'),
                   onPressed: onEdit,
-                  visualDensity: VisualDensity.compact,
+                  tooltip: 'Ziel anpassen',
                   icon: const Icon(Icons.tune_rounded, size: 18),
                   color: accent,
                 ),
@@ -560,8 +562,13 @@ class BodyStatsCard extends StatelessWidget {
               SizedBox(
                 width: 140,
                 height: 110,
-                child: RepaintBoundary(
-                  child: CustomPaint(painter: BMIGaugePainter(bmi: bmi)),
+                // A11y: Gauge ist reines CustomPaint -> Wert + Zone ansagen.
+                child: Semantics(
+                  label: 'BMI',
+                  value: '${bmi.toStringAsFixed(1)} · $bmiLabel',
+                  child: RepaintBoundary(
+                    child: CustomPaint(painter: BMIGaugePainter(bmi: bmi)),
+                  ),
                 ),
               ),
             ],
@@ -934,13 +941,21 @@ class WeightHistoryCard extends StatelessWidget {
           const SizedBox(height: 8),
           SizedBox(
             height: 130,
-            child: RepaintBoundary(
-              child: CustomPaint(
-                painter: WeightLineChartPainter(
-                  entries: log.entries,
-                  accent: accent,
+            // A11y: Verlaufslinie ist nur gezeichnet -> Spanne als Sprachwert.
+            child: Semantics(
+              label: 'Gewichtsverlauf',
+              value: hasData
+                  ? '${log.entries.length} Messungen, '
+                      'zuletzt ${log.entries.last.weightKg.toStringAsFixed(1)} kg'
+                  : 'Noch keine Verlaufslinie',
+              child: RepaintBoundary(
+                child: CustomPaint(
+                  painter: WeightLineChartPainter(
+                    entries: log.entries,
+                    accent: accent,
+                  ),
+                  size: Size.infinite,
                 ),
-                size: Size.infinite,
               ),
             ),
           ),
@@ -1135,18 +1150,24 @@ class _GoalTile extends StatelessWidget {
           SizedBox(
             width: 38,
             height: 38,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                RepaintBoundary(
-                  child: CustomPaint(
-                    size: const Size(38, 38),
-                    painter:
-                        MiniRingPainter(value: goal.ratio, color: goal.color),
+            // A11y: Fortschritts-Ring ansagen; der Wert daneben nennt die
+            // absoluten Zahlen, hier reicht die Prozent-Erfuellung.
+            child: Semantics(
+              label: '${goal.label} Fortschritt',
+              value: '${(goal.ratio * 100).round()}%',
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  RepaintBoundary(
+                    child: CustomPaint(
+                      size: const Size(38, 38),
+                      painter:
+                          MiniRingPainter(value: goal.ratio, color: goal.color),
+                    ),
                   ),
-                ),
-                Icon(goal.icon, color: goal.color, size: 14),
-              ],
+                  Icon(goal.icon, color: goal.color, size: 14),
+                ],
+              ),
             ),
           ),
           const SizedBox(width: 10),
@@ -1234,10 +1255,18 @@ class ShiftDistributionCard extends StatelessWidget {
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    RepaintBoundary(
-                      child: CustomPaint(
-                        size: const Size(112, 112),
-                        painter: ShiftDonutPainter(counts: counts),
+                    // A11y: Donut beschriftet -> Verteilung der Trainingstage.
+                    Semantics(
+                      label: 'Trainings-Mix',
+                      value: '$total Tage geplant. Kraft ${counts['Kraft']!}, '
+                          'Muskel ${counts['Muskelaufbau']!}, '
+                          'Ausdauer ${counts['Ausdauer']!}, '
+                          'Recovery ${counts['Recovery']! + counts['Mobility']! + counts['Frei']!}.',
+                      child: RepaintBoundary(
+                        child: CustomPaint(
+                          size: const Size(112, 112),
+                          painter: ShiftDonutPainter(counts: counts),
+                        ),
                       ),
                     ),
                     Column(
@@ -1689,7 +1718,8 @@ class _AchievementTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final tint = data.unlocked ? data.color : textMuted;
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 220),
+      // A11y: Unlock-Uebergang unter "Bewegung reduzieren" auf 0.
+      duration: motionDuration(context, const Duration(milliseconds: 220)),
       curve: Curves.easeOut,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
@@ -2056,23 +2086,30 @@ class _InfoButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // A11y: 44x44 Hit-Target, Chip + Glyph bleiben optisch 28/15.
     return Tooltip(
       message: tooltip,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(rControl),
-        child: Container(
-          width: 28,
-          height: 28,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: surfaceSoft,
-            borderRadius: BorderRadius.circular(rControl),
-          ),
-          child: const Icon(
-            Icons.info_outline_rounded,
-            color: textMuted,
-            size: 15,
+      child: SizedBox(
+        width: 44,
+        height: 44,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(rControl),
+          child: Center(
+            child: Container(
+              width: 28,
+              height: 28,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: surfaceSoft,
+                borderRadius: BorderRadius.circular(rControl),
+              ),
+              child: const Icon(
+                Icons.info_outline_rounded,
+                color: textMuted,
+                size: 15,
+              ),
+            ),
           ),
         ),
       ),

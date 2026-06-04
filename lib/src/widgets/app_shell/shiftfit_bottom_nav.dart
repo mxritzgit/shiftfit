@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
+import '../common/motion.dart';
 
 class ShiftFitBottomNav extends StatelessWidget {
   const ShiftFitBottomNav({
@@ -72,39 +73,51 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = selected ? lime : textMuted;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(rCard),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        decoration: BoxDecoration(
-          color: selected ? lime.withValues(alpha: 0.12) : Colors.transparent,
-          borderRadius: BorderRadius.circular(rCard),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedScale(
-              scale: selected ? 1.12 : 1.0,
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutBack,
-              child: Icon(icon, size: 22, color: color),
+    // A11y: unter "Bewegung reduzieren" die Tab-Wechsel-Animation auf 0.
+    final navMotion = motionDuration(context, const Duration(milliseconds: 220));
+    // A11y: Tab als Button mit Auswahl-Status ansagen; die inneren Glyphen/
+    // Texte aus dem Semantics-Baum nehmen, damit nur ein Label vorliegt.
+    return Semantics(
+      label: label,
+      button: true,
+      selected: selected,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(rCard),
+        child: ExcludeSemantics(
+          child: AnimatedContainer(
+            duration: navMotion,
+            curve: Curves.easeOutCubic,
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              color:
+                  selected ? lime.withValues(alpha: 0.12) : Colors.transparent,
+              borderRadius: BorderRadius.circular(rCard),
             ),
-            const SizedBox(height: 4),
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 220),
-              style: TextStyle(
-                color: color,
-                fontSize: 11,
-                letterSpacing: -0.1,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              ),
-              child: Text(label),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedScale(
+                  scale: selected ? 1.12 : 1.0,
+                  duration: navMotion,
+                  curve: Curves.easeOutBack,
+                  child: Icon(icon, size: 22, color: color),
+                ),
+                const SizedBox(height: 4),
+                AnimatedDefaultTextStyle(
+                  duration: navMotion,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 11,
+                    letterSpacing: -0.1,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                  child: Text(label),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

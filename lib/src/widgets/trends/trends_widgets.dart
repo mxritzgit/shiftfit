@@ -27,6 +27,11 @@ class TrendBarsCard extends StatelessWidget {
 
   final List<TrendBar> bars;
 
+  /// A11y-Zusammenfassung der Saeulen: "Mo 40%, Di 80%, …".
+  String get _semanticsValue => bars
+      .map((b) => '${b.label} ${(b.ratio.clamp(0.0, 1.0) * 100).round()}%')
+      .join(', ');
+
   @override
   Widget build(BuildContext context) {
     return AppCard(
@@ -34,7 +39,14 @@ class TrendBarsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
+          // A11y: der Balken-Chart traegt sonst keine Semantik -> 7-Tage-
+          // Werte als ein gesprochenes Label buendeln, Deko-Innenleben aus
+          // dem Baum nehmen.
+          Semantics(
+            label: '7-Tage-Verlauf',
+            value: _semanticsValue,
+            child: ExcludeSemantics(
+              child: SizedBox(
             height: 128,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
@@ -66,6 +78,8 @@ class TrendBarsCard extends StatelessWidget {
                     ),
                   ),
               ],
+            ),
+          ),
             ),
           ),
           // Feine Grundlinie verankert die Saeulen — Charts kleben nicht mehr
