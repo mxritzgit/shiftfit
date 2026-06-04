@@ -1,12 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../models/caffeine_entry.dart';
-import '../models/daily_mood.dart';
-import '../models/habit.dart';
 import '../models/shift_fit_plan.dart';
-import '../models/sleep_entry.dart';
-import '../models/weight_log.dart';
-import '../services/health_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/common/basic_widgets.dart';
 import '../widgets/shared/shiftfit_top_bar.dart';
@@ -22,98 +16,78 @@ import '../widgets/today/today_log_sheet.dart';
 import '../widgets/today/today_widgets.dart';
 import '../widgets/today/weight_card.dart';
 import '../widgets/today/workout_timer_sheet.dart';
+import 'today_dashboard_models.dart';
 
 class TodayDashboard extends StatelessWidget {
   const TodayDashboard({
     super.key,
-    required this.selectedShift,
-    required this.selectedEnergy,
-    required this.selectedStress,
+    required this.metrics,
+    required this.actions,
     required this.plan,
-    required this.onShiftSelected,
-    required this.onEnergySelected,
-    required this.onStressSelected,
-    required this.dailyConsumedKcal,
-    required this.kcalGoal,
-    required this.dailyWaterMl,
-    required this.waterGoalMl,
-    required this.dailySteps,
-    required this.stepsGoal,
-    required this.lastSleep,
-    required this.sleepGoalMinutes,
-    required this.completedBlockIds,
-    required this.onToggleBlock,
-    required this.workoutStreak,
-    required this.healthAuthState,
-    required this.healthLastFetch,
-    required this.onConnectHealth,
-    required this.onRefreshHealth,
     required this.onSettingsPressed,
-    // Wellness/logging state + handlers (activate the dormant log cards).
-    required this.caffeineDay,
-    required this.mood,
-    required this.habits,
-    required this.weightLog,
-    required this.onAddWater,
-    required this.onSetSteps,
-    required this.onLogSleep,
-    required this.onMoodScore,
-    required this.onEditMoodNote,
-    required this.onToggleHabit,
-    required this.onAddCaffeine,
-    required this.onResetCaffeine,
-    required this.onLogWeight,
-    required this.onOpenTraining,
-    required this.onOpenFood,
     this.onProfilePressed,
     this.profileInitial,
   });
 
-  final String selectedShift;
-  final String selectedEnergy;
-  final String selectedStress;
+  /// ARCH-3: der angezeigte Tages-Zustand (vorher ~20 Einzel-Parameter).
+  final DailyMetrics metrics;
+
+  /// ARCH-3: das Callback-Buendel (vorher ~17 Einzel-Parameter).
+  final TodayActions actions;
+
+  /// Aus [metrics] ableitbar, aber die HomePage haelt [plan] ohnehin als
+  /// gemeinsamen Chrome-Wert ueber alle Tabs — daher genuine eigenes Feld
+  /// (nicht in [DailyMetrics] gedoppelt).
   final ShiftFitPlan plan;
-  final ValueChanged<String> onShiftSelected;
-  final ValueChanged<String> onEnergySelected;
-  final ValueChanged<String> onStressSelected;
-  final int dailyConsumedKcal;
-  final int kcalGoal;
-  final int dailyWaterMl;
-  final int waterGoalMl;
-  final int dailySteps;
-  final int stepsGoal;
-  final SleepEntry? lastSleep;
-  final int sleepGoalMinutes;
-  final Set<String> completedBlockIds;
-  final ValueChanged<String> onToggleBlock;
-  final int workoutStreak;
-  final HealthAuthState healthAuthState;
-  final DateTime? healthLastFetch;
-  final VoidCallback onConnectHealth;
-  final VoidCallback onRefreshHealth;
+
+  /// App-Chrome (TopBar), nicht Teil des Tages-Zustands.
   final VoidCallback onSettingsPressed;
-
-  final CaffeineDay caffeineDay;
-  final DailyMood mood;
-  final HabitState habits;
-  final WeightLog weightLog;
-  final ValueChanged<int> onAddWater;
-  final ValueChanged<int> onSetSteps;
-  final VoidCallback onLogSleep;
-  final ValueChanged<int> onMoodScore;
-  final VoidCallback onEditMoodNote;
-  final ValueChanged<String> onToggleHabit;
-  final ValueChanged<int> onAddCaffeine;
-  final VoidCallback onResetCaffeine;
-  final ValueChanged<double> onLogWeight;
-  final VoidCallback onOpenTraining;
-  final VoidCallback onOpenFood;
-
   final VoidCallback? onProfilePressed;
   final String? profileInitial;
 
   @override
   Widget build(BuildContext context) {
+    // Lokale Aliasse: die build-Logik unten liest unveraendert ueber kurze
+    // Namen — rein mechanische Entflechtung von metrics/actions, kein
+    // Verhaltens-/Render-Unterschied.
+    final selectedShift = metrics.selectedShift;
+    final selectedEnergy = metrics.selectedEnergy;
+    final selectedStress = metrics.selectedStress;
+    final dailyConsumedKcal = metrics.dailyConsumedKcal;
+    final kcalGoal = metrics.kcalGoal;
+    final dailyWaterMl = metrics.dailyWaterMl;
+    final waterGoalMl = metrics.waterGoalMl;
+    final dailySteps = metrics.dailySteps;
+    final stepsGoal = metrics.stepsGoal;
+    final lastSleep = metrics.lastSleep;
+    final sleepGoalMinutes = metrics.sleepGoalMinutes;
+    final completedBlockIds = metrics.completedBlockIds;
+    final workoutStreak = metrics.workoutStreak;
+    final healthAuthState = metrics.healthAuthState;
+    final healthLastFetch = metrics.healthLastFetch;
+    final caffeineDay = metrics.caffeineDay;
+    final mood = metrics.mood;
+    final habits = metrics.habits;
+    final weightLog = metrics.weightLog;
+
+    final onShiftSelected = actions.onShiftSelected;
+    final onEnergySelected = actions.onEnergySelected;
+    final onStressSelected = actions.onStressSelected;
+    final onToggleBlock = actions.onToggleBlock;
+    final onConnectHealth = actions.onConnectHealth;
+    final onRefreshHealth = actions.onRefreshHealth;
+    final onAddWater = actions.onAddWater;
+    final onSetSteps = actions.onSetSteps;
+    final onLogSleep = actions.onLogSleep;
+    final onMoodScore = actions.onMoodScore;
+    final onEditMoodNote = actions.onEditMoodNote;
+    final onToggleHabit = actions.onToggleHabit;
+    final onAddCaffeine = actions.onAddCaffeine;
+    final onResetCaffeine = actions.onResetCaffeine;
+    final onLogWeight = actions.onLogWeight;
+    final onOpenTraining = actions.onOpenTraining;
+    final onOpenFood = actions.onOpenFood;
+
     final completedCount = completedBlockIds.length;
     final total = plan.blocks.length;
     final planAction = total == 0

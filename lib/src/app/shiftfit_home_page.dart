@@ -17,6 +17,7 @@ import '../models/shift_fit_plan.dart';
 import '../models/sleep_entry.dart';
 import '../models/user_profile.dart';
 import '../models/weight_log.dart';
+import '../models/workout_set.dart';
 import '../services/daily_log_sync.dart';
 import '../services/fitpilot_sync.dart';
 import '../services/health_service.dart';
@@ -35,6 +36,7 @@ import '../screens/onboarding_screen.dart';
 import '../screens/profile_screen.dart';
 import '../screens/recipes_screen.dart';
 import '../screens/today_dashboard.dart';
+import '../screens/today_dashboard_models.dart';
 import '../screens/trends_screen.dart';
 import '../screens/week_planner_screen.dart';
 import '../theme/app_colors.dart';
@@ -129,6 +131,11 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
   // Letzte ~30 Tage daily_logs fuer den Trends-Verlauf (echte History statt
   // Demo-Daten). Beim Boot via DailyLogSync.loadRange befuellt.
   List<DailyLog> _trendsHistory = const <DailyLog>[];
+  // PROD-5: geloggte Arbeitssaetze (neueste zuerst). Beim Boot via
+  // WorkoutLogSync.loadRecent befuellt und an die WeekPlannerScreen als
+  // workoutHistory durchgereicht (last-time/PR im Set-Logger). Jeder frisch
+  // geloggte Satz wird optimistisch vorn angehaengt.
+  List<WorkoutSet> _workoutHistory = <WorkoutSet>[];
   // Debounce für den Lifetime-Stats-Write (mehrere Quick-Logs → 1 RPC-Call).
   Timer? _statsSaveDebounce;
 
@@ -155,7 +162,18 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
   // Flush koennten sonst denselben Delta-Stand doppelt rausschicken).
   bool _statsFlushInFlight = false;
   String userName = 'Moritz';
+  // ARCH-1/PERF-2: treibt die AnimatedBuilder-Bruecke in [_openProfile]. Die
+  // gepushte ProfileScreen-Route ist ein eigener Subtree, den ein setState der
+  // HomePage NICHT erreicht — ohne dieses Notifier wuerde ein mid-route Health-
+  // Refresh (z.B. _refreshHealthSteps) auf einer OFFENEN ProfileScreen nicht
+  // ankommen. Frueher bumpte der setState-Override IMMER (jeder Quick-Log baute
+  // also die — meist gar nicht offene — Profil-Bruecke neu auf). Jetzt nur noch,
+  // WENN die Route tatsaechlich mounted ist ([_profileRouteOpen]).
   final ValueNotifier<int> _profileRefresh = ValueNotifier<int>(0);
+  // True genau solange die via [_openProfile] gepushte ProfileScreen-Route auf
+  // dem Navigator-Stack liegt. Nur dann lohnt (und braucht) es das _profileRefresh-
+  // Bump im setState-Override.
+  bool _profileRouteOpen = false;
   late bool _welcomeFinished;
   // Lokales Flag, damit der User nach Abschluss sofort weiterkommt — auch
   // falls der Supabase-Save kurz hakt (das onboardingCompleted-Flag aus dem
@@ -201,7 +219,14 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
   @override
   void setState(VoidCallback fn) {
     super.setState(fn);
-    _profileRefresh.value++;
+    // ARCH-1/PERF-2: das _profileRefresh-Bump nur, solange die ProfileScreen-
+    // Route offen ist. Diese Route liegt in einem separaten Navigator-Subtree,
+    // den dieses setState NICHT erreicht — der Bump treibt die AnimatedBuilder-
+    // Bruecke in [_openProfile], damit eine OFFENE ProfileScreen einen mid-route
+    // State-Wechsel (z.B. Health-Refresh) sieht. Ist keine Route offen (der
+    // Normalfall bei Quick-Logs), spart der frueher unbedingte Bump nichts —
+    // also weglassen.
+    if (_profileRouteOpen) _profileRefresh.value++;
   }
 
   @override
@@ -333,6 +358,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
       _safeLoad(() => sync.dailyLog
           .loadRange(today.subtract(const Duration(days: 29)), today)),
       _safeLoad(() => sync.userRecipes.load()),
+      _safeLoad(() => sync.workoutLog.loadRecent()),
     ]);
     if (!mounted) return;
     setState(() {
@@ -394,6 +420,9 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
 
       final loadedRecipes = results[10] as List<FitnessRecipe>?;
       if (loadedRecipes != null) _userRecipes = loadedRecipes;
+
+      final loadedWorkoutSets = results[11] as List<WorkoutSet>?;
+      if (loadedWorkoutSets != null) _workoutHistory = loadedWorkoutSets;
 
       dailyConsumedKcal = _consumedKcalForFoodDate(today);
       macroProgress = _macroProgressForFoodDate(today);
@@ -836,6 +865,11 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
       weightLog = weightLog.add(kg);
       lifetimeStats = lifetimeStats.incrementWeightLogs();
     });
+    // PROD-7: Gewicht best-effort in den Health-Store zurueckschreiben. _health
+    // ist nie null (faellt auf NoopHealthService zurueck); off-iOS / nicht
+    // verbunden ist das ein sicherer No-Op (-> false). Bewusst NICHT awaiten —
+    // der HealthKit-Write darf den UI-/Sync-Pfad nicht blockieren.
+    unawaited(_health.writeWeight(kg, ts));
     final sync = widget.sync;
     if (sync == null) return;
     // Den weight_logs-Zaehler-Delta erst NACH erfolgreichem Gewichts-Insert
@@ -956,6 +990,21 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
     if (allDone && !wasCompletedToday) _cacheLifetimeStats();
     // Workout heute abgeschlossen -> Streak-at-risk-Nudge faellt weg; neu planen.
     if (allDone && !wasCompletedToday) _rescheduleNotifications();
+    // PROD-7: abgeschlossenes Workout best-effort in den Health-Store schreiben
+    // (Apple Health Workout-Sample). Dauer aus der Plan-Schaetzung
+    // (plan.totalMinutes) abgeleitet; Ende = jetzt, Start = jetzt - Dauer.
+    // _health ist nie null (Noop-Fallback) -> off-iOS / nicht verbunden ein
+    // sicherer No-Op. Bewusst NICHT awaiten (kein Block auf dem UI-/RPC-Pfad).
+    if (allDone && !wasCompletedToday) {
+      final end = DateTime.now();
+      final minutes = plan.totalMinutes > 0 ? plan.totalMinutes : 45;
+      final start = end.subtract(Duration(minutes: minutes));
+      unawaited(_health.writeWorkout(
+        start: start,
+        end: end,
+        type: 'functionalStrengthTraining',
+      ));
+    }
 
     if (allDone && !wasCompletedToday) {
       // Persist über den Streak-RPC: record_workout_day schreibt current/longest
@@ -1402,11 +1451,18 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
   }
 
   Future<void> _openProfile() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => AnimatedBuilder(
-          animation: _profileRefresh,
-          builder: (_, __) => ProfileScreen(
+    // ARCH-1/PERF-2: Route als offen markieren -> ab jetzt bumpt der setState-
+    // Override _profileRefresh, sodass ein mid-route State-Wechsel (z.B.
+    // _refreshHealthSteps) ueber den AnimatedBuilder auf der offenen
+    // ProfileScreen ankommt. Reines Flag, kein setState noetig (loest selbst
+    // keinen Rebuild der HomePage aus).
+    _profileRouteOpen = true;
+    try {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => AnimatedBuilder(
+            animation: _profileRefresh,
+            builder: (_, __) => ProfileScreen(
             name: userName,
             profile: profile,
             weightLog: weightLog,
@@ -1427,12 +1483,16 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
             onConnectHealth: _connectHealth,
             onRefreshHealth: _refreshHealthSteps,
             onSignOut: widget.onSignOut,
-            onDeleteAccount:
-                widget.sync != null ? _deleteAccount : null,
+            onDeleteAccount: widget.sync != null ? _deleteAccount : null,
           ),
         ),
       ),
     );
+    } finally {
+      // Route gepoppt -> wieder zu. Ab jetzt bumpt setState das _profileRefresh
+      // nicht mehr (Quick-Logs auf dem Home rebuilden nur ihren eigenen Subtree).
+      _profileRouteOpen = false;
+    }
   }
 
   /// Onboarding ist Pflicht, sobald ein echter Supabase-Sync existiert und das
@@ -1550,6 +1610,19 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
           _saveWeeklyPlan();
         },
         onSavePlan: widget.sync == null ? null : _saveWeeklyPlan,
+        // PROD-5: Set-Logger nur mit echtem Sync (Test/Preview: sync == null
+        // -> Karte bleibt verborgen, exakt wie onSavePlan). onLogSet
+        // persistiert idempotent (upsert auf der Client-UUID) und haengt den
+        // Satz optimistisch vorn an die lokale History (neueste zuerst).
+        workoutHistory: _workoutHistory,
+        onLogSet: widget.sync == null
+            ? null
+            : (set) async {
+                await widget.sync!.workoutLog.insert(set);
+                if (mounted) {
+                  setState(() => _workoutHistory = [set, ..._workoutHistory]);
+                }
+              },
         onSettingsPressed: _openSettings,
         onProfilePressed: _openProfile,
         profileInitial: _profileInitial,
@@ -1634,47 +1707,53 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
         ),
       ),
       _ => TodayDashboard(
-        selectedShift: selectedShift,
-        selectedEnergy: selectedEnergy,
-        selectedStress: selectedStress,
+        // ARCH-3: angezeigter Tages-Zustand gebuendelt (vorher ~20 Props).
+        metrics: DailyMetrics(
+          selectedShift: selectedShift,
+          selectedEnergy: selectedEnergy,
+          selectedStress: selectedStress,
+          dailyConsumedKcal: dailyConsumedKcal,
+          kcalGoal: profile.dailyKcalGoal,
+          dailyWaterMl: dailyWaterMl,
+          waterGoalMl: profile.dailyWaterGoalMl,
+          dailySteps: dailySteps,
+          stepsGoal: stepsGoal,
+          lastSleep: lastSleep,
+          sleepGoalMinutes: profile.dailySleepGoalMinutes,
+          completedBlockIds: completedBlockIds,
+          workoutStreak: workoutStreak,
+          healthAuthState: healthAuthState,
+          healthLastFetch: healthLastFetch,
+          caffeineDay: caffeineDay,
+          mood: mood,
+          habits: habits,
+          weightLog: weightLog,
+        ),
+        // ARCH-3: Callbacks gebuendelt (vorher ~17 Props).
+        actions: TodayActions(
+          onShiftSelected: (value) {
+            setState(() => selectedShift = value);
+            // Shift-Wechsel beeinflusst Koffein-Cutoff + Morgenlicht-Nudge.
+            _rescheduleNotifications();
+          },
+          onEnergySelected: (value) => setState(() => selectedEnergy = value),
+          onStressSelected: (value) => setState(() => selectedStress = value),
+          onToggleBlock: _toggleBlock,
+          onConnectHealth: _connectHealth,
+          onRefreshHealth: _refreshHealthSteps,
+          onAddWater: _addWater,
+          onSetSteps: _setSteps,
+          onLogSleep: _logSleep,
+          onMoodScore: _setMoodScore,
+          onEditMoodNote: _editMoodNote,
+          onToggleHabit: _toggleHabit,
+          onAddCaffeine: _addCaffeine,
+          onResetCaffeine: _resetCaffeine,
+          onLogWeight: _logWeight,
+          onOpenTraining: () => setState(() => selectedTab = 1),
+          onOpenFood: () => setState(() => selectedTab = 3),
+        ),
         plan: plan,
-        onShiftSelected: (value) {
-          setState(() => selectedShift = value);
-          // Shift-Wechsel beeinflusst Koffein-Cutoff + Morgenlicht-Nudge.
-          _rescheduleNotifications();
-        },
-        onEnergySelected: (value) => setState(() => selectedEnergy = value),
-        onStressSelected: (value) => setState(() => selectedStress = value),
-        dailyConsumedKcal: dailyConsumedKcal,
-        kcalGoal: profile.dailyKcalGoal,
-        dailyWaterMl: dailyWaterMl,
-        waterGoalMl: profile.dailyWaterGoalMl,
-        dailySteps: dailySteps,
-        stepsGoal: stepsGoal,
-        lastSleep: lastSleep,
-        sleepGoalMinutes: profile.dailySleepGoalMinutes,
-        completedBlockIds: completedBlockIds,
-        onToggleBlock: _toggleBlock,
-        workoutStreak: workoutStreak,
-        healthAuthState: healthAuthState,
-        healthLastFetch: healthLastFetch,
-        onConnectHealth: _connectHealth,
-        onRefreshHealth: _refreshHealthSteps,
-        caffeineDay: caffeineDay,
-        mood: mood,
-        habits: habits,
-        weightLog: weightLog,
-        onAddWater: _addWater,
-        onSetSteps: _setSteps,
-        onLogSleep: _logSleep,
-        onMoodScore: _setMoodScore,
-        onEditMoodNote: _editMoodNote,
-        onToggleHabit: _toggleHabit,
-        onAddCaffeine: _addCaffeine,
-        onResetCaffeine: _resetCaffeine,
-        onLogWeight: _logWeight,
-        onOpenTraining: () => setState(() => selectedTab = 1),
-        onOpenFood: () => setState(() => selectedTab = 3),
         onSettingsPressed: _openSettings,
         onProfilePressed: _openProfile,
         profileInitial: _profileInitial,
