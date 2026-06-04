@@ -31,6 +31,10 @@ analyzer:
     prefer_const_constructors_in_immutables: ignore
     prefer_conditional_assignment: ignore
     use_null_aware_elements: ignore
+    # http/testing.dart (MockClient) und supabase werden in Tests direkt
+    # importiert, kommen aber transitiv ueber supabase_flutter — kein eigener
+    # dev_dependency-Eintrag noetig, daher den info-Lint hier demoten.
+    depend_on_referenced_packages: ignore
 
 linter:
   # The lint rules applied to this project can be customized in the

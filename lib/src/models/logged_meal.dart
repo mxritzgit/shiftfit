@@ -1,3 +1,5 @@
+import 'package:clock/clock.dart';
+
 import 'meal_analysis_result.dart';
 
 enum MealSlot { breakfast, lunch, dinner, snack }
@@ -10,6 +12,22 @@ extension MealSlotLabel on MealSlot {
         MealSlot.snack => 'Snacks',
       };
 }
+
+/// Reine Uhrzeit-Heuristik: ordnet eine Stunde (0–23) einem [MealSlot] zu.
+/// Top-level + rein, damit die Grenzen (11/15/21 Uhr) ohne LoggedMeal-Instanz
+/// und ohne Wanduhr testbar sind.
+MealSlot mealSlotForHour(int hour) {
+  if (hour < 11) return MealSlot.breakfast;
+  if (hour < 15) return MealSlot.lunch;
+  if (hour < 21) return MealSlot.dinner;
+  return MealSlot.snack;
+}
+
+/// Slot fuer „jetzt" anhand der aktuellen Zonen-Uhr. Liest [clock.now()]
+/// (Default: DateTime.now()), damit Tests die Zeit per withClock ueber
+/// Mitternacht/DST-Grenzen festnageln koennen — das Laufzeit-Verhalten
+/// bleibt identisch zu DateTime.now().
+MealSlot currentMealSlot() => mealSlotForHour(clock.now().hour);
 
 class LoggedMeal {
   const LoggedMeal({
@@ -28,11 +46,7 @@ class LoggedMeal {
     if (forcedSlot != null) {
       return forcedSlot!;
     }
-    final hour = loggedAt.hour;
-    if (hour < 11) return MealSlot.breakfast;
-    if (hour < 15) return MealSlot.lunch;
-    if (hour < 21) return MealSlot.dinner;
-    return MealSlot.snack;
+    return mealSlotForHour(loggedAt.hour);
   }
 
   LoggedMeal copyWith({

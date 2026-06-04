@@ -4,6 +4,50 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/user_profile.dart';
 
+/// Mappt einen Roh-String aus public.profiles.sex auf [BiologicalSex].
+/// Null/Unbekanntes faellt auf [BiologicalSex.neutral] zurueck.
+/// Top-level + rein, damit das Mapping ohne Supabase-Client testbar ist.
+BiologicalSex parseProfileSex(String? raw) {
+  if (raw == null) return BiologicalSex.neutral;
+  return BiologicalSex.values.firstWhere(
+    (v) => v.name == raw,
+    orElse: () => BiologicalSex.neutral,
+  );
+}
+
+/// Mappt einen Roh-String aus public.profiles.activity_level auf
+/// [ActivityLevel]. Null/Unbekanntes faellt auf [ActivityLevel.sedentary].
+ActivityLevel parseProfileActivity(String? raw) {
+  if (raw == null) return ActivityLevel.sedentary;
+  return ActivityLevel.values.firstWhere(
+    (v) => v.name == raw,
+    orElse: () => ActivityLevel.sedentary,
+  );
+}
+
+/// Mappt einen Roh-String aus public.profiles.weight_goal auf [WeightGoal].
+/// Bestands-Werte aus dem alten Tempo-Schema werden auf die kg/Woche-Raten
+/// gemappt, damit bereits onboardete User ihr Ziel nicht verlieren — falsche
+/// Branches hier sind stille ±550/±1100 kcal/Tag-Zielbugs. Null/Unbekanntes
+/// faellt auf [WeightGoal.maintain] zurueck.
+WeightGoal parseProfileGoal(String? raw) {
+  if (raw == null) return WeightGoal.maintain;
+  switch (raw) {
+    case 'loseFast':
+      return WeightGoal.lose05kg;
+    case 'loseSteady':
+      return WeightGoal.lose025kg;
+    case 'gainFast':
+      return WeightGoal.gain05kg;
+    case 'gainSteady':
+      return WeightGoal.gain025kg;
+  }
+  return WeightGoal.values.firstWhere(
+    (v) => v.name == raw,
+    orElse: () => WeightGoal.maintain,
+  );
+}
+
 /// Liest und schreibt UserProfile gegen public.profiles auf Supabase.
 /// Save nutzt UPSERT(.select().single()), damit der Aufrufer bei
 /// Schema/Auth/RLS-Fehlern eine PostgrestException kriegt statt einer
@@ -90,41 +134,13 @@ class ProfileSync {
     }
   }
 
-  static BiologicalSex _parseSex(String? raw) {
-    if (raw == null) return BiologicalSex.neutral;
-    return BiologicalSex.values.firstWhere(
-      (v) => v.name == raw,
-      orElse: () => BiologicalSex.neutral,
-    );
-  }
+  // Delegieren an die reinen Top-level-Parser (oben), damit das Verhalten
+  // identisch bleibt und 1:1 ohne Supabase-Client getestet werden kann.
+  static BiologicalSex _parseSex(String? raw) => parseProfileSex(raw);
 
-  static ActivityLevel _parseActivity(String? raw) {
-    if (raw == null) return ActivityLevel.sedentary;
-    return ActivityLevel.values.firstWhere(
-      (v) => v.name == raw,
-      orElse: () => ActivityLevel.sedentary,
-    );
-  }
+  static ActivityLevel _parseActivity(String? raw) => parseProfileActivity(raw);
 
-  static WeightGoal _parseGoal(String? raw) {
-    if (raw == null) return WeightGoal.maintain;
-    // Bestands-Werte aus dem alten Tempo-Schema auf die kg/Woche-Raten mappen,
-    // damit bereits onboardete User ihr Ziel nicht verlieren.
-    switch (raw) {
-      case 'loseFast':
-        return WeightGoal.lose05kg;
-      case 'loseSteady':
-        return WeightGoal.lose025kg;
-      case 'gainFast':
-        return WeightGoal.gain05kg;
-      case 'gainSteady':
-        return WeightGoal.gain025kg;
-    }
-    return WeightGoal.values.firstWhere(
-      (v) => v.name == raw,
-      orElse: () => WeightGoal.maintain,
-    );
-  }
+  static WeightGoal _parseGoal(String? raw) => parseProfileGoal(raw);
 
   static int? _toInt(Object? value) {
     if (value is int) return value;
