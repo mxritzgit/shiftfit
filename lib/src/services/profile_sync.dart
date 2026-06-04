@@ -48,6 +48,18 @@ WeightGoal parseProfileGoal(String? raw) {
   );
 }
 
+/// Mappt einen Roh-String aus public.profiles.diet_preference auf
+/// [DietPreference]. Null/Unbekanntes faellt auf [DietPreference.none] zurueck,
+/// damit ein leeres/kaputtes Feld den User nicht ungewollt einschraenkt
+/// (none empfiehlt alles). Top-level + rein, ohne Supabase-Client testbar.
+DietPreference parseDietPreference(String? raw) {
+  if (raw == null) return DietPreference.none;
+  return DietPreference.values.firstWhere(
+    (v) => v.name == raw,
+    orElse: () => DietPreference.none,
+  );
+}
+
 /// Liest und schreibt UserProfile gegen public.profiles auf Supabase.
 /// Save nutzt UPSERT(.select().single()), damit der Aufrufer bei
 /// Schema/Auth/RLS-Fehlern eine PostgrestException kriegt statt einer
@@ -64,6 +76,7 @@ class ProfileSync {
       'daily_steps_goal, daily_kcal_goal, daily_water_goal_ml, '
       'daily_sleep_goal_minutes, '
       'protein_goal_g, carbs_goal_g, fat_goal_g, weight_goal, '
+      'diet_preference, '
       'onboarding_completed';
 
   Future<UserProfile?> load() async {
@@ -94,6 +107,7 @@ class ProfileSync {
         carbsGoalG: _toInt(row['carbs_goal_g']) ?? 240,
         fatGoalG: _toInt(row['fat_goal_g']) ?? 70,
         weightGoal: _parseGoal(row['weight_goal']?.toString()),
+        diet: _parseDiet(row['diet_preference']?.toString()),
         onboardingCompleted: row['onboarding_completed'] == true,
       );
     } catch (e, stack) {
@@ -119,6 +133,7 @@ class ProfileSync {
       'carbs_goal_g': profile.carbsGoalG,
       'fat_goal_g': profile.fatGoalG,
       'weight_goal': profile.weightGoal.name,
+      'diet_preference': profile.diet.name,
       'onboarding_completed': profile.onboardingCompleted,
     };
     try {
@@ -141,6 +156,8 @@ class ProfileSync {
   static ActivityLevel _parseActivity(String? raw) => parseProfileActivity(raw);
 
   static WeightGoal _parseGoal(String? raw) => parseProfileGoal(raw);
+
+  static DietPreference _parseDiet(String? raw) => parseDietPreference(raw);
 
   static int? _toInt(Object? value) {
     if (value is int) return value;

@@ -33,7 +33,7 @@ class OnboardingScreen extends StatefulWidget {
 
 enum _GoalDirection { lose, maintain, gain }
 
-enum _Step { intro, sex, age, height, weight, activity, goal, target, pace, summary }
+enum _Step { intro, sex, age, height, weight, activity, goal, target, pace, diet, summary }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
   late BiologicalSex _sex;
@@ -43,6 +43,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   late ActivityLevel _activity;
   late _GoalDirection _direction;
   late int _target;
+  late DietPreference _diet;
   // Getrennte Tempo-Auswahl je Richtung, damit Hin-/Herwechseln nichts verliert.
   WeightGoal _losePace = WeightGoal.lose05kg;
   WeightGoal _gainPace = WeightGoal.gain025kg;
@@ -67,6 +68,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       _direction = _GoalDirection.maintain;
     }
     _target = p.targetWeightKg.clamp(40, 200).toInt();
+    _diet = p.diet;
   }
 
   /// Sichtbare Schritte — Zielgewicht und Tempo entfallen bei „halten".
@@ -82,6 +84,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           _Step.target,
           _Step.pace,
         ],
+        _Step.diet,
         _Step.summary,
       ];
 
@@ -112,6 +115,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       activityLevel: _activity,
       weightGoal: _weightGoal,
       targetWeightKg: target,
+      diet: _diet,
     );
   }
 
@@ -312,6 +316,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 _gainPace = v;
               }
             }),
+          ),
+        ),
+      _Step.diet => _StepFrame(
+          title: 'Ernährungsweise?',
+          subtitle: 'Wir empfehlen dir passende Rezepte. '
+              'Durchsuchen kannst du immer alle.',
+          child: _DietPicker(
+            value: _diet,
+            onChanged: (v) => setState(() => _diet = v),
           ),
         ),
       _Step.summary => _SummaryStep(
@@ -657,6 +670,38 @@ class _GoalPicker extends StatelessWidget {
             leadingIcon: items[dir]!.$3,
           ),
           if (dir != _GoalDirection.values.last) const SizedBox(height: 10),
+        ],
+      ],
+    );
+  }
+}
+
+class _DietPicker extends StatelessWidget {
+  const _DietPicker({required this.value, required this.onChanged});
+
+  final DietPreference value;
+  final ValueChanged<DietPreference> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    const icons = {
+      DietPreference.none: Icons.restaurant_rounded,
+      DietPreference.vegetarian: Icons.spa_rounded,
+      DietPreference.vegan: Icons.eco_rounded,
+      DietPreference.pescetarian: Icons.set_meal_rounded,
+    };
+    return Column(
+      children: [
+        for (final diet in DietPreference.values) ...[
+          _RowCard(
+            keyValue: ValueKey('onboarding-diet-${diet.name}'),
+            selected: value == diet,
+            onTap: () => onChanged(diet),
+            title: diet.label,
+            subtitle: diet.description,
+            leadingIcon: icons[diet],
+          ),
+          if (diet != DietPreference.values.last) const SizedBox(height: 10),
         ],
       ],
     );

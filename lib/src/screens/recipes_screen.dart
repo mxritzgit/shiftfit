@@ -5,6 +5,7 @@ import '../models/fitness_recipe.dart';
 import '../models/logged_meal.dart';
 import '../models/macro_progress.dart';
 import '../models/meal_analysis_result.dart';
+import '../models/user_profile.dart';
 import '../theme/app_colors.dart';
 import '../theme/meal_slot_style.dart';
 import '../widgets/common/app_snack.dart';
@@ -14,6 +15,7 @@ class RecipesScreen extends StatefulWidget {
     super.key,
     required this.onAddMeal,
     this.remainingMacros,
+    this.diet = DietPreference.none,
     this.onCreateRecipe,
     this.onDeleteRecipe,
     this.initialUserRecipes = const <FitnessRecipe>[],
@@ -26,6 +28,14 @@ class RecipesScreen extends StatefulWidget {
   /// Makro-Match rankt. Null → Sektion ausgeblendet (Tests ohne den Param
   /// bleiben grün).
   final MacroProgress? remainingMacros;
+
+  /// Ernährungspräferenz des Users (PROD-6). Filtert die aktiv beworbenen
+  /// Listen — Empfehlungs-Carousel + „Passt zu deinem Ziel" — VOR dem
+  /// Makro-Ranking, damit kein diät-/präferenz-verletzendes Rezept empfohlen
+  /// wird. Die Hauptliste + Kategorie-Filter bleiben unangetastet: der User
+  /// kann jedes Rezept weiterhin manuell durchsuchen. Default
+  /// [DietPreference.none] (empfiehlt alles → Bestands-Tests bleiben grün).
+  final DietPreference diet;
 
   /// Optionaler Hook, mit dem ein selbst angelegtes Rezept an den
   /// Aufrufer gemeldet wird (persistiert via user_recipes). Null → das
@@ -95,10 +105,18 @@ class _RecipesScreenState extends State<RecipesScreen> {
     }).toList(growable: false);
   }
 
+  /// Aktiv beworbene Rezepte = die volle Liste, vorab nach der
+  /// Ernährungspräferenz gefiltert (PROD-6). Speist Empfehlungs-Carousel +
+  /// Ziel-Matches; die Hauptliste + Kategorie-Filter bleiben ungefiltert.
+  List<FitnessRecipe> get _dietRecipes => _allRecipes
+      .where((r) => r.matchesDiet(widget.diet))
+      .toList(growable: false);
+
   /// Bis zu drei Rezepte mit dem höchsten Makro-Match zu den Restmakros.
-  /// Nur sinnvolle Treffer (>0) werden aufgenommen.
+  /// Nur sinnvolle Treffer (>0) werden aufgenommen. Diät-Vorfilter läuft VOR
+  /// dem Makro-Ranking, damit nie ein präferenz-verletzendes Rezept rankt.
   List<FitnessRecipe> _goalMatches(MacroProgress remaining) {
-    final scored = _allRecipes
+    final scored = _dietRecipes
         .map((r) => (r, r.matchScore(remaining)))
         .where((pair) => pair.$2 > 0)
         .toList(growable: false)
@@ -156,7 +174,12 @@ class _RecipesScreenState extends State<RecipesScreen> {
   @override
   Widget build(BuildContext context) {
     final visibleRecipes = filteredRecipes;
-    final recommended = _allRecipes.take(4).toList(growable: false);
+    // Empfehlungs-Carousel: diät-vorgefiltert (PROD-6). Fallback auf die volle
+    // Liste, falls die Präferenz keinerlei Kuratier-Rezepte übrig lässt, damit
+    // die Sektion nie leer wirkt.
+    final recommendedPool =
+        _dietRecipes.isEmpty ? _allRecipes : _dietRecipes;
+    final recommended = recommendedPool.take(4).toList(growable: false);
     final remaining = widget.remainingMacros;
     final goalMatches = remaining == null
         ? const <FitnessRecipe>[]
@@ -182,7 +205,7 @@ class _RecipesScreenState extends State<RecipesScreen> {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 244,
+          height: 256,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             clipBehavior: Clip.none,
@@ -222,7 +245,7 @@ class _RecipesScreenState extends State<RecipesScreen> {
           ),
           const SizedBox(height: 12),
           SizedBox(
-            height: 244,
+            height: 256,
             child: ListView.separated(
               key: const ValueKey('recipe-goal-matches'),
               scrollDirection: Axis.horizontal,
@@ -1250,35 +1273,42 @@ class _MacroRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final fontSize = compact ? 10.5 : 11.2;
     const tabular = TextStyle(fontFeatures: [FontFeature.tabularFigures()]);
-    return Row(
-      children: [
-        Text(
-          '${recipe.proteinG}g P',
-          style: tabular.copyWith(
-            color: lime,
-            fontSize: fontSize,
-            fontWeight: FontWeight.w700,
+    // FittedBox laesst die Makro-Zeile bei dreistelligen Werten in der schmalen
+    // Hero-Kachel proportional schrumpfen statt rechts ueberzulaufen; passt sie,
+    // bleibt die Darstellung pixelgenau identisch.
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: Row(
+        children: [
+          Text(
+            '${recipe.proteinG}g P',
+            style: tabular.copyWith(
+              color: lime,
+              fontSize: fontSize,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-        ),
-        const SizedBox(width: 10),
-        Text(
-          '${recipe.carbsG}g KH',
-          style: tabular.copyWith(
-            color: textMuted,
-            fontSize: fontSize,
-            fontWeight: FontWeight.w600,
+          const SizedBox(width: 10),
+          Text(
+            '${recipe.carbsG}g KH',
+            style: tabular.copyWith(
+              color: textMuted,
+              fontSize: fontSize,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ),
-        const SizedBox(width: 10),
-        Text(
-          '${recipe.fatG}g F',
-          style: tabular.copyWith(
-            color: textMuted,
-            fontSize: fontSize,
-            fontWeight: FontWeight.w600,
+          const SizedBox(width: 10),
+          Text(
+            '${recipe.fatG}g F',
+            style: tabular.copyWith(
+              color: textMuted,
+              fontSize: fontSize,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

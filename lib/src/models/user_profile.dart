@@ -41,6 +41,29 @@ extension ActivityLevelInfo on ActivityLevel {
       };
 }
 
+/// Ernährungspräferenz des Users. Steuert, welche Rezepte FitPilot aktiv
+/// empfiehlt (Rezept-Empfehlungen + „Passt zu deinem Ziel"). Default [none]
+/// empfiehlt alles, damit Bestands-Profile und Tests unverändert bleiben.
+/// Keine medizinische Allergie-Garantie — eine Empfehlungs-Filterung, der User
+/// kann über den Kategorie-Filter weiterhin jedes Rezept manuell durchsuchen.
+enum DietPreference { none, vegetarian, vegan, pescetarian }
+
+extension DietPreferenceInfo on DietPreference {
+  String get label => switch (this) {
+        DietPreference.none => 'Alles',
+        DietPreference.vegetarian => 'Vegetarisch',
+        DietPreference.vegan => 'Vegan',
+        DietPreference.pescetarian => 'Pescetarisch',
+      };
+
+  String get description => switch (this) {
+        DietPreference.none => 'Keine Einschränkung',
+        DietPreference.vegetarian => 'Kein Fleisch, kein Fisch',
+        DietPreference.vegan => 'Rein pflanzlich',
+        DietPreference.pescetarian => 'Vegetarisch plus Fisch',
+      };
+}
+
 /// Gewichtsziel des Users — als wöchentliche Rate gedacht (kg/Woche). Bestimmt
 /// den kcal-Auf-/Abschlag auf den Erhaltungsbedarf (BMR × Aktivitäts-PAL).
 /// Schritte werden davon getrennt als "Verbrannt" angerechnet — siehe
@@ -137,6 +160,7 @@ class UserProfile {
     this.carbsGoalG = 240,
     this.fatGoalG = 70,
     this.weightGoal = WeightGoal.maintain,
+    this.diet = DietPreference.none,
     this.onboardingCompleted = false,
   });
 
@@ -162,6 +186,10 @@ class UserProfile {
   final int fatGoalG;
   final WeightGoal weightGoal;
 
+  /// Ernährungspräferenz für die Rezept-Empfehlung. Default [DietPreference.none]
+  /// (alles). Gespiegelt nach public.profiles.diet_preference.
+  final DietPreference diet;
+
   /// True sobald der User das verpflichtende Onboarding durchlaufen hat.
   /// Steuert das Gate in [ShiftFitHomePage] — gespiegelt nach
   /// public.profiles.onboarding_completed.
@@ -182,6 +210,7 @@ class UserProfile {
     int? carbsGoalG,
     int? fatGoalG,
     WeightGoal? weightGoal,
+    DietPreference? diet,
     bool? onboardingCompleted,
   }) {
     return UserProfile(
@@ -200,6 +229,7 @@ class UserProfile {
       carbsGoalG: carbsGoalG ?? this.carbsGoalG,
       fatGoalG: fatGoalG ?? this.fatGoalG,
       weightGoal: weightGoal ?? this.weightGoal,
+      diet: diet ?? this.diet,
       onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
     );
   }

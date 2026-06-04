@@ -1,5 +1,6 @@
 import 'macro_progress.dart';
 import 'meal_analysis_result.dart';
+import 'user_profile.dart';
 
 class FitnessRecipe {
   const FitnessRecipe({
@@ -82,6 +83,48 @@ class FitnessRecipe {
 
     final macroPart = (pScore + cScore + fScore) / 4.0; // weights sum to 4
     return (macroPart * 0.7 + kcalScore * 0.3).clamp(0.0, 1.0);
+  }
+
+  /// True wenn dieses Rezept zur Ernährungspräferenz [diet] passt — die
+  /// Grundlage für die Empfehlungs-Filterung (recipes_screen). Rein über die
+  /// bestehenden [categories], damit es deterministisch und ohne Zutaten-Parsing
+  /// bleibt:
+  ///  - `Fisch`            → fischhaltig
+  ///  - `Vegetarisch`      → fleisch- UND fischfrei (markiert die veg/vegane Schiene)
+  ///  - alles übrige mit `Hauptgericht`/`High Protein` ohne diese beiden Marker
+  ///    gilt als Fleischgericht (Hähnchen/Pute/Rind etc.)
+  ///
+  /// Regeln:
+  ///  - [DietPreference.none]        → alles erlaubt
+  ///  - [DietPreference.pescetarian] → kein Fleisch, Fisch erlaubt
+  ///  - [DietPreference.vegetarian]  → kein Fleisch, kein Fisch
+  ///  - [DietPreference.vegan]       → wie vegetarian, zusätzlich nur explizit
+  ///    als `Vegetarisch` (= pflanzlich-tauglich) markierte Gerichte; Eier-/
+  ///    Milch-Gerichte ohne den Marker (z.B. Omelett) fallen raus.
+  ///
+  /// Eigen-Rezepte ([userCreated], Kategorie `Eigene`) werden NICHT gefiltert —
+  /// der User kennt seine eigenen Zutaten und soll sie immer sehen.
+  ///
+  /// Keine medizinische Allergie-Garantie, nur eine Empfehlungs-Heuristik.
+  bool matchesDiet(DietPreference diet) {
+    if (diet == DietPreference.none) return true;
+    if (userCreated) return true;
+
+    final isFish = categories.contains('Fisch');
+    final isVegetarianTagged = categories.contains('Vegetarisch');
+    // Fleisch = ein Hauptgericht/Protein-Teller, der weder als Fisch noch als
+    // vegetarisch markiert ist (Hähnchen, Pute, Rind …).
+    final isMeat = !isFish &&
+        !isVegetarianTagged &&
+        (categories.contains('Hauptgericht') ||
+            categories.contains('High Protein'));
+
+    return switch (diet) {
+      DietPreference.none => true,
+      DietPreference.pescetarian => !isMeat,
+      DietPreference.vegetarian => !isMeat && !isFish,
+      DietPreference.vegan => !isMeat && !isFish && isVegetarianTagged,
+    };
   }
 
   /// Erzeugt einen stabilen Slug fuer ein neu angelegtes User-Rezept.

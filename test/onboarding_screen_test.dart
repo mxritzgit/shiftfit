@@ -68,6 +68,12 @@ void main() {
     await tester.pumpAndSettle();
     await next();
 
+    // Ernährungsweise: Vegetarisch wählen (PROD-6 Diät-Schritt)
+    expect(find.byKey(const ValueKey('onboarding-step-diet')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('onboarding-diet-vegetarian')));
+    await tester.pumpAndSettle();
+    await next();
+
     // Zusammenfassung
     expect(find.byKey(const ValueKey('onboarding-summary-kcal')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('onboarding-finish')));
@@ -86,6 +92,7 @@ void main() {
     expect(result.activityLevel, ActivityLevel.moderate);
     expect(result.weightGoal, WeightGoal.lose1kg);
     expect(result.targetWeightKg, 73); // 78 − 5
+    expect(result.diet, DietPreference.vegetarian);
     expect(result.onboardingCompleted, isTrue);
 
     // Berechnetes Tagesziel: BMR(male,78,178,30)=1747.5 × 1.55 = 2708.6
@@ -132,10 +139,15 @@ void main() {
     await next(); // height → weight
     await next(); // weight → activity
     await next(); // activity → goal
-    // Default-Ziel ist "halten" → nächster Schritt ist direkt die Summary.
-    await next(); // goal → summary
+    // Default-Ziel ist "halten" → Zielgewicht + Tempo entfallen, nächster
+    // Schritt ist der Diät-Schritt, dann die Summary.
+    await next(); // goal → diet
 
+    // Zielgewicht-/Tempo-Schritte sind übersprungen, der Diät-Schritt nicht.
     expect(find.byKey(const ValueKey('onboarding-step-target')), findsNothing);
+    expect(find.byKey(const ValueKey('onboarding-step-diet')), findsOneWidget);
+    await next(); // diet → summary (Default-Diät „Alles" übernehmen)
+
     expect(find.byKey(const ValueKey('onboarding-summary-kcal')), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('onboarding-finish')));
@@ -143,6 +155,7 @@ void main() {
 
     expect(captured, isNotNull);
     expect(captured!.weightGoal, WeightGoal.maintain);
+    expect(captured!.diet, DietPreference.none); // Default unverändert
     expect(captured!.onboardingCompleted, isTrue);
   });
 }

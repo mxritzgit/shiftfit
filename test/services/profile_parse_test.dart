@@ -81,4 +81,21 @@ void main() {
       expect(parseProfileActivity('Athlete'), ActivityLevel.sedentary);
     });
   });
+
+  group('parseDietPreference', () {
+    // Kanonische enum-Namen roundtrippen 1:1 (so wie save() ueber .name schreibt).
+    for (final diet in DietPreference.values) {
+      test('Name "${diet.name}" roundtrippt zu $diet', () {
+        expect(parseDietPreference(diet.name), diet);
+      });
+    }
+    test('null -> none (empfiehlt alles, schraenkt nicht ungewollt ein)', () {
+      expect(parseDietPreference(null), DietPreference.none);
+    });
+    test('Muell -> none (kein Crash, keine stille Einschraenkung)', () {
+      expect(parseDietPreference('paleo'), DietPreference.none);
+      expect(parseDietPreference(''), DietPreference.none);
+      expect(parseDietPreference('Vegan'), DietPreference.none); // case-sensitiv
+    });
+  });
 }
