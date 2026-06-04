@@ -2,6 +2,7 @@ import AVFoundation
 import Flutter
 import Speech
 import UIKit
+import UserNotifications
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -9,6 +10,14 @@ import UIKit
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    // PROD-1 (flutter_local_notifications, on-device): Das Plugin braucht den
+    // UNUserNotificationCenter-Delegate auf dem AppDelegate, damit lokale
+    // Nudges auch im Vordergrund angezeigt werden und Tap-Callbacks ankommen.
+    // FlutterAppDelegate implementiert UNUserNotificationCenterDelegate bereits;
+    // wir setzen hier nur die Zuweisung. Rein lokal, KEIN APNs/Remote-Push.
+    if #available(iOS 10.0, *) {
+      UNUserNotificationCenter.current().delegate = self
+    }
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 

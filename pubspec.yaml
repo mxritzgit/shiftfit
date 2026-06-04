@@ -50,6 +50,14 @@ dependencies:
   # Profil/Tageslog/Lifetime-Stats darauf aufsetzt — ein Kaltstart offline zeigt
   # damit den letzten bekannten Stand statt der 78kg/178cm-Defaults.
   shared_preferences: ^2.3.0
+  # flutter_local_notifications + timezone tragen die on-device-Retention-
+  # Schicht (PROD-1): zeitgenau geplante, lokale Nudges (Hydration, Koffein-
+  # Stopp, Schlaf-Runway, Streak-at-risk). Bewusst KEINE Push-/APNs-/FCM-
+  # Server-Komponente — alles laeuft via zonedSchedule lokal, das haelt den
+  # Gratis-Apple-Team-Status und die Zero-Cost-Constraint. timezone liefert die
+  # TZDateTime-Basis, auf der flutter_local_notifications zonedSchedule fusst.
+  flutter_local_notifications: ^21.0.0
+  timezone: ^0.11.0
 
 dev_dependencies:
   flutter_test:

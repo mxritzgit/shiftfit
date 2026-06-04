@@ -51,6 +51,15 @@
 	<string>FitPilot liest deine Schrittzahl aus Apple Health, damit dein Tagesziel automatisch aktualisiert wird.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>FitPilot kann optional Schrittdaten in Apple Health zurückschreiben.</string>
+	<!-- PROD-1 (flutter_local_notifications, on-device): Lokale Notifications
+	     brauchen KEINEN eigenen Usage-Description-Key — der iOS-Permission-
+	     Dialog ist systemgeneriert und wird ueber requestPermissions() (alert/
+	     badge/sound) im NotificationService ausgeloest. Bewusst rein lokal via
+	     zonedSchedule, daher KEIN UIBackgroundModes/remote-notification und
+	     KEIN aps-environment (APNs) noetig -> haelt den Gratis-Apple-Team-
+	     Status. UNUserNotificationCenter-Delegate wird im AppDelegate gesetzt. -->
+	<key>UNUserNotificationCenterDelegateConfigured</key>
+	<true/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

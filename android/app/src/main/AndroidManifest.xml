@@ -2,6 +2,16 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- PROD-1 (flutter_local_notifications, on-device): POST_NOTIFICATIONS
+         loest auf Android 13+ den Runtime-Permission-Dialog aus. Wir planen
+         bewusst NUR inexakte Alarme (AndroidScheduleMode.inexactAllowWhileIdle),
+         daher KEIN SCHEDULE_EXACT_ALARM/USE_EXACT_ALARM noetig — das vermeidet
+         die Play-Policy-Sonderpruefung und die Spezial-Berechtigung.
+         RECEIVE_BOOT_COMPLETED laesst geplante Nudges einen Geraete-Neustart
+         ueberleben. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
         android:label="FitPilot"
@@ -42,6 +52,22 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- flutter_local_notifications: Receiver, der nach einem Geraete-
+             Neustart (BOOT_COMPLETED) die geplanten lokalen Nudges erneut
+             einplant. Die uebrigen Receiver des Plugins werden via Manifest-
+             Merge automatisch eingebunden; dieser Boot-Receiver braucht den
+             expliziten Intent-Filter, um die Reschedule-Logik zu triggern. -->
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

@@ -11,6 +11,10 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // flutter_local_notifications (PROD-1) nutzt java.time-APIs, die auf
+        // aelteren Android-Versionen erst durch Core-Library-Desugaring
+        // verfuegbar werden. Pflicht laut Plugin-Setup ab v6+.
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -41,4 +45,10 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Core-Library-Desugaring fuer flutter_local_notifications (java.time auf
+    // aelteren Android-Versionen). Version >= 2.1.4 wird vom Plugin gefordert.
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
