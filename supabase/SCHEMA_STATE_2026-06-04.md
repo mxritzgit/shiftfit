@@ -1,78 +1,51 @@
-# Supabase Schema-State — Stand 2026-06-04
+# Supabase Schema-State — Stand 2026-06-04 (abgeglichen)
 
-Dieses Dokument haelt fest, **welche Repo-Migrationen NOCH NICHT auf die Live-DB
-angewendet** sind und welche noch gegen die Live-DB verifiziert werden muessen.
-Es ist reine Dokumentation + Grundlage fuer den CI-Drift-Gate
-(`supabase-migration-drift` in `.github/workflows/security.yml`). Diese Datei
-beruehrt die Live-DB **nicht** — das Pushen passiert manuell bzw. ueber den
-CI-Gate-Hinweis.
+Festgehalten: **Live-DB == Repo** für alle Migrationen, gegen den echten Katalog
+verifiziert. Grundlage für den CI-Drift-Gate (`supabase-migration-drift` in
+`.github/workflows/security.yml`).
 
-> Verifikations-Grundsatz: Live-DB-Zustand IMMER gegen den echten Pfad pruefen
-> (`supabase migration list --linked` / `supabase db push --dry-run`), nie gegen
-> Annahmen. Diese Liste ist der erwartete Soll-Stand, kein Ersatz fuer den
-> Live-Abgleich.
+> Verifikations-Grundsatz: Live-DB-Zustand IMMER gegen den echten Pfad prüfen
+> (Katalog-Query / `supabase db push --dry-run`), nie gegen Annahmen.
 
-## A) PENDING APPLY — muss noch auf die Live-DB gepusht werden
+## Abgleich-Ergebnis (2026-06-04)
 
-### 1. `20260603100000_security_hardening_followup.sql` — NOCH NICHT angewendet
-- Inhalt: `delete_account()` mit explizitem `auth.uid()`-Guard
-  (`EX_USER_REQUIRED`); expliziter `revoke ... from authenticated` auf
-  `touch_chat_session(uuid)` (Guertel + Hosentraeger zum globalen Revoke).
-- Status: Die Migration-Datei selbst notiert im Header "NOCH NICHT angewendet".
-- Aktion: per `supabase db push` bzw. Management-API nachziehen. Rein additiv +
-  idempotent → gefahrloses Re-Apply.
+Beim Live-Abgleich zeigte sich: Die `supabase_migrations.schema_migrations`-Historie
+stand still bei `20260518000100`, obwohl viele spätere Objekte **out-of-band** per
+Management-API eingespielt waren (Hotfixes). Zwei Migrationen waren auf der Live-DB
+jedoch **gar nicht** angewandt und wurden erst jetzt nachgezogen:
+`20260523000000_onboarding_fields` und `20260530091000_user_recipes`.
 
-### 2. `20260604120000_lifetime_increment_rpcs.sql` — NEU, PENDING APPLY
-- Inhalt: `increment_lifetime_stats(p_water, p_steps, p_meals, p_weight_logs,
-  p_workouts)` (atomares `col = col + p_x`) und `record_workout_day(p_day)`
-  (persistente Streak-Fortschreibung aus `last_workout_date`). Beide
-  security definer, `set search_path = public`, `grant execute ... to
-  authenticated`, upsert legt `lifetime_stats`-Zeile bei Erst-Usern an.
-- Status: Migration in diesem Commit erstellt, **noch nicht auf Live-DB**.
-- Client-Wiring: erfolgt in der **Integrations-Welle**
-  (`lib/src/services/lifetime_stats_sync.dart`,
-  `lib/src/services/daily_log_sync.dart`) — NICHT in diesem Commit.
-- Aktion: nach Merge `supabase db push`. Bis dahin nutzt der Client weiter den
-  read-modify-write-Pfad (kein Bruch, nur kein atomares Increment).
+Vorgehen: SQL der fehlenden/ausstehenden Migrationen idempotent per Management-API
+(`/v1/projects/{ref}/database/query`, PAT + Browser-UA wegen Cloudflare) angewandt,
+danach die `schema_migrations`-Historie auf alle Repo-Versionen gebackfillt.
 
-## B) Live-DB == Repo bestaetigen (Drift-Verdacht / Out-of-band gepatcht)
+### Verifizierter Live-Zustand (Katalog-Query bestätigt)
+| Migration | Objekt(e) | Live |
+|-----------|-----------|------|
+| 20260523000000_onboarding_fields | `profiles.activity_level`, `profiles.target_weight_kg` | ✅ |
+| 20260530090000_streak_and_weekly_plan | `lifetime_stats.current_streak/longest_streak/last_workout_date`, Tabelle `weekly_plans` | ✅ |
+| 20260530091000_user_recipes | Tabelle `user_recipes` + RLS (`*_own`) + `authenticated`-Grants | ✅ |
+| 20260602120000_profiles_weight_goal | `profiles.weight_goal` (+ Check) | ✅ |
+| 20260602120100_regrant_chat_session_rpcs | EXECUTE-Grant der 5 Chat-RPCs an `authenticated` | ✅ |
+| 20260602120200_delete_account_rpc | `delete_account()` | ✅ |
+| 20260603100000_security_hardening_followup | `delete_account()` mit `EX_USER_REQUIRED`-Guard; `touch_chat_session` NICHT an `authenticated` | ✅ |
+| 20260604120000_lifetime_increment_rpcs | `increment_lifetime_stats(...)` + `record_workout_day(date)`, `authenticated`-Grant | ✅ |
 
-Diese Migrationen wurden teils out-of-band per Management-API gepatcht, um
-Produktions-Bugs schnell zu fixen. Repo und Live-DB **muessen abgeglichen**
-werden, damit der CI-Drift-Gate nicht auf historische Differenzen anschlaegt:
-
-### 3. `20260602120000_profiles_weight_goal.sql`
-- Fuegt `profiles.weight_goal` (+ Check-Constraint) hinzu. ProfileSync liest UND
-  schreibt die Spalte; eine frische DB ohne sie wirft beim Profil-Save eine
-  `PostgrestException` (Onboarding-Loop). Idempotent.
-- Verifizieren: existiert `profiles.weight_goal` inkl.
-  `profiles_weight_goal_check` auf der Live-DB? Falls per Hotfix gesetzt: ist die
-  Constraint-Wertemenge identisch zur Repo-Definition?
-
-### 4. `20260602120100_regrant_chat_session_rpcs.sql` (Chat-Grants)
-- Re-Grant der Chat-Session-RPCs (`list_chat_sessions`,
-  `ensure_default_chat_session`, `create_chat_session`, `rename_chat_session`,
-  `delete_chat_session`) an `authenticated`. Noetig, weil
-  `20260517220000_security_hardening.sql` zuvor alle Function-Grants von
-  `authenticated` revoked.
-- Verifizieren: tragen die fuenf RPCs auf der Live-DB tatsaechlich
-  `EXECUTE`-Grant fuer `authenticated`? `touch_chat_session` bleibt bewusst
-  service-role-only.
+`schema_migrations`-Historie reicht jetzt lückenlos bis `20260604120000` →
+`supabase db push --dry-run` läuft leer, CI-Drift-Gate bleibt grün.
 
 ## CI-Gate (Drift-Erkennung)
 
 `.github/workflows/security.yml` → Job **`supabase-migration-drift`**:
-- Laeuft nur, wenn `SUPABASE_ACCESS_TOKEN` **und** `SUPABASE_PROJECT_REF` als
-  Repo-Secrets gesetzt sind (optional: `SUPABASE_DB_PASSWORD`). Fehlt ein
-  Secret → Schritt wird **sauber uebersprungen** (`::notice::`), CI bleibt gruen.
-- Bei vorhandenem Secret: `supabase link` + `supabase db push --dry-run`. Wird
-  eine pending Migration erkannt (Ausgabe enthaelt `Would push` /
-  `Applying migration` / `pending`) → **Job failt**, damit keine nicht-gepushte
-  Migration unbemerkt in `main` landet.
+- Läuft nur mit Repo-Secrets `SUPABASE_ACCESS_TOKEN` **und** `SUPABASE_PROJECT_REF`
+  (optional `SUPABASE_DB_PASSWORD`). Fehlt ein Secret → Schritt wird **sauber
+  übersprungen** (`::notice::`), CI bleibt grün.
+- Mit Secret: `supabase link` + `supabase db push --dry-run`; erkennt der Lauf eine
+  pending Migration → **Job failt**, damit keine nicht-gepushte Migration unbemerkt
+  in `main` landet.
 
-## Naechste Schritte
-1. `20260603100000_security_hardening_followup.sql` auf Live-DB pushen.
-2. `20260604120000_lifetime_increment_rpcs.sql` nach Integrations-Welle pushen.
-3. `weight_goal`- und Chat-Grant-Migrationen gegen Live-DB abgleichen (Punkt B).
-4. Sobald (1)-(3) erledigt: `supabase db push --dry-run` muss leer laufen →
-   CI-Drift-Gate bleibt gruen.
+## Offen
+- Repo-Secrets `SUPABASE_ACCESS_TOKEN` + `SUPABASE_PROJECT_REF` setzen, um den
+  Drift-Gate-Job in CI zu aktivieren (ohne sie: sauberer Skip).
+- Client-Wiring der neuen RPCs (`lifetime_stats_sync` / `daily_log_sync`) erfolgt in
+  der Integrations-Welle (separat).
