@@ -1,5 +1,6 @@
 import 'package:clock/clock.dart';
 
+import '../services/local_day.dart';
 import 'meal_analysis_result.dart';
 
 enum MealSlot { breakfast, lunch, dinner, snack }
@@ -35,12 +36,26 @@ class LoggedMeal {
     required this.result,
     required this.loggedAt,
     this.forcedSlot,
+    this.localDay,
   });
 
   final String id;
   final MealAnalysisResult result;
   final DateTime loggedAt;
   final MealSlot? forcedSlot;
+
+  /// DATA-6: kanonischer lokaler Tages-Schluessel (`YYYY-MM-DD`) dieser
+  /// Mahlzeit, wie er serverseitig in `logged_meals.local_day` steht.
+  /// Optional/additiv: aeltere Zeilen (und die bestehende home_page-
+  /// Konstruktion ueber `LoggedMeal(...)` ohne dieses Feld) lassen es null —
+  /// dann faellt das Bucketing auf die alte `isSameDay(.toLocal())`-Logik
+  /// zurueck. Frisch geloggte/geladene Mahlzeiten tragen den Schluessel.
+  final String? localDay;
+
+  /// Der lokale Tages-Schluessel dieser Mahlzeit — bevorzugt der persistierte
+  /// [localDay], sonst aus der lokalen Wanduhr von [loggedAt] berechnet.
+  /// Immer non-null, damit das Bucketing einen stabilen Schluessel hat.
+  String get effectiveLocalDay => localDay ?? localDayKey(loggedAt.toLocal());
 
   MealSlot get slot {
     if (forcedSlot != null) {
@@ -52,12 +67,14 @@ class LoggedMeal {
   LoggedMeal copyWith({
     MealAnalysisResult? result,
     MealSlot? forcedSlot,
+    String? localDay,
   }) {
     return LoggedMeal(
       id: id,
       result: result ?? this.result,
       loggedAt: loggedAt,
       forcedSlot: forcedSlot ?? this.forcedSlot,
+      localDay: localDay ?? this.localDay,
     );
   }
 }

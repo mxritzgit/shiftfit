@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/caffeine_entry.dart';
 import '../models/sleep_entry.dart';
 import '../models/weight_log.dart';
+import 'local_day.dart';
 
 /// Buendelt Sync fuer kleine Zeitreihen: weight_log, caffeine_entries,
 /// sleep_entries. Jede Methode ist atomar gegen ihre Tabelle.
@@ -55,15 +56,18 @@ class TrackingSync {
   // ---------- caffeine_entries ----------
 
   Future<CaffeineDay> loadCaffeineDay(DateTime date) async {
-    final dayStart = DateTime(date.year, date.month, date.day);
-    final dayEnd = dayStart.add(const Duration(days: 1));
+    // DATA-6: auf den kanonischen lokalen Tages-Schluessel filtern statt auf
+    // ein UTC-Halboffenes Fenster aus naiver lokaler Mitternacht. Das alte
+    // Fenster konnte ueber eine DST-/Zonen-Aenderung hinweg vom Meals-Bucketing
+    // (isSameDay(.toLocal())) abweichen — ein 23:45-Ortszeit-Eintrag landete
+    // dann fuer Koffein und Mahlzeiten in unterschiedlichen Tagen.
+    final dayKey = localDayKey(date);
     try {
       final rows = await _client
           .from('caffeine_entries')
           .select('consumed_at, mg')
           .eq('user_id', _userId)
-          .gte('consumed_at', dayStart.toUtc().toIso8601String())
-          .lt('consumed_at', dayEnd.toUtc().toIso8601String())
+          .eq('local_day', dayKey)
           .order('consumed_at', ascending: true);
       final entries = rows.map<CaffeineEntry>((row) {
         return CaffeineEntry(
@@ -85,6 +89,9 @@ class TrackingSync {
       await _client.from('caffeine_entries').insert({
         'user_id': _userId,
         'consumed_at': timestamp.toUtc().toIso8601String(),
+        // DATA-6: local_day aus der LOKALEN Wanduhr des Eintrags ableiten, damit
+        // loadCaffeineDay denselben Tag wieder findet (kein UTC-Drift).
+        'local_day': localDayKey(timestamp),
         'mg': mg,
       });
     } catch (e, stack) {
@@ -95,15 +102,15 @@ class TrackingSync {
   }
 
   Future<void> resetCaffeineDay(DateTime date) async {
-    final dayStart = DateTime(date.year, date.month, date.day);
-    final dayEnd = dayStart.add(const Duration(days: 1));
+    // DATA-6: denselben kanonischen lokalen Tages-Schluessel loeschen, den
+    // loadCaffeineDay liest — symmetrisch zum Insert.
+    final dayKey = localDayKey(date);
     try {
       await _client
           .from('caffeine_entries')
           .delete()
           .eq('user_id', _userId)
-          .gte('consumed_at', dayStart.toUtc().toIso8601String())
-          .lt('consumed_at', dayEnd.toUtc().toIso8601String());
+          .eq('local_day', dayKey);
     } catch (e, stack) {
       dev.log('TrackingSync.resetCaffeineDay failed',
           error: e, stackTrace: stack, name: 'tracking_sync');
@@ -152,10 +159,7 @@ class TrackingSync {
     }
   }
 
-  static String _dateOnly(DateTime d) {
-    final y = d.year.toString().padLeft(4, '0');
-    final m = d.month.toString().padLeft(2, '0');
-    final day = d.day.toString().padLeft(2, '0');
-    return '$y-$m-$day';
-  }
+  // sleep_date nutzt denselben naiv-lokalen YYYY-MM-DD-Schluessel wie
+  // local_day — beide ueber den geteilten localDayKey-Helper (DATA-6).
+  static String _dateOnly(DateTime d) => localDayKey(d);
 }

@@ -23,7 +23,7 @@ class MealsSync {
     try {
       final rows = await _client
           .from('logged_meals')
-          .select('id, logged_at, forced_slot, payload')
+          .select('id, logged_at, forced_slot, local_day, payload')
           .eq('user_id', _userId)
           .order('logged_at', ascending: false);
       return rows.map<LoggedMeal>((row) {
@@ -31,6 +31,10 @@ class MealsSync {
           id: row['id'] as String,
           loggedAt: DateTime.parse(row['logged_at'] as String).toLocal(),
           forcedSlot: _parseSlot(row['forced_slot']?.toString()),
+          // DATA-6: kanonischen lokalen Tages-Schluessel mitfuehren wenn die
+          // Zeile ihn hat. Aeltere Zeilen ohne Spalte/null -> Bucketing faellt
+          // auf isSameDay(.toLocal()) zurueck (siehe meal_totals).
+          localDay: row['local_day']?.toString(),
           result: mealResultFromJson(
             (row['payload'] as Map).cast<String, dynamic>(),
           ),
@@ -52,6 +56,11 @@ class MealsSync {
         'id': meal.id,
         'user_id': _userId,
         'logged_at': meal.loggedAt.toUtc().toIso8601String(),
+        // DATA-6: kanonischer lokaler Tages-Schluessel aus der LOKALEN Wanduhr
+        // des Eintrags. Additiv — wird aus loggedAt berechnet wenn die
+        // home_page-Konstruktion ihn (noch) nicht setzt, sodass Koffein und
+        // Mahlzeiten denselben Tag teilen (kein UTC-Drift ueber DST/Zone).
+        'local_day': meal.effectiveLocalDay,
         'forced_slot': meal.forcedSlot?.name,
         'meal_name': meal.result.mealName,
         'calories_kcal': meal.result.caloriesKcal,

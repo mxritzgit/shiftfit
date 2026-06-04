@@ -36,11 +36,52 @@ jobs:
 
       # Defines sind im CI Dummies — wir wollen nur dass Code kompiliert
       # und Widget-Tests laufen, nicht gegen Supabase netzwerken.
+      # --coverage erzeugt coverage/lcov.info fuer den Floor-Check unten.
       - name: test
         run: |
-          flutter test \
+          flutter test --coverage \
             --dart-define=SUPABASE_URL=https://ci.invalid \
             --dart-define=SUPABASE_ANON_KEY=ci-dummy-key
+
+      # Coverage-Floor als Ratschet, nicht als Blocker.
+      #
+      # Profil der App: ~22k LOC sind UI (lib/src/widgets + screens), die nur
+      # punktuell von Widget-Tests beruehrt werden; die ~4,5k LOC Logik/Sync
+      # (models + services) sind dagegen dicht unit-getestet. Daraus ergibt sich
+      # eine realistische Gesamt-Line-Coverage im Bereich ~30-40 %.
+      #
+      # Der Floor steht bewusst ein paar Punkte UNTER dieser Schaetzung (30 %),
+      # damit er die jetzt aufgebaute Logik-/Sync-Coverage gegen stilles Erodieren
+      # absichert, ohne den Build bei harmlosen UI-Aenderungen faelschlich rot zu
+      # machen. Steigt die Coverage nachhaltig, kann der Floor spaeter angehoben
+      # werden (Ratschet-Prinzip).
+      - name: Coverage floor check
+        env:
+          COVERAGE_FLOOR: '30'
+        run: |
+          set -euo pipefail
+          LCOV=coverage/lcov.info
+          if [ ! -f "$LCOV" ]; then
+            echo "::error::coverage/lcov.info nicht gefunden — lief 'flutter test --coverage'?"
+            exit 1
+          fi
+          # LCOV: LF = lines found (instrumentiert), LH = lines hit (getroffen).
+          # Total-Line-Coverage = sum(LH) / sum(LF) * 100.
+          PCT="$(awk -F: '
+            /^LF:/ { found += $2 }
+            /^LH:/ { hit   += $2 }
+            END {
+              if (found == 0) { print "0.0"; exit }
+              printf "%.1f", (hit / found) * 100
+            }
+          ' "$LCOV")"
+          echo "Total line coverage: ${PCT}% (floor: ${COVERAGE_FLOOR}%)"
+          # Float-Vergleich portabel via awk (bash kann nur Integer).
+          if awk -v p="$PCT" -v f="$COVERAGE_FLOOR" 'BEGIN { exit !(p < f) }'; then
+            echo "::error::Line-Coverage ${PCT}% liegt unter dem Floor von ${COVERAGE_FLOOR}%. Bitte Logik-/Sync-Tests ergaenzen (Floor ist ein Ratschet, kein Stylegate)."
+            exit 1
+          fi
+          echo "::notice::Coverage-Floor erfuellt: ${PCT}% >= ${COVERAGE_FLOOR}%."
 
   pub-outdated:
     name: Flutter pub outdated (Info)
