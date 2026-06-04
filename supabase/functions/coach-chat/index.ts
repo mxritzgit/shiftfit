@@ -599,6 +599,11 @@ Deno.serve(async (req: Request) => {
   // 1) User identifizieren
   const userId = await userIdFromJwt(req.headers.get("authorization"), supabaseUrl, anonKey);
   if (!userId) return json({ error: "Unauthorized" }, 401);
+  // userId stammt aus dem JWT (/auth/v1/user), wird aber unten roh in
+  // PostgREST-Query-URLs interpoliert (loadHistory / ensureSession). Strikt
+  // gegen das UUID-Muster pruefen — gleiche Defense wie bei session_id, bevor
+  // der Wert irgendeine Query erreicht.
+  if (!SESSION_ID_RE.test(userId)) return json({ error: "Unauthorized" }, 401);
 
   const ipGate = await rpcConsumeEdgeRateLimit(
     serviceKey,

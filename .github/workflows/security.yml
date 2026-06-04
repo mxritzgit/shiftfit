@@ -105,3 +105,62 @@ jobs:
             deno check "$fn" || exit 1
             echo "::endgroup::"
           done
+
+  supabase-migration-drift:
+    name: Supabase migration drift (Linked DB)
+    runs-on: ubuntu-latest
+    # Faellt nur, wenn die Live-DB von den Repo-Migrationen abweicht (pending
+    # Migration nicht gepusht). Gegated hinter Secrets: ohne SUPABASE_ACCESS_TOKEN
+    # + SUPABASE_PROJECT_REF wird der Drift-Schritt sauber uebersprungen, damit
+    # Forks/PRs ohne Secret-Zugriff den Build nicht rot machen.
+    steps:
+      - uses: actions/checkout@v4
+
+      # Verfuegbarkeit der Secrets EINMAL als Output festhalten. Secrets duerfen
+      # nicht direkt in `if:`-Job-Conditions stehen, daher der Umweg ueber einen
+      # Step-Output.
+      - name: Check Supabase secrets
+        id: secrets
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          if [ -n "$SUPABASE_ACCESS_TOKEN" ] && [ -n "$SUPABASE_PROJECT_REF" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::SUPABASE_ACCESS_TOKEN/SUPABASE_PROJECT_REF nicht gesetzt — Migration-Drift-Check uebersprungen."
+          fi
+
+      - name: Install Supabase CLI
+        if: steps.secrets.outputs.available == 'true'
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link project
+        if: steps.secrets.outputs.available == 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"
+
+      # `db push --dry-run` listet Migrationen, die lokal vorhanden, aber auf der
+      # Live-DB NOCH NICHT angewendet sind. Wenn die Ausgabe solche Eintraege
+      # enthaelt -> Drift -> Job failt. So kann keine PENDING-Migration unbemerkt
+      # in main landen, ohne dass sie auch deployt wurde.
+      - name: Migration drift check (db push --dry-run)
+        if: steps.secrets.outputs.available == 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          echo "::group::supabase db push --dry-run"
+          OUT="$(supabase db push --dry-run 2>&1)"
+          echo "$OUT"
+          echo "::endgroup::"
+          if echo "$OUT" | grep -qiE 'Would push|Applying migration|pending'; then
+            echo "::error::Pending Supabase-Migration(en) erkannt — Live-DB weicht vom Repo ab. Bitte 'supabase db push' ausfuehren. Siehe supabase/SCHEMA_STATE_2026-06-04.md."
+            exit 1
+          fi
+          echo "Keine Migration-Drift erkannt — Live-DB == Repo."
