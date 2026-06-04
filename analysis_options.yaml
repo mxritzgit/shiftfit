@@ -20,11 +20,16 @@ analyzer:
     - "**/*.g.dart"
     - "build/**"
   errors:
-    # Orphan-Handler aus dem FAB-Removal (siehe Project-Memory):
-    # _addWater/_addCaffeine/_addSteps/_logSleep liegen bewusst auf
-    # Halde, bis Wasser/Koffein/Schlaf wieder eine UI-Affordance kriegen.
-    unused_element: ignore
-    unused_field: ignore
+    # ARCH-2: Der globale unused_element/unused_field-Ignore versteckte frisch
+    # entstandenen toten Code (z.B. _addSteps/_resetWater in
+    # shiftfit_home_page.dart). Die Leichen sind entfernt, der frueher als
+    # "Halde" deklarierte Rest (Wasser/Koffein/Schlaf-Handler) ist inzwischen
+    # via Today-Log-Sheet verdrahtet. Zurueck auf `warning`, damit kuenftiger
+    # toter Code wieder im Analyzer auftaucht statt still liegenzubleiben.
+    # Bewusst `warning` (nicht `error`), damit ein vereinzelter Orphan
+    # `flutter analyze` nicht hart rot macht.
+    unused_element: warning
+    unused_field: warning
     # `info`-Level Style-Lints sollen `flutter analyze` nicht fail-en.
     unnecessary_underscores: ignore
     unnecessary_brace_in_string_interps: ignore

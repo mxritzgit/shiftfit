@@ -30,8 +30,10 @@ class MealAnalysisScreen extends StatelessWidget {
     DateTime? selectedDate,
     ValueChanged<DateTime>? onDateSelected,
     this.visiblePastDays = 4,
-    void Function(MealAnalysisResult, MealSlot)? onAddMeal,
-    ValueChanged<int>? onAdjustDailyKcal,
+    String Function(MealAnalysisResult, MealSlot)? onAddMeal,
+    void Function(String id, MealAnalysisResult scaled)? onUpdateMeal,
+    this.isFavorite,
+    this.onToggleFavorite,
     ValueChanged<String>? onRemoveFavorite,
     ValueChanged<String>? onRemoveMeal,
   }) : analyzer = analyzer ?? const EdgeFunctionMealAnalyzer(),
@@ -40,13 +42,15 @@ class MealAnalysisScreen extends StatelessWidget {
        selectedDate = DateUtils.dateOnly(selectedDate ?? DateTime.now()),
        onDateSelected = onDateSelected ?? _noopDate,
        onAddMeal = onAddMeal ?? _noopAdd,
-       onAdjustDailyKcal = onAdjustDailyKcal ?? _noopInt,
+       onUpdateMeal = onUpdateMeal ?? _noopUpdate,
        onRemoveFavorite = onRemoveFavorite ?? _noopString,
        onRemoveMeal = onRemoveMeal ?? _noopString;
 
-  static void _noopAdd(MealAnalysisResult _, MealSlot __) {}
+  // Default-onAddMeal liefert eine leere id zurueck (Preview/Test ohne echte
+  // Persistenz). Eine spaetere Um-Portionierung trifft dann den No-op-Update.
+  static String _noopAdd(MealAnalysisResult _, MealSlot __) => '';
   static void _noopDate(DateTime _) {}
-  static void _noopInt(int _) {}
+  static void _noopUpdate(String _, MealAnalysisResult __) {}
   static void _noopString(String _) {}
 
   // Fast EU mirror (Meilisearch via Cloud Run proxy) with live OFF as fallback.
@@ -70,8 +74,14 @@ class MealAnalysisScreen extends StatelessWidget {
   final DateTime selectedDate;
   final ValueChanged<DateTime> onDateSelected;
   final int visiblePastDays;
-  final void Function(MealAnalysisResult, MealSlot) onAddMeal;
-  final ValueChanged<int> onAdjustDailyKcal;
+  final String Function(MealAnalysisResult, MealSlot) onAddMeal;
+  final void Function(String id, MealAnalysisResult scaled) onUpdateMeal;
+
+  /// Ist die Mahlzeit als Favorit angeheftet? Null -> kein Herz.
+  final bool Function(MealAnalysisResult)? isFavorite;
+
+  /// Favoriten-Toggle. Null -> kein Herz.
+  final ValueChanged<MealAnalysisResult>? onToggleFavorite;
   final ValueChanged<String> onRemoveFavorite;
   final ValueChanged<String> onRemoveMeal;
 
@@ -93,7 +103,9 @@ class MealAnalysisScreen extends StatelessWidget {
       favorites: favorites,
       existingMeals: existingForDay,
       onAdd: onAddMeal,
-      onAdjustDailyKcal: onAdjustDailyKcal,
+      onUpdateMeal: onUpdateMeal,
+      isFavorite: isFavorite,
+      onToggleFavorite: onToggleFavorite,
       onRemoveFavorite: onRemoveFavorite,
       onRemoveMeal: onRemoveMeal,
     );

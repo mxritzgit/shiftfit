@@ -117,13 +117,15 @@ class MealsSync {
     try {
       final rows = await _client
           .from('favorite_meals')
-          .select('favorite_key, added_at, payload')
+          .select('favorite_key, added_at, payload, pinned')
           .eq('user_id', _userId)
           .order('added_at', ascending: false);
       return rows.map<FavoriteMeal>((row) {
         return FavoriteMeal(
           id: row['favorite_key'] as String,
           addedAt: DateTime.parse(row['added_at'] as String).toLocal(),
+          // Aeltere Zeilen ohne Spalte / null -> false (Auto-Recent).
+          pinned: (row['pinned'] as bool?) ?? false,
           result: mealResultFromJson(
             (row['payload'] as Map).cast<String, dynamic>(),
           ),
@@ -149,6 +151,7 @@ class MealsSync {
         'source_label': fav.result.sourceLabel,
         'payload': mealResultToJson(fav.result),
         'added_at': fav.addedAt.toUtc().toIso8601String(),
+        'pinned': fav.pinned,
       }, onConflict: 'user_id,favorite_key');
     } catch (e, stack) {
       dev.log('MealsSync.upsertFavorite failed',

@@ -15,6 +15,8 @@ class RecipesScreen extends StatefulWidget {
     required this.onAddMeal,
     this.remainingMacros,
     this.onCreateRecipe,
+    this.onDeleteRecipe,
+    this.initialUserRecipes = const <FitnessRecipe>[],
   });
 
   final void Function(MealAnalysisResult result, MealSlot slot) onAddMeal;
@@ -30,6 +32,14 @@ class RecipesScreen extends StatefulWidget {
   /// Rezept lebt nur lokal in dieser Session.
   final ValueChanged<FitnessRecipe>? onCreateRecipe;
 
+  /// Optionaler Hook zum Loeschen eines Eigen-Rezepts (per slug). Wird vom
+  /// Aufrufer an user_recipes.delete weitergereicht. Null → keine Persistenz.
+  final ValueChanged<String>? onDeleteRecipe;
+
+  /// Beim Boot aus Supabase geladene Eigen-Rezepte. Werden als Anfangsstand
+  /// uebernommen, damit selbst angelegte Rezepte einen Neustart ueberleben.
+  final List<FitnessRecipe> initialUserRecipes;
+
   @override
   State<RecipesScreen> createState() => _RecipesScreenState();
 }
@@ -38,9 +48,34 @@ class _RecipesScreenState extends State<RecipesScreen> {
   String selectedFilter = 'Alle';
   String query = '';
 
-  /// In dieser Session angelegte Eigen-Rezepte. Werden vorn an die Liste
-  /// gestellt, damit der User sie sofort findet.
-  final List<FitnessRecipe> _userRecipes = <FitnessRecipe>[];
+  /// Eigen-Rezepte: beim Boot aus user_recipes geladen + in dieser Session
+  /// angelegte. Werden vorn an die Liste gestellt, damit der User sie sofort
+  /// findet.
+  late List<FitnessRecipe> _userRecipes;
+
+  /// True, sobald der User in dieser Session selbst etwas angelegt/geloescht
+  /// hat. Dann darf ein spaeter nachgeladener Boot-Stand die lokale Liste
+  /// NICHT mehr ueberschreiben.
+  bool _locallyMutated = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _userRecipes = List<FitnessRecipe>.of(widget.initialUserRecipes);
+  }
+
+  @override
+  void didUpdateWidget(covariant RecipesScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Boot laedt die Eigen-Rezepte ggf. NACH dem ersten Build nach (async).
+    // Solange der User in dieser Session noch nichts selbst geaendert hat,
+    // den frisch geladenen Stand uebernehmen; sonst lokale Aenderungen
+    // (neu erstellt/geloescht) NICHT ueberschreiben.
+    if (!_locallyMutated &&
+        !identical(oldWidget.initialUserRecipes, widget.initialUserRecipes)) {
+      _userRecipes = List<FitnessRecipe>.of(widget.initialUserRecipes);
+    }
+  }
 
   List<FitnessRecipe> get _allRecipes =>
       <FitnessRecipe>[..._userRecipes, ...fitnessRecipes];
@@ -77,9 +112,27 @@ class _RecipesScreenState extends State<RecipesScreen> {
         builder: (_) => RecipeDetailScreen(
           recipe: recipe,
           onAddMeal: widget.onAddMeal,
+          // Loeschen nur fuer selbst angelegte Rezepte anbieten.
+          onDelete: recipe.userCreated ? () => _deleteUserRecipe(recipe) : null,
         ),
       ),
     );
+  }
+
+  /// Loescht ein Eigen-Rezept lokal + (falls verdrahtet) persistent via
+  /// onDeleteRecipe(slug). Wird aus dem Detail-Screen heraus aufgerufen.
+  void _deleteUserRecipe(FitnessRecipe recipe) {
+    setState(() {
+      _userRecipes = _userRecipes
+          .where((r) => r.slug != recipe.slug)
+          .toList(growable: true);
+      _locallyMutated = true;
+    });
+    widget.onDeleteRecipe?.call(recipe.slug);
+    if (mounted) {
+      showAppSnack(context, '„${recipe.title}" gelöscht.',
+          icon: Icons.delete_outline_rounded, accent: danger);
+    }
   }
 
   Future<void> _openCreateSheet() async {
@@ -91,7 +144,10 @@ class _RecipesScreenState extends State<RecipesScreen> {
       builder: (_) => const _CreateRecipeSheet(),
     );
     if (recipe == null || !mounted) return;
-    setState(() => _userRecipes.insert(0, recipe));
+    setState(() {
+      _userRecipes.insert(0, recipe);
+      _locallyMutated = true;
+    });
     widget.onCreateRecipe?.call(recipe);
     showAppSnack(context, '„${recipe.title}" gespeichert.',
         icon: Icons.bookmark_added_rounded, accent: forgeLime);
@@ -561,10 +617,15 @@ class RecipeDetailScreen extends StatelessWidget {
     super.key,
     required this.recipe,
     required this.onAddMeal,
+    this.onDelete,
   });
 
   final FitnessRecipe recipe;
   final void Function(MealAnalysisResult result, MealSlot slot) onAddMeal;
+
+  /// Optionaler Loeschen-Hook (nur fuer Eigen-Rezepte gesetzt). Schliesst den
+  /// Detail-Screen und meldet die Loeschung an den Aufrufer.
+  final VoidCallback? onDelete;
 
   Future<void> _showMealPicker(BuildContext context) async {
     final slot = await showModalBottomSheet<MealSlot>(
@@ -608,7 +669,22 @@ class RecipeDetailScreen extends StatelessWidget {
                     onTap: () => Navigator.of(context).pop(),
                   ),
                   const Spacer(),
-                  const _GlassBadge(text: 'FitPilot Rezept', dark: true),
+                  if (onDelete != null) ...[
+                    _RoundIconButton(
+                      key: const ValueKey('recipe-detail-delete'),
+                      icon: Icons.delete_outline_rounded,
+                      iconColor: danger,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        onDelete!();
+                      },
+                    ),
+                    const SizedBox(width: 10),
+                  ],
+                  _GlassBadge(
+                    text: recipe.userCreated ? 'Eigenes Rezept' : 'FitPilot Rezept',
+                    dark: true,
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
@@ -1208,10 +1284,16 @@ class _MacroRow extends StatelessWidget {
 }
 
 class _RoundIconButton extends StatelessWidget {
-  const _RoundIconButton({super.key, required this.icon, required this.onTap});
+  const _RoundIconButton({
+    super.key,
+    required this.icon,
+    required this.onTap,
+    this.iconColor = textPrimary,
+  });
 
   final IconData icon;
   final VoidCallback onTap;
+  final Color iconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -1226,7 +1308,7 @@ class _RoundIconButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(rCard),
           border: Border.all(color: hairline),
         ),
-        child: Icon(icon, color: textPrimary, size: 20),
+        child: Icon(icon, color: iconColor, size: 20),
       ),
     );
   }

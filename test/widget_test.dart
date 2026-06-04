@@ -370,6 +370,108 @@ void main() {
     );
   });
 
+  // PROD-3: Re-Portionierung einer bereits geloggten Mahlzeit skaliert kcal UND
+  // Makros (frueher froren Protein/KH/Fett ein und der kcal-Delta traf zudem die
+  // FALSCHE — erste — Mahlzeit des Tages). 300 g / 30 g Protein -> 400 g muss
+  // Protein auf ~40 g hochskalieren (Makro-Balken zeigt 40/130g).
+  testWidgetsRobust('Re-portioning a logged meal scales macros, not just kcal', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      ShiftFitApp(
+        mealAnalyzer: _MacroMealAnalyzer(),
+        photoInput: _FakeMealPhotoInput(),
+      ),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('nav-Food')));
+    await tester.pumpAndSettle();
+
+    // Vor dem Loggen: Protein 0/130g.
+    expect(find.text('0/130g'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('food-action-ai')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('analyse-camera-button')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('analyse-result-card')), findsOneWidget);
+
+    // Hinzufuegen -> 30 g Protein im Tageswert.
+    await tester.ensureVisible(find.byKey(const ValueKey('analyse-add-daily-button')));
+    await tester.tap(find.byKey(const ValueKey('analyse-add-daily-button')));
+    await tester.pumpAndSettle();
+    expect(find.text('Zu heute hinzugefügt'), findsOneWidget);
+
+    // Re-Portionierung: 300 g -> 400 g (Einzelposten-Sheet, ein synthetischer
+    // Posten fuer die nicht-itemisierte Mahlzeit).
+    await tester.ensureVisible(find.byKey(const ValueKey('analyse-adjust-button')));
+    await tester.tap(find.byKey(const ValueKey('analyse-adjust-button')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('analyse-item-weight-input-0')),
+      '400',
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('analyse-save-weight-button')),
+    );
+    await tester.tap(find.byKey(const ValueKey('analyse-save-weight-button')));
+    await tester.pumpAndSettle();
+
+    // Der Makro-Balken der Food-Seite liegt hinter den Sheets im Widget-Tree
+    // und ist daher direkt findbar. Protein skaliert von 30 auf ~40 g
+    // (400/300 * 30 = 40). Vorher fror der Bug das Protein bei 30 ein, waehrend
+    // nur die kcal stiegen — UND traf zudem die falsche Mahlzeit.
+    expect(find.text('40/130g'), findsOneWidget);
+    expect(find.text('30/130g'), findsNothing);
+  });
+
+  // PROD-4: Das Favoriten-Herz rendert im Analyse-Ergebnis und das Antippen
+  // heftet die Mahlzeit an (eigene „Favoriten"-Sektion im Add-Sheet).
+  testWidgetsRobust('Meal result shows a favorite heart that pins the meal', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      ShiftFitApp(
+        mealAnalyzer: _MacroMealAnalyzer(),
+        photoInput: _FakeMealPhotoInput(),
+      ),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('nav-Food')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('food-action-ai')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('analyse-camera-button')));
+    await tester.pumpAndSettle();
+
+    // Das Herz rendert (onToggleFavorite ist verdrahtet).
+    expect(find.byKey(const ValueKey('analyse-favorite-button')), findsOneWidget);
+    expect(find.byIcon(Icons.favorite_outline_rounded), findsOneWidget);
+
+    // Anheften -> Herz wird gefuellt.
+    await tester.tap(find.byKey(const ValueKey('analyse-favorite-button')));
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.favorite_rounded), findsWidgets);
+
+    // Loggen, dann beide Sheets schliessen und erneut oeffnen: der angeheftete
+    // Favorit steht in der eigenen „Favoriten"-Sektion (nicht „Letzte
+    // Mahlzeiten").
+    await tester.ensureVisible(find.byKey(const ValueKey('analyse-add-daily-button')));
+    await tester.tap(find.byKey(const ValueKey('analyse-add-daily-button')));
+    await tester.pumpAndSettle();
+    // Analyse-Sheet schliessen (liegt oben), danach das Add-Sheet.
+    await tester.tap(find.byKey(const ValueKey('analyse-sheet-close')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('add-meal-sheet-close')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('food-search')));
+    await tester.pumpAndSettle();
+    expect(find.text('FAVORITEN'), findsOneWidget);
+    expect(find.byKey(const ValueKey('favorite-pinned-0')), findsOneWidget);
+  });
+
   testWidgetsRobust('Food tab searches OpenFoodFacts products and adds selected item', (
     WidgetTester tester,
   ) async {
@@ -750,6 +852,28 @@ class _FakeMealAnalyzer implements MealAnalyzer {
           kcalPer100G: 35,
         ),
       ],
+    );
+  }
+}
+
+// 300 g / 30 g Protein, OHNE Einzelposten -> die Re-Portionierung erzeugt im
+// Anpassen-Sheet einen einzelnen synthetischen Posten. 100 kcal/100 g, damit
+// 300 g = 300 kcal und 400 g = 400 kcal sauber aufgehen.
+class _MacroMealAnalyzer implements MealAnalyzer {
+  @override
+  Future<MealAnalysisResult> analyze(MealAnalysisRequest request) async {
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    return const MealAnalysisResult(
+      mealName: 'Protein-Bowl',
+      caloriesKcal: 300,
+      estimatedGrams: 300,
+      kcalPer100G: 100,
+      protein: '30 g',
+      carbs: '50 g',
+      fat: '20 g',
+      confidence: 'Mittel',
+      portionNotes: 'Test-Mahlzeit ohne Einzelposten.',
+      sourceLabel: 'Foto-KI',
     );
   }
 }

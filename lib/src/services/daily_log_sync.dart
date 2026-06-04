@@ -38,10 +38,23 @@ class DailyLog {
 }
 
 class DailyLogSync {
-  DailyLogSync(this._client, this._userId);
+  DailyLogSync(this._client, this._userId, {this.onError});
 
   final SupabaseClient _client;
   final String _userId;
+
+  /// Optionaler Sink fuer Schreibfehler aus dem debounced/fire-and-forget
+  /// Upsert. Frueher wurde ein fehlgeschlagener daily_logs-Write nur per
+  /// dev.log geschluckt — damit driftete der lokale Tagesstand still vom
+  /// Server weg (beim naechsten Kaltstart ueberschrieb der Server-Stand das
+  /// lokale Optimistic-Update). Mit diesem Callback kann der Aufrufer den
+  /// Fehler sichtbar machen UND den Tagesstand vom Server re-syncen
+  /// (daily_logs als Server-Wahrheit behandeln). Wird mit dem geworfenen
+  /// Error aufgerufen.
+  ///
+  /// Bewusst NICHT final: FitPilotSync.forUser baut die Instanz, bevor die
+  /// HomePage existiert — diese haengt ihren Handler erst beim Boot an.
+  void Function(Object error)? onError;
 
   // Debounce - mehrere setState in Folge sammeln und in einem Upsert raus.
   Timer? _debounce;
@@ -148,7 +161,16 @@ class DailyLogSync {
     } catch (e, stack) {
       dev.log('DailyLogSync._upsert failed',
           error: e, stackTrace: stack, name: 'daily_log_sync');
-      // Nicht rethrow - das ist fire-and-forget aus dem Timer raus.
+      // Kein rethrow - der Aufruf kommt fire-and-forget aus dem Timer (bzw.
+      // unawaited aus queueUpsert). Der Fehler wird stattdessen an onError
+      // gereicht, damit der Aufrufer ihn sichtbar machen und den Tagesstand
+      // vom Server re-syncen kann. onError darf den Upsert-Pfad nicht killen.
+      try {
+        onError?.call(e);
+      } catch (cbError, cbStack) {
+        dev.log('DailyLogSync.onError callback threw',
+            error: cbError, stackTrace: cbStack, name: 'daily_log_sync');
+      }
     }
   }
 

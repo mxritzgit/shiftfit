@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import '../models/caffeine_entry.dart';
 import '../models/daily_mood.dart';
 import '../models/favorite_meal.dart';
+import '../models/fitness_recipe.dart';
 import '../models/habit.dart';
 import '../models/lifetime_stats.dart';
 import '../models/logged_meal.dart';
@@ -20,6 +21,7 @@ import '../services/daily_log_sync.dart';
 import '../services/fitpilot_sync.dart';
 import '../services/health_service.dart';
 import '../services/kcal_calculator.dart';
+import '../services/local_cache.dart';
 import '../services/meal_analyzer.dart';
 import '../services/meal_photo_input.dart';
 import '../services/meal_totals.dart' as totals;
@@ -53,6 +55,7 @@ class ShiftFitHomePage extends StatefulWidget {
     this.onSignOut,
     this.sync,
     this.showWelcome = false,
+    this.debugCache,
   });
 
   final MealAnalyzer? mealAnalyzer;
@@ -62,6 +65,14 @@ class ShiftFitHomePage extends StatefulWidget {
   final String initialUserName;
   final Future<void> Function()? onSignOut;
   final FitPilotSync? sync;
+
+  /// Test-Seam (DATA-3): erlaubt es, den durablen Cache direkt zu injizieren,
+  /// statt ihn ueber den SharedPreferences-Channel + auth.currentUser.id zu
+  /// bauen. So laesst sich der Clobber-Guard/Hydration-Pfad deterministisch
+  /// testen, ohne eine echte Supabase-Session zu stellen. In Production immer
+  /// null — dann baut [_hydrateThenBoot] den echten Cache.
+  @visibleForTesting
+  final LocalCache? debugCache;
 
   /// True nur bei frischem Login/Register in dieser App-Session.
   /// Bei Session-Restore (App-Kaltstart mit gueltigem Token) false -
@@ -89,6 +100,10 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
   int workoutStreak = 0;
   List<FavoriteMeal> favorites = <FavoriteMeal>[];
   List<LoggedMeal> loggedMeals = <LoggedMeal>[];
+  // Beim Boot aus public.user_recipes geladene Eigen-Rezepte. Wird an die
+  // RecipesScreen als Anfangsstand uebergeben (PROD-2), damit selbst angelegte
+  // Rezepte einen Neustart ueberleben.
+  List<FitnessRecipe> _userRecipes = const <FitnessRecipe>[];
   CaffeineDay caffeineDay = const CaffeineDay();
   DailyMood mood = DailyMood.empty;
   HabitState habits = const HabitState();
@@ -104,17 +119,43 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
   // Letzte ~30 Tage daily_logs fuer den Trends-Verlauf (echte History statt
   // Demo-Daten). Beim Boot via DailyLogSync.loadRange befuellt.
   List<DailyLog> _trendsHistory = const <DailyLog>[];
-  // Debounce für den Lifetime-Stats-Upsert (mehrere Quick-Logs → 1 Write).
+  // Debounce für den Lifetime-Stats-Write (mehrere Quick-Logs → 1 RPC-Call).
   Timer? _statsSaveDebounce;
+  // Ausstehende, noch nicht persistierte Lifetime-Stats-DELTAS. Quick-Logs
+  // (Wasser/Schritte/Mahlzeit/Gewicht) addieren hier auf und werden gesammelt
+  // als EIN atomarer increment_lifetime_stats-RPC geflusht. So zaehlt ein
+  // Flush-Retry nicht doppelt: die Deltas werden beim Start des Flushes
+  // genullt und nur bei Fehler wieder zurueckgelegt.
+  int _pendingWaterDelta = 0;
+  int _pendingStepsDelta = 0;
+  int _pendingMealsDelta = 0;
+  int _pendingWeightLogsDelta = 0;
+  // Verhindert ueberlappende Flushes (Debounce-Timer + manueller App-Pause-
+  // Flush koennten sonst denselben Delta-Stand doppelt rausschicken).
+  bool _statsFlushInFlight = false;
   String userName = 'Moritz';
   final ValueNotifier<int> _profileRefresh = ValueNotifier<int>(0);
-  late bool _profileLoaded;
   late bool _welcomeFinished;
   // Lokales Flag, damit der User nach Abschluss sofort weiterkommt — auch
   // falls der Supabase-Save kurz hakt (das onboardingCompleted-Flag aus dem
   // berechneten Profil greift parallel).
   bool _onboardingDone = false;
   final Completer<void> _profileReadyCompleter = Completer<void>();
+
+  // DATA-3: durabler Write-Through-Cache (SharedPreferences/JSON) fuer Profil,
+  // heutiges daily_logs und lifetime_stats. Wird beim Boot asynchron gebaut
+  // (kann null bleiben, wenn der SharedPreferences-Channel fehlt — dann laeuft
+  // die App schlicht ohne Cache). Jede persistierte Mutation schreibt parallel
+  // hier rein; ein Kaltstart hydratisiert ZUERST von hier.
+  LocalCache? _cache;
+
+  // Clobber-Guard (DATA-3): bleibt false, solange das in-memory [profile] noch
+  // auf den nackten Ctor-Defaults (78 kg / 178 cm) steht. Wird true, sobald das
+  // Profil aus einer ECHTEN Quelle stammt — Server-Load, Cache-Hydration ODER
+  // frisch im Onboarding eingegeben. NUR dann darf ein Profil-Save die
+  // Server-Zeile ueberschreiben; sonst wuerde ein Offline-Kaltstart-Save die
+  // echten Werte mit 78/178 plattmachen.
+  bool _hydratedFromRealSource = false;
 
   int get stepsGoal => profile.dailyStepsGoal;
 
@@ -150,7 +191,6 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
     // Ohne Sync (Preview/Test) ueberspringen wir Boot- und Welcome-Phase
     // direkt - tests pumpen einen Frame und erwarten sofort das Home.
     final hasSync = widget.sync != null;
-    _profileLoaded = !hasSync;
     // Im Test/Preview (kein Sync) gehts direkt zum Home. Bei Production
     // wird IMMER ein Splash gezeigt bis Daten geladen sind, damit kein
     // Default-Flash sichtbar wird. Die Welcome-Celebration (Check-Icon
@@ -163,8 +203,85 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
       WidgetsBinding.instance.addPostFrameCallback((_) => _connectHealth());
     }
     if (hasSync) {
-      _bootFromSupabase();
+      // ZUERST aus dem durablen Cache hydratisieren (letzter bekannter Stand,
+      // auch offline), DANN den Netz-Boot starten. So sieht ein Kaltstart ohne
+      // Netz die echten letzten Werte statt der 78/178-Defaults; der Netz-Boot
+      // ueberschreibt das danach mit der Server-Wahrheit, falls erreichbar.
+      unawaited(_hydrateThenBoot());
     }
+  }
+
+  /// Cache aufbauen + hydratisieren, dann erst den Netz-Boot starten. Die
+  /// Reihenfolge ist wichtig: der Cache-Stand muss VOR dem Server-Load im State
+  /// liegen, damit ein offline (oder langsamer) Boot nicht kurz die Defaults
+  /// zeigt und ein Profil-Save schon vor dem Server-Load erlaubt ist (gegen die
+  /// gecachten, echten Werte — nicht gegen 78/178).
+  Future<void> _hydrateThenBoot() async {
+    final sync = widget.sync;
+    if (sync == null) return;
+    if (widget.debugCache != null) {
+      // Test-Seam: injizierter Cache, kein Plugin/Session-Lookup.
+      _cache = widget.debugCache;
+    } else {
+      // Cache pro auth.users.id keyn (SharedPreferences ist global). Faellt der
+      // User-Id-Lookup aus (z.B. Session-Edge-Case), bleibt _cache null und die
+      // App laeuft schlicht ohne durablen Cache weiter.
+      final userId = sync.client.auth.currentUser?.id;
+      if (userId != null && userId.isNotEmpty) {
+        _cache = await LocalCache.create(userId);
+      }
+    }
+    if (_cache != null) {
+      await _hydrateFromCache();
+    }
+    await _bootFromSupabase();
+  }
+
+  /// Liest Profil / heutiges daily_logs / lifetime_stats aus dem durablen Cache
+  /// und uebernimmt sie in den State, BEVOR das Netz antwortet. Jeder Treffer
+  /// markiert die Daten als ECHTE Quelle ([_hydratedFromRealSource]) — der
+  /// nachfolgende Netz-Boot ueberschreibt sie ggf. mit der Server-Wahrheit.
+  Future<void> _hydrateFromCache() async {
+    final cache = _cache;
+    if (cache == null) return;
+    final today = DateTime.now();
+    UserProfile? cachedProfile;
+    DailyLog? cachedDaily;
+    LifetimeStats? cachedStats;
+    try {
+      cachedProfile = await cache.readProfile();
+      cachedDaily = await cache.readDailyLog(today);
+      cachedStats = await cache.readLifetimeStats();
+    } catch (e, s) {
+      dev.log('LocalCache hydrate failed', error: e, stackTrace: s,
+          name: 'local_cache');
+    }
+    if (!mounted) return;
+    if (cachedProfile == null && cachedDaily == null && cachedStats == null) {
+      return;
+    }
+    setState(() {
+      if (cachedProfile != null) {
+        profile = cachedProfile;
+        // Gecachtes Profil zaehlt als echte Quelle: ein Save danach darf die
+        // Server-Zeile mit DIESEN Werten aktualisieren (nicht mit 78/178).
+        _hydratedFromRealSource = true;
+      }
+      if (cachedDaily != null) {
+        dailyWaterMl = cachedDaily.waterMl;
+        if (cachedDaily.steps > 0) dailySteps = cachedDaily.steps;
+        mood = cachedDaily.mood;
+        habits = cachedDaily.habitState;
+        completedBlockIds = cachedDaily.completedBlockIds;
+        workoutCompletedToday = cachedDaily.workoutCompleted;
+      }
+      if (cachedStats != null) {
+        lifetimeStats = cachedStats;
+        workoutStreak = cachedStats.currentStreak;
+      }
+      dailyConsumedKcal = _consumedKcalForFoodDate(today);
+      macroProgress = _macroProgressForFoodDate(today);
+    });
   }
 
   /// Laedt beim App-Start alle persistierten Daten parallel aus Supabase
@@ -173,6 +290,10 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
   /// stehen - der naechste Save fixt das automatisch.
   Future<void> _bootFromSupabase() async {
     final sync = widget.sync!;
+    // daily_logs-Schreibfehler (debounced/fire-and-forget) sichtbar machen UND
+    // den Tagesstand vom Server re-syncen (Server-Wahrheit). Hier verdrahtet,
+    // weil die Sync-Instanz vor der HomePage existiert.
+    sync.dailyLog.onError = _onDailyLogSyncError;
     final today = DateTime.now();
     final results = await Future.wait<Object?>([
       _safeLoad(() => sync.profile.load()),
@@ -186,11 +307,17 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
       _safeLoad(() => sync.weeklyPlan.load()),
       _safeLoad(() => sync.dailyLog
           .loadRange(today.subtract(const Duration(days: 29)), today)),
+      _safeLoad(() => sync.userRecipes.load()),
     ]);
     if (!mounted) return;
     setState(() {
       final loadedProfile = results[0] as UserProfile?;
-      if (loadedProfile != null) profile = loadedProfile;
+      if (loadedProfile != null) {
+        profile = loadedProfile;
+        // Server-Profil ist die staerkste echte Quelle: ab jetzt darf ein Save
+        // die Server-Zeile aktualisieren (Clobber-Guard, DATA-3).
+        _hydratedFromRealSource = true;
+      }
 
       final loadedMeals = results[1] as List<LoggedMeal>?;
       if (loadedMeals != null) {
@@ -240,10 +367,15 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
       final loadedHistory = results[9] as List<DailyLog>?;
       if (loadedHistory != null) _trendsHistory = loadedHistory;
 
+      final loadedRecipes = results[10] as List<FitnessRecipe>?;
+      if (loadedRecipes != null) _userRecipes = loadedRecipes;
+
       dailyConsumedKcal = _consumedKcalForFoodDate(today);
       macroProgress = _macroProgressForFoodDate(today);
-      _profileLoaded = true;
     });
+    // Frisch geladenen Server-Stand in den durablen Cache spiegeln, damit der
+    // naechste (evtl. offline) Kaltstart genau diese Werte zeigt.
+    unawaited(_writeCacheSnapshot());
     if (!_profileReadyCompleter.isCompleted) {
       _profileReadyCompleter.complete();
     }
@@ -293,6 +425,37 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
     });
   }
 
+  /// Behandelt einen fehlgeschlagenen daily_logs-Write (debounced/fire-and-
+  /// forget). daily_logs ist Server-Wahrheit: statt den optimistischen lokalen
+  /// Stand zu erraten, wird er sichtbar gemeldet UND der heutige Tagesstand
+  /// frisch vom Server geladen + lokal re-appliziert. So konvergiert der lokale
+  /// Stand nach einem Write-Fehler wieder auf den tatsaechlich persistierten.
+  void _onDailyLogSyncError(Object error) {
+    _reportSyncError('Tagesziel', error);
+    final sync = widget.sync;
+    if (sync == null) return;
+    final today = DateTime.now();
+    // Re-Load fire-and-forget; schlaegt der Re-Load selbst fehl, bleibt der
+    // lokale Stand wie er ist (der naechste erfolgreiche Write fixt ihn).
+    sync.dailyLog.loadForDate(today).then((loaded) {
+      if (!mounted || loaded == null) return;
+      setState(() {
+        dailyWaterMl = loaded.waterMl;
+        if (loaded.steps > 0) {
+          // HealthKit ueberschreibt das ggf. spaeter via _refreshHealthSteps.
+          dailySteps = loaded.steps;
+        }
+        mood = loaded.mood;
+        habits = loaded.habitState;
+        completedBlockIds = loaded.completedBlockIds;
+        workoutCompletedToday = loaded.workoutCompleted;
+      });
+    }).catchError((Object e, StackTrace s) {
+      dev.log('Tagesziel Re-Sync fehlgeschlagen',
+          error: e, stackTrace: s, name: 'fitpilot_sync');
+    });
+  }
+
   /// Zeigt eine Undo-Snackbar nach einer Löschung; [onUndo] stellt den Eintrag
   /// wieder her (lokal + Remote). Vereinheitlicht destruktive Aktionen.
   void _showUndoSnackBar(String label, VoidCallback onUndo) {
@@ -315,6 +478,9 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
       if (mounted) _reportSyncError('Konto-Löschung', e);
       return;
     }
+    // Durablen Cache des geloeschten Kontos leeren, damit kein verwaister
+    // Profil-/Tages-/Stats-Stand fuer den naechsten Login auf dem Geraet liegt.
+    await _cache?.clear();
     await widget.onSignOut?.call();
   }
 
@@ -323,7 +489,31 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
   void _queueDailyLogSync() {
     final sync = widget.sync;
     if (sync == null) return;
-    sync.dailyLog.queueUpsert(DailyLog(
+    final log = DailyLog(
+      date: DateTime.now(),
+      waterMl: dailyWaterMl,
+      steps: dailySteps,
+      moodScore: mood.score,
+      moodNote: mood.note,
+      completedBlockIds: completedBlockIds,
+      completedHabitIds: habits.completedIds,
+      workoutCompleted: workoutCompletedToday,
+    );
+    sync.dailyLog.queueUpsert(log);
+    // Write-Through: jeder Tages-Mutations-Pfad laeuft hier durch, also ist das
+    // der zentrale Ort, um den durablen Cache-Tagesstand mitzuziehen.
+    unawaited(_cache?.writeDailyLog(log) ?? Future<void>.value());
+  }
+
+  /// Spiegelt den aktuellen in-memory Stand (Profil + heutiges daily_logs +
+  /// lifetime_stats) in den durablen Cache. Defensiv: ist kein Cache verfuegbar
+  /// (kein Sync / Plugin-Channel fehlt), ist das ein No-Op. Cache-Fehler killen
+  /// nie den UI-Pfad (LocalCache schluckt sie intern).
+  Future<void> _writeCacheSnapshot() async {
+    final cache = _cache;
+    if (cache == null) return;
+    await cache.writeProfile(profile);
+    await cache.writeDailyLog(DailyLog(
       date: DateTime.now(),
       waterMl: dailyWaterMl,
       steps: dailySteps,
@@ -333,20 +523,99 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
       completedHabitIds: habits.completedIds,
       workoutCompleted: workoutCompletedToday,
     ));
+    await cache.writeLifetimeStats(lifetimeStats);
   }
 
-  /// Persistiert die kumulierten Lebenszeit-Statistiken (inkl. Streak) nach
-  /// Supabase — debounced (600ms), damit eine Serie schneller Quick-Logs
-  /// (mehrere +Wasser/+Schritte-Taps) zu EINEM Upsert zusammenläuft (analog zu
-  /// DailyLogSync.queueUpsert). Fehler landen sichtbar in einer Snackbar.
-  void _saveLifetimeStats() {
+  /// Schreibt nur die lifetime_stats in den Cache (nach optimistischem
+  /// Increment oder nach Adoption der Server-Zeile). Eigener schmaler Pfad,
+  /// damit der Stats-Flush nicht das ganze Snapshot neu schreibt.
+  void _cacheLifetimeStats() {
+    unawaited(_cache?.writeLifetimeStats(lifetimeStats) ?? Future<void>.value());
+  }
+
+  /// Reiht ein Lifetime-Stats-Delta zur debounced Persistenz ein. Die Deltas
+  /// werden akkumuliert (mehrere +Wasser/+Schritte-Taps) und nach 600ms als EIN
+  /// atomarer increment_lifetime_stats-RPC geflusht (analog zu
+  /// DailyLogSync.queueUpsert). Der in-memory lifetimeStats ist bereits
+  /// optimistisch hochgezaehlt (Instant-UI); hier wird nur der PERSIST-Pfad
+  /// versorgt. workouts werden hier NICHT mitgegeben — die laufen ueber
+  /// record_workout_day (zaehlt workouts_completed serverseitig selbst hoch).
+  void _queueStatsDelta({
+    int water = 0,
+    int steps = 0,
+    int meals = 0,
+    int weightLogs = 0,
+  }) {
     if (widget.sync == null) return;
+    _pendingWaterDelta += water;
+    _pendingStepsDelta += steps;
+    _pendingMealsDelta += meals;
+    _pendingWeightLogsDelta += weightLogs;
+    // Optimistisch aktualisierte lifetimeStats durabel spiegeln (der Aufrufer
+    // hat sie vor diesem Aufruf bereits hochgezaehlt). So ueberlebt ein
+    // Offline-Quick-Log einen Kaltstart auch ohne erfolgreichen RPC-Flush.
+    _cacheLifetimeStats();
     _statsSaveDebounce?.cancel();
     _statsSaveDebounce = Timer(const Duration(milliseconds: 600), () {
-      widget.sync?.lifetimeStats
-          .save(lifetimeStats)
-          .catchError((Object e) => _reportSyncError('Statistik', e));
+      unawaited(_flushStatsDelta());
     });
+  }
+
+  /// Flusht die akkumulierten Lifetime-Stats-Deltas in EINEM atomaren RPC und
+  /// uebernimmt die zurueckgegebene Server-Zeile als neue in-memory Wahrheit
+  /// (ersetzen, nicht erneut addieren). Idempotent gegen Flush-Retries: die
+  /// Deltas werden VOR dem Call genullt und nur bei Fehler zurueckgelegt — ein
+  /// Retry schickt dasselbe Delta also nicht doppelt. Bei Fehler wird zusaetzlich
+  /// der optimistische in-memory Snapshot zurueckgerollt (mirror _syncWithRollback),
+  /// damit ein fehlgeschlagener Increment keine aufgeblaehten lokalen Zaehler
+  /// hinterlaesst.
+  Future<void> _flushStatsDelta() async {
+    final sync = widget.sync;
+    if (sync == null) return;
+    if (_statsFlushInFlight) return; // ueberlappenden Flush vermeiden
+    final water = _pendingWaterDelta;
+    final steps = _pendingStepsDelta;
+    final meals = _pendingMealsDelta;
+    final weightLogs = _pendingWeightLogsDelta;
+    if (water == 0 && steps == 0 && meals == 0 && weightLogs == 0) return;
+    // Deltas konsumieren BEVOR der Call laeuft → ein Retry nach Erfolg schickt
+    // kein zweites Mal dasselbe.
+    _pendingWaterDelta = 0;
+    _pendingStepsDelta = 0;
+    _pendingMealsDelta = 0;
+    _pendingWeightLogsDelta = 0;
+    _statsFlushInFlight = true;
+    final prevStats = lifetimeStats;
+    try {
+      final fresh = await sync.lifetimeStats.increment(
+        water: water,
+        steps: steps,
+        meals: meals,
+        weightLogs: weightLogs,
+      );
+      if (mounted) {
+        setState(() {
+          // Server-Zeile ist Wahrheit für die Kumulativ-Zaehler; Streak-Felder
+          // (current/longest/last) kommen ebenfalls frisch mit — adoptieren.
+          lifetimeStats = fresh;
+          workoutStreak = fresh.currentStreak;
+        });
+      }
+      // Adoptierte Server-Zeile durabel cachen (ersetzt den optimistischen Stand).
+      _cacheLifetimeStats();
+    } catch (e) {
+      // Delta zurueck in die Queue, damit der naechste Flush es erneut versucht.
+      _pendingWaterDelta += water;
+      _pendingStepsDelta += steps;
+      _pendingMealsDelta += meals;
+      _pendingWeightLogsDelta += weightLogs;
+      _reportSyncError('Statistik', e);
+      // Optimistisches Increment zurueckrollen (Snapshot von vor dem Flush),
+      // damit lokal keine aufgeblaehten Zaehler stehen bleiben.
+      if (mounted) setState(() => lifetimeStats = prevStats);
+    } finally {
+      _statsFlushInFlight = false;
+    }
   }
 
   /// Persistiert den 7-Tage-Wochenplan nach Supabase (fire-and-forget).
@@ -383,12 +652,11 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
   void _flushPendingWrites() {
     final sync = widget.sync;
     if (sync == null) return;
-    if (_statsSaveDebounce?.isActive ?? false) {
-      _statsSaveDebounce!.cancel();
-      sync.lifetimeStats
-          .save(lifetimeStats)
-          .catchError((Object e) => _reportSyncError('Statistik', e));
-    }
+    // Ausstehende Lifetime-Stats-Deltas sofort als atomaren RPC rausschicken
+    // (kein Warten mehr auf den 600ms-Timer).
+    _statsSaveDebounce?.cancel();
+    _statsSaveDebounce = null;
+    unawaited(_flushStatsDelta());
     sync.dailyLog.flush();
   }
 
@@ -445,7 +713,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
       if (ml > 0) lifetimeStats = lifetimeStats.addWater(ml);
     });
     _queueDailyLogSync();
-    _saveLifetimeStats();
+    if (ml > 0) _queueStatsDelta(water: ml);
   }
 
   void _toggleHabit(String id) {
@@ -463,16 +731,23 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
       weightLog = weightLog.add(kg);
       lifetimeStats = lifetimeStats.incrementWeightLogs();
     });
-    _syncWithRollback('Gewicht', widget.sync?.tracking.insertWeight(kg, ts), () {
-      weightLog = prevWeightLog;
-      lifetimeStats = prevStats;
+    final sync = widget.sync;
+    if (sync == null) return;
+    // Den weight_logs-Zaehler-Delta erst NACH erfolgreichem Gewichts-Insert
+    // einreihen — sonst persistierte der Lifetime-Counter Gewichtseintraege,
+    // die gar nicht geschrieben wurden. Bei Insert-Fehler: in-memory Stats +
+    // Gewicht zurueckrollen, KEIN Delta einreihen.
+    sync.tracking.insertWeight(kg, ts).then((_) {
+      _queueStatsDelta(weightLogs: 1);
+    }).catchError((Object e) {
+      _reportSyncError('Gewicht', e);
+      if (mounted) {
+        setState(() {
+          weightLog = prevWeightLog;
+          lifetimeStats = prevStats;
+        });
+      }
     });
-    _saveLifetimeStats();
-  }
-
-  void _resetWater() {
-    setState(() => dailyWaterMl = 0);
-    _queueDailyLogSync();
   }
 
   void _addCaffeine(int mg) {
@@ -494,15 +769,6 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
       widget.sync?.tracking.resetCaffeineDay(DateTime.now()),
       () => caffeineDay = prev,
     );
-  }
-
-  void _addSteps(int amount) {
-    setState(() {
-      dailySteps = (dailySteps + amount).clamp(0, 100000);
-      if (amount > 0) lifetimeStats = lifetimeStats.addSteps(amount);
-    });
-    _queueDailyLogSync();
-    _saveLifetimeStats();
   }
 
   void _setSteps(int amount) {
@@ -553,11 +819,15 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
     // hoch. Sonst würde erneutes Abhaken (nach dem Block-Reset) den jetzt
     // persistierten lifetimeStats.workoutsCompleted-Zähler aufblähen.
     final bool wasCompletedToday = workoutCompletedToday;
+    final prevStats = lifetimeStats;
+    final prevStreak = workoutStreak;
     setState(() {
       if (allDone) {
         if (!wasCompletedToday) {
-          // Streak durabel fortschreiben (gestern→+1, heute→idempotent, sonst
-          // Reset 1) + Workout-Zähler + Tages-Flag fürs History-Signal.
+          // Optimistisch: Streak fortschreiben (gestern→+1, heute→idempotent,
+          // sonst Reset 1) + Workout-Zähler + Tages-Flag fürs History-Signal.
+          // Der Server-RPC record_workout_day macht beides atomar und liefert
+          // die wahre Zeile zurück (siehe Persist-Pfad unten).
           lifetimeStats = lifetimeStats
               .incrementWorkouts()
               .recordWorkoutDay(DateTime.now());
@@ -570,9 +840,35 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
       }
     });
     _queueDailyLogSync();
+    // Optimistisch hochgezaehlte Workouts/Streak durabel spiegeln (der
+    // Server-RPC adoptiert spaeter die wahre Zeile und cached erneut).
+    if (allDone && !wasCompletedToday) _cacheLifetimeStats();
 
     if (allDone && !wasCompletedToday) {
-      _saveLifetimeStats();
+      // Persist über den Streak-RPC: record_workout_day schreibt current/longest
+      // _streak + last_workout_date persistent fort UND zählt workouts_completed
+      // serverseitig +1. Die zurückgegebene Zeile ist die Wahrheit → adoptieren
+      // (ersetzen). Bei Fehler: optimistischen Stand zurückrollen.
+      final sync = widget.sync;
+      if (sync != null) {
+        sync.lifetimeStats.recordWorkoutDay(DateTime.now()).then((fresh) {
+          if (!mounted) return;
+          setState(() {
+            lifetimeStats = fresh;
+            workoutStreak = fresh.currentStreak;
+          });
+          _cacheLifetimeStats();
+        }).catchError((Object e) {
+          _reportSyncError('Workout-Streak', e);
+          if (mounted) {
+            setState(() {
+              lifetimeStats = prevStats;
+              workoutStreak = prevStreak;
+              workoutCompletedToday = wasCompletedToday;
+            });
+          }
+        });
+      }
       showAppSnack(
         context,
         'Plan abgehakt · Streak: $workoutStreak',
@@ -607,13 +903,12 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
   MacroProgress _macroProgressForFoodDate(DateTime date) =>
       totals.macroProgressForFoodDate(loggedMeals, date);
 
-  MealAnalysisResult _copyResultWithKcal(
-    MealAnalysisResult original,
-    int caloriesKcal,
-  ) =>
-      totals.copyResultWithKcal(original, caloriesKcal);
-
-  void _addResultToDailyTotal(
+  /// Loggt [result] in die Tagesbilanz und liefert die vergebene Client-UUID
+  /// zurueck. Der Rueckgabewert erlaubt dem Analyse-Sheet, eine NACHTRAEGLICHE
+  /// Um-Portionierung gezielt auf GENAU diese geloggte Zeile anzuwenden
+  /// (siehe _updateLoggedMealResult) — statt blind einen kcal-Delta auf die
+  /// erste Mahlzeit des Tages zu schieben.
+  String _addResultToDailyTotal(
     MealAnalysisResult result, {
     MealSlot? slot,
     DateTime? foodDate,
@@ -633,24 +928,68 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
     final prevStats = lifetimeStats;
     setState(() {
       lifetimeStats = lifetimeStats.incrementMeals();
-      _rememberFavorite(result);
+      _rememberRecent(result);
       loggedMeals = [entry, ...loggedMeals];
       if (targetIsToday) {
         dailyConsumedKcal = _consumedKcalForFoodDate(DateTime.now());
         macroProgress = _macroProgressForFoodDate(DateTime.now());
       }
     });
+    final sync = widget.sync;
+    if (sync == null) return entry.id;
+    // insertLoggedMeal ist ein idempotenter upsert(onConflict:'id') — ein Retry
+    // mit derselben Client-UUID schreibt dieselbe Zeile (kein Duplikat-Fehler).
+    // Den meals_logged-Zähler-Delta erst NACH erfolgreichem Insert einreihen,
+    // damit der Lifetime-Counter keine nicht-geschriebenen Mahlzeiten zählt.
+    sync.meals.insertLoggedMeal(entry).then((_) {
+      _queueStatsDelta(meals: 1);
+    }).catchError((Object e) {
+      _reportSyncError('Mahlzeit', e);
+      if (mounted) {
+        setState(() {
+          loggedMeals = prevMeals;
+          lifetimeStats = prevStats;
+          dailyConsumedKcal = prevKcal;
+          macroProgress = prevMacros;
+        });
+      }
+    });
+    return entry.id;
+  }
+
+  /// Ersetzt das Ergebnis EINER bereits geloggten Mahlzeit (per [id]) durch das
+  /// neu skalierte [scaled] und rechnet kcal + ALLE Makros frisch aus der
+  /// neu aufgebauten Liste. Das ist der Fix fuer den Makro-Integritaets-Bug:
+  /// eine Nach-Portionierung aktualisierte frueher nur die kcal (copyResultWith
+  /// Kcal fror Protein/KH/Fett ein) und traf zudem ueber indexWhere die falsche
+  /// (erste) Mahlzeit des Tages. [scaled] traegt bereits korrekte P/C/F
+  /// (adjustedToGrams/adjustedToItems), daher genuegt ein 1:1-Ersatz.
+  void _updateLoggedMealResult(String id, MealAnalysisResult scaled) {
+    final index = loggedMeals.indexWhere((m) => m.id == id);
+    if (index == -1) return;
+    final target = loggedMeals[index];
+    final prevMeals = loggedMeals;
+    final prevKcal = dailyConsumedKcal;
+    final prevMacros = macroProgress;
+    final updated = target.copyWith(result: scaled);
+    setState(() {
+      final nextMeals = [...loggedMeals];
+      nextMeals[index] = updated;
+      loggedMeals = nextMeals;
+      if (_selectedFoodDateIsToday) {
+        dailyConsumedKcal = _consumedKcalForFoodDate(DateTime.now());
+        macroProgress = _macroProgressForFoodDate(DateTime.now());
+      }
+    });
     _syncWithRollback(
-      'Mahlzeit',
-      widget.sync?.meals.insertLoggedMeal(entry),
+      'Mahlzeit-Update',
+      widget.sync?.meals.updateLoggedMeal(updated),
       () {
         loggedMeals = prevMeals;
-        lifetimeStats = prevStats;
         dailyConsumedKcal = prevKcal;
         macroProgress = prevMacros;
       },
     );
-    _saveLifetimeStats();
   }
 
   void _removeLoggedMeal(String id) {
@@ -704,54 +1043,95 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
     );
   }
 
-  void _adjustDailyTotalDelta(int delta) {
-    final prevMeals = loggedMeals;
-    final prevKcal = dailyConsumedKcal;
-    final prevMacros = macroProgress;
-    LoggedMeal? updated;
-    setState(() {
-      final index = loggedMeals.indexWhere(
-        (meal) => _isSameFoodDate(meal.loggedAt, selectedFoodDate),
-      );
-      if (index == -1) return;
-      final latest = loggedMeals[index];
-      final adjustedKcal =
-          (latest.result.caloriesKcal + delta).clamp(0, 99999).toInt();
-      final nextMeals = [...loggedMeals];
-      updated = LoggedMeal(
-        id: latest.id,
-        loggedAt: latest.loggedAt,
-        result: _copyResultWithKcal(latest.result, adjustedKcal),
-        forcedSlot: latest.forcedSlot,
-      );
-      nextMeals[index] = updated!;
-      loggedMeals = nextMeals;
-      if (_selectedFoodDateIsToday) {
-        dailyConsumedKcal = _consumedKcalForFoodDate(DateTime.now());
-        macroProgress = _macroProgressForFoodDate(DateTime.now());
-      }
-    });
-    final remoteUpdate = updated;
-    if (remoteUpdate != null) {
-      _syncWithRollback(
-        'Mahlzeit-Update',
-        widget.sync?.meals.updateLoggedMeal(remoteUpdate),
-        () {
-          loggedMeals = prevMeals;
-          dailyConsumedKcal = prevKcal;
-          macroProgress = prevMacros;
-        },
-      );
-    }
-  }
+  /// Wie viele Auto-Recents (nicht angeheftete Eintraege) maximal behalten
+  /// werden. Angeheftete Favoriten zaehlen NICHT mit und sind unbegrenzt.
+  static const int _maxAutoRecents = 5;
 
-  void _rememberFavorite(MealAnalysisResult result) {
+  /// Beim Loggen: merkt sich die Mahlzeit als Auto-Recent. Das Kappen auf
+  /// [_maxAutoRecents] betrifft NUR die nicht-angehefteten Eintraege —
+  /// angeheftete Favoriten (pinned) bleiben vollstaendig erhalten. Ist die
+  /// Mahlzeit bereits angeheftet, bleibt sie pinned (nur addedAt frischt auf).
+  void _rememberRecent(MealAnalysisResult result) {
     final id = FavoriteMeal.idFor(result);
-    final entry = FavoriteMeal(id: id, result: result, addedAt: DateTime.now());
-    favorites = [entry, ...favorites.where((f) => f.id != id)].take(5).toList();
+    final existing = favorites.where((f) => f.id == id);
+    final wasPinned = existing.isNotEmpty && existing.first.pinned;
+    final entry = FavoriteMeal(
+      id: id,
+      result: result,
+      addedAt: DateTime.now(),
+      pinned: wasPinned,
+    );
+    favorites = _cappedFavorites([entry, ...favorites.where((f) => f.id != id)]);
     widget.sync?.meals
         .upsertFavorite(entry)
         .catchError((e) => _reportSyncError('Favorit', e));
+  }
+
+  /// Behaelt ALLE angehefteten Favoriten und nur die juengsten
+  /// [_maxAutoRecents] Auto-Recents — Reihenfolge sonst unveraendert.
+  List<FavoriteMeal> _cappedFavorites(List<FavoriteMeal> source) {
+    final pinned = source.where((f) => f.pinned).toList(growable: false);
+    final recents =
+        source.where((f) => !f.pinned).take(_maxAutoRecents).toList();
+    return [...pinned, ...recents];
+  }
+
+  /// True, wenn die Mahlzeit aktuell als Favorit angeheftet ist (Herz gefuellt).
+  bool _isFavorite(MealAnalysisResult result) {
+    final id = FavoriteMeal.idFor(result);
+    final matches = favorites.where((f) => f.id == id);
+    return matches.isNotEmpty && matches.first.pinned;
+  }
+
+  /// Heftet eine Mahlzeit als Favorit an bzw. loest die Anheftung wieder.
+  /// Angeheftet -> persistiert via upsertFavorite(pinned:true). Loesen ->
+  /// die Zeile faellt zurueck auf einen Auto-Recent (pinned:false) und
+  /// unterliegt wieder dem Recents-Cap; ist sie dann ueber dem Cap, faellt
+  /// sie raus (deleteFavorite). So bleibt „Favoriten" exakt die User-Auswahl.
+  void _toggleFavorite(MealAnalysisResult result) {
+    HapticFeedback.selectionClick();
+    final id = FavoriteMeal.idFor(result);
+    final existing = favorites.where((f) => f.id == id);
+    final isPinned = existing.isNotEmpty && existing.first.pinned;
+    final prev = favorites;
+
+    if (isPinned) {
+      // Anheftung loesen -> wieder Auto-Recent. Cap kann ihn verdraengen.
+      final downgraded = existing.first.copyWith(pinned: false);
+      final next = _cappedFavorites(
+        [...favorites.where((f) => f.id != id), downgraded]
+          ..sort((a, b) => b.addedAt.compareTo(a.addedAt)),
+      );
+      final survived = next.any((f) => f.id == id);
+      setState(() => favorites = next);
+      if (survived) {
+        _syncWithRollback(
+          'Favorit',
+          widget.sync?.meals.upsertFavorite(downgraded),
+          () => favorites = prev,
+        );
+      } else {
+        _syncWithRollback(
+          'Favorit-Delete',
+          widget.sync?.meals.deleteFavorite(id),
+          () => favorites = prev,
+        );
+      }
+    } else {
+      // Anheften: vorhandene Zeile hochstufen oder eine neue pinned anlegen.
+      final entry = existing.isNotEmpty
+          ? existing.first.copyWith(pinned: true)
+          : FavoriteMeal(
+              id: id, result: result, addedAt: DateTime.now(), pinned: true);
+      setState(() {
+        favorites = [entry, ...favorites.where((f) => f.id != id)];
+      });
+      _syncWithRollback(
+        'Favorit',
+        widget.sync?.meals.upsertFavorite(entry),
+        () => favorites = prev,
+      );
+    }
   }
 
   void _removeFavorite(String id) {
@@ -774,7 +1154,10 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
   void _restoreFavorite(FavoriteMeal fav) {
     if (favorites.any((f) => f.id == fav.id)) return;
     setState(() {
-      favorites = [fav, ...favorites].take(5).toList();
+      // Angeheftete kommen ungekappt zurueck; Auto-Recents wieder mit Cap.
+      favorites = fav.pinned
+          ? [fav, ...favorites]
+          : _cappedFavorites([fav, ...favorites]);
     });
     _syncWithRollback(
       'Favorit-Restore',
@@ -783,23 +1166,72 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
     );
   }
 
+  /// Persistiert ein selbst angelegtes Rezept (PROD-2). Optimistisch lokal
+  /// vornan, dann user_recipes.upsert. Bei Fehler: lokal zurueckrollen, sonst
+  /// loege die „gespeichert"-Bestaetigung (Rezept ueberlebt sonst keinen
+  /// Neustart). Der upsert ist auf (user_id, slug) idempotent.
+  void _createUserRecipe(FitnessRecipe recipe) {
+    final prev = _userRecipes;
+    setState(() {
+      _userRecipes = [recipe, ..._userRecipes.where((r) => r.slug != recipe.slug)];
+    });
+    _syncWithRollback(
+      'Rezept',
+      widget.sync?.userRecipes.upsert(recipe),
+      () => _userRecipes = prev,
+    );
+  }
+
+  /// Loescht ein Eigen-Rezept lokal + via user_recipes.delete(slug).
+  void _deleteUserRecipe(String slug) {
+    final prev = _userRecipes;
+    setState(() {
+      _userRecipes = _userRecipes.where((r) => r.slug != slug).toList();
+    });
+    _syncWithRollback(
+      'Rezept-Delete',
+      widget.sync?.userRecipes.delete(slug),
+      () => _userRecipes = prev,
+    );
+  }
+
   Future<void> _openSettings() async {
     final result = await showSettingsSheet(context, profile: profile);
     if (result == null || !mounted) return;
     final wasReset = result.resetDay;
+    // Clobber-Guard (DATA-3): den Stand VOR dem Edit festhalten. Stand das
+    // angezeigte Profil noch auf den nackten Ctor-Defaults (Offline-Kaltstart,
+    // weder Server- noch Cache-Hydration geglueckt), darf ein Save die echte
+    // Server-Zeile NICHT mit diesen 78/178-Defaults ueberschreiben — der Edit
+    // selbst macht aus geratenen Defaults keine echten Werte.
+    final canPersistProfile = _hydratedFromRealSource;
     setState(() {
       profile = result.profile;
       if (wasReset) {
         _clearTodayState();
       }
     });
-    // Profil-Save AWAIT damit Fehler sichtbar werden (Snackbar). Vorher
-    // wurde der Future weggeschluckt -> User dachte das Speichern haette
-    // funktioniert obwohl er still gescheitert ist.
     final sync = widget.sync;
     if (sync != null) {
+      // Editiertes Profil nur dann cachen, wenn es auf echten Daten basiert —
+      // sonst zementiert der Cache die Defaults als "letzten bekannten Stand".
+      if (canPersistProfile) {
+        unawaited(
+            _cache?.writeProfile(result.profile) ?? Future<void>.value());
+      }
+      // Profil-Save AWAIT damit Fehler sichtbar werden (Snackbar). Vorher
+      // wurde der Future weggeschluckt -> User dachte das Speichern haette
+      // funktioniert obwohl er still gescheitert ist.
       try {
-        await sync.profile.save(result.profile);
+        // Profil-Upsert NUR gegen echte Basis-Daten (Clobber-Guard).
+        if (canPersistProfile) {
+          await sync.profile.save(result.profile);
+        } else {
+          dev.log(
+              'ProfileSync.save uebersprungen: profile basiert auf Ctor-Defaults '
+              '(kein Server-/Cache-Hydrate) — Clobber-Schutz',
+              name: 'fitpilot_sync');
+        }
         if (wasReset) {
           await sync.dailyLog.flush();
           _queueDailyLogSync();
@@ -888,9 +1320,13 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
     setState(() {
       profile = finished;
       _onboardingDone = true;
+      // Onboarding-Werte sind frisch vom User eingegeben — echte Quelle.
+      _hydratedFromRealSource = true;
     });
     final sync = widget.sync;
     if (sync == null) return;
+    // Fertiges Profil durabel cachen (gegen Kaltstart-Defaults absichern).
+    unawaited(_cache?.writeProfile(finished) ?? Future<void>.value());
     try {
       await sync.profile.save(finished);
     } catch (e) {
@@ -1029,7 +1465,9 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
             : 0,
         onAddMeal: (result, slot) =>
             _addResultToDailyTotal(result, slot: slot),
-        onAdjustDailyKcal: _adjustDailyTotalDelta,
+        onUpdateMeal: _updateLoggedMealResult,
+        isFavorite: _isFavorite,
+        onToggleFavorite: _toggleFavorite,
         onRemoveFavorite: _removeFavorite,
         onRemoveMeal: _removeLoggedMeal,
       ),
@@ -1039,6 +1477,10 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
           slot: slot,
           foodDate: DateTime.now(),
         ),
+        initialUserRecipes: _userRecipes,
+        // Persistenz nur mit echtem Sync (Test/Preview: nur Session-lokal).
+        onCreateRecipe: widget.sync == null ? null : _createUserRecipe,
+        onDeleteRecipe: widget.sync == null ? null : _deleteUserRecipe,
         // Restmakros des Tages (Ziel − verbraucht) → „Passt zu deinem Ziel".
         remainingMacros: MacroProgress(
           proteinG: (profile.proteinGoalG - macroProgress.proteinG)

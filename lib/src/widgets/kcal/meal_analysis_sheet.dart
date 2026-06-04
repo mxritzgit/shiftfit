@@ -19,9 +19,11 @@ Future<void> showMealAnalysisSheet(
   required MealSlot slot,
   required Future<MealAnalysisResult> resultFuture,
   required Uint8List? previewImage,
-  required void Function(MealAnalysisResult, MealSlot) onAdd,
-  required ValueChanged<int> onAdjustDailyKcal,
+  required String Function(MealAnalysisResult, MealSlot) onAdd,
+  required void Function(String id, MealAnalysisResult scaled) onUpdateMeal,
   required String failureMessage,
+  bool Function(MealAnalysisResult)? isFavorite,
+  ValueChanged<MealAnalysisResult>? onToggleFavorite,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -34,8 +36,10 @@ Future<void> showMealAnalysisSheet(
         resultFuture: resultFuture,
         previewImage: previewImage,
         onAdd: onAdd,
-        onAdjustDailyKcal: onAdjustDailyKcal,
+        onUpdateMeal: onUpdateMeal,
         failureMessage: failureMessage,
+        isFavorite: isFavorite,
+        onToggleFavorite: onToggleFavorite,
       );
     },
   );
@@ -48,16 +52,33 @@ class MealAnalysisSheet extends StatefulWidget {
     required this.resultFuture,
     required this.previewImage,
     required this.onAdd,
-    required this.onAdjustDailyKcal,
+    required this.onUpdateMeal,
     required this.failureMessage,
+    this.isFavorite,
+    this.onToggleFavorite,
   });
 
   final MealSlot slot;
   final Future<MealAnalysisResult> resultFuture;
   final Uint8List? previewImage;
-  final void Function(MealAnalysisResult, MealSlot) onAdd;
-  final ValueChanged<int> onAdjustDailyKcal;
+
+  /// Loggt das Ergebnis in die Tagesbilanz und liefert die Client-UUID der
+  /// neu geloggten Zeile zurueck. Das Sheet merkt sich diese id, um eine
+  /// spaetere Um-Portionierung GEZIELT auf genau diese Zeile anzuwenden.
+  final String Function(MealAnalysisResult, MealSlot) onAdd;
+
+  /// Ersetzt das Ergebnis der bereits geloggten Zeile [id] durch das neu
+  /// skalierte [scaled] (korrekte kcal UND Makros). Loest den frueheren
+  /// Bug, bei dem nur ein kcal-Delta floss (Makros eingefroren) und zudem
+  /// die falsche Mahlzeit getroffen wurde.
+  final void Function(String id, MealAnalysisResult scaled) onUpdateMeal;
   final String failureMessage;
+
+  /// Ob die aktuelle Mahlzeit als Favorit angeheftet ist (Herz gefuellt).
+  final bool Function(MealAnalysisResult)? isFavorite;
+
+  /// Favoriten-Toggle. Null -> kein Herz-Button.
+  final ValueChanged<MealAnalysisResult>? onToggleFavorite;
 
   @override
   State<MealAnalysisSheet> createState() => _MealAnalysisSheetState();
@@ -67,12 +88,30 @@ class _MealAnalysisSheetState extends State<MealAnalysisSheet> {
   MealAnalysisResult? _result;
   bool _isLoading = true;
   bool _addedToDailyTotal = false;
-  int? _addedCaloriesSnapshot;
+  // Client-UUID der geloggten Zeile (gesetzt beim Hinzufuegen). Eine spaetere
+  // Um-Portionierung wird genau auf diese id angewandt.
+  String? _addedMealId;
+  // Lokaler optimistischer Favoriten-Zustand: das Sheet liegt in einer eigenen
+  // modalen Route, ein setState der HomePage rebuildet es NICHT. Der Toggle
+  // spiegelt sich daher hier lokal, damit das Herz sofort umschaltet.
+  bool? _favoriteOverride;
 
   @override
   void initState() {
     super.initState();
     _loadResult();
+  }
+
+  bool get _isFavoriteNow {
+    final result = _result;
+    if (result == null) return false;
+    return _favoriteOverride ?? widget.isFavorite?.call(result) ?? false;
+  }
+
+  void _handleToggleFavorite(MealAnalysisResult result) {
+    final next = !_isFavoriteNow;
+    widget.onToggleFavorite?.call(result);
+    setState(() => _favoriteOverride = next);
   }
 
   Future<void> _loadResult() async {
@@ -97,10 +136,10 @@ class _MealAnalysisSheetState extends State<MealAnalysisSheet> {
   void _addToDaily() {
     final result = _result;
     if (result == null || _addedToDailyTotal) return;
-    widget.onAdd(result, widget.slot);
+    final id = widget.onAdd(result, widget.slot);
     setState(() {
       _addedToDailyTotal = true;
-      _addedCaloriesSnapshot = result.caloriesKcal;
+      _addedMealId = id;
     });
     showAppSnack(
       context,
@@ -127,20 +166,17 @@ class _MealAnalysisSheetState extends State<MealAnalysisSheet> {
     final updated = candidate;
 
     final wasAdded = _addedToDailyTotal;
-    final previousAddedCalories = _addedCaloriesSnapshot;
+    final loggedId = _addedMealId;
 
     setState(() {
       _result = updated;
-      if (wasAdded) {
-        _addedCaloriesSnapshot = updated.caloriesKcal;
-      }
     });
 
-    if (wasAdded && previousAddedCalories != null) {
-      final delta = updated.caloriesKcal - previousAddedCalories;
-      if (delta != 0) {
-        widget.onAdjustDailyKcal(delta);
-      }
+    // War die Mahlzeit bereits geloggt: das KOMPLETTE skalierte Ergebnis
+    // (kcal UND Makros) auf genau diese Zeile uebergeben. Frueher floss nur
+    // ein kcal-Delta -> Makros eingefroren + falsche Mahlzeit getroffen.
+    if (wasAdded && loggedId != null) {
+      widget.onUpdateMeal(loggedId, updated);
     }
 
     if (adjustment is int && adjustment > 0) {
@@ -200,6 +236,10 @@ class _MealAnalysisSheetState extends State<MealAnalysisSheet> {
                         addedToDailyTotal: _addedToDailyTotal,
                         onAdjustRequested: _adjustPortion,
                         onAddToDailyRequested: _addToDaily,
+                        isFavorite: _isFavoriteNow,
+                        onToggleFavorite: widget.onToggleFavorite == null
+                            ? null
+                            : _handleToggleFavorite,
                       ),
                   ],
                 ),

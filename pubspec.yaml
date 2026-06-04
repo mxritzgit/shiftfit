@@ -44,6 +44,12 @@ dependencies:
   supabase_flutter: ^2.12.4
   url_launcher: ^6.3.0
   flutter_slidable: ^4.0.3
+  # shared_preferences ist bereits transitiv ueber supabase_flutter (gotrue
+  # nutzt es fuer die Session-Persistenz). Hier als DIREKTE Dependency
+  # deklariert, weil LocalCache (DATA-3) ein durabler Write-Through-Cache fuer
+  # Profil/Tageslog/Lifetime-Stats darauf aufsetzt — ein Kaltstart offline zeigt
+  # damit den letzten bekannten Stand statt der 78kg/178cm-Defaults.
+  shared_preferences: ^2.3.0
 
 dev_dependencies:
   flutter_test:

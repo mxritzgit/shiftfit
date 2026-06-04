@@ -26,9 +26,11 @@ Future<void> showAddMealSheet(
   required ProductLookupService productService,
   required MealPhotoInput photoInput,
   required List<FavoriteMeal> favorites,
-  required void Function(MealAnalysisResult, MealSlot) onAdd,
-  required ValueChanged<int> onAdjustDailyKcal,
+  required String Function(MealAnalysisResult, MealSlot) onAdd,
+  required void Function(String id, MealAnalysisResult scaled) onUpdateMeal,
   required ValueChanged<String> onRemoveFavorite,
+  bool Function(MealAnalysisResult)? isFavorite,
+  ValueChanged<MealAnalysisResult>? onToggleFavorite,
   List<LoggedMeal> existingMeals = const <LoggedMeal>[],
   ValueChanged<String>? onRemoveMeal,
 }) {
@@ -47,8 +49,10 @@ Future<void> showAddMealSheet(
         favorites: favorites,
         existingMeals: existingMeals,
         onAdd: onAdd,
-        onAdjustDailyKcal: onAdjustDailyKcal,
+        onUpdateMeal: onUpdateMeal,
         onRemoveFavorite: onRemoveFavorite,
+        isFavorite: isFavorite,
+        onToggleFavorite: onToggleFavorite,
         onRemoveMeal: onRemoveMeal,
       );
     },
@@ -65,8 +69,10 @@ class AddMealSheet extends StatefulWidget {
     required this.photoInput,
     required this.favorites,
     required this.onAdd,
-    required this.onAdjustDailyKcal,
+    required this.onUpdateMeal,
     required this.onRemoveFavorite,
+    this.isFavorite,
+    this.onToggleFavorite,
     this.existingMeals = const <LoggedMeal>[],
     this.onRemoveMeal,
   });
@@ -77,9 +83,20 @@ class AddMealSheet extends StatefulWidget {
   final ProductLookupService productService;
   final MealPhotoInput photoInput;
   final List<FavoriteMeal> favorites;
-  final void Function(MealAnalysisResult, MealSlot) onAdd;
-  final ValueChanged<int> onAdjustDailyKcal;
+
+  /// Loggt das Ergebnis und liefert die Client-UUID zurueck (siehe
+  /// MealAnalysisSheet) — fuer die gezielte spaetere Um-Portionierung.
+  final String Function(MealAnalysisResult, MealSlot) onAdd;
+
+  /// Ersetzt das Ergebnis einer geloggten Zeile per id (kcal + Makros).
+  final void Function(String id, MealAnalysisResult scaled) onUpdateMeal;
   final ValueChanged<String> onRemoveFavorite;
+
+  /// Ist die Mahlzeit aktuell angeheftet? Null -> kein Herz.
+  final bool Function(MealAnalysisResult)? isFavorite;
+
+  /// Favoriten-Toggle (anheften/loesen). Null -> kein Herz.
+  final ValueChanged<MealAnalysisResult>? onToggleFavorite;
   final List<LoggedMeal> existingMeals;
   final ValueChanged<String>? onRemoveMeal;
 
@@ -335,7 +352,9 @@ class _AddMealSheetState extends State<AddMealSheet> {
       resultFuture: widget.analyzer.analyze(selection.request),
       previewImage: selection.previewBytes,
       onAdd: widget.onAdd,
-      onAdjustDailyKcal: widget.onAdjustDailyKcal,
+      onUpdateMeal: widget.onUpdateMeal,
+      isFavorite: widget.isFavorite,
+      onToggleFavorite: widget.onToggleFavorite,
       failureMessage:
           'Analyse fehlgeschlagen. Prüfe Internet, Supabase und OpenRouter.',
     );
@@ -354,7 +373,9 @@ class _AddMealSheetState extends State<AddMealSheet> {
       resultFuture: widget.productService.lookupBarcode(trimmed),
       previewImage: null,
       onAdd: widget.onAdd,
-      onAdjustDailyKcal: widget.onAdjustDailyKcal,
+      onUpdateMeal: widget.onUpdateMeal,
+      isFavorite: widget.isFavorite,
+      onToggleFavorite: widget.onToggleFavorite,
       failureMessage:
           'Barcode $trimmed nicht gefunden oder OpenFoodFacts nicht erreichbar.',
     );
@@ -518,41 +539,99 @@ class _AddMealSheetState extends State<AddMealSheet> {
       onTap: () => _toggleExpanded(key),
       onAdd: (result) => _handleAdd(key, result),
       addButtonKey: ValueKey('kcal-product-suggestion-add-$index'),
+      isFavorite: widget.isFavorite?.call(suggestion.result) ?? false,
+      onToggleFavorite: widget.onToggleFavorite == null
+          ? null
+          : (result) => _handleToggleFavorite(result),
+      favoriteButtonKey: ValueKey('kcal-product-suggestion-fav-$index'),
     );
   }
+
+  // Favoriten (angeheftet) zuerst, dann Auto-Recents. Beide kommen aus
+  // derselben Liste, getrennt ueber das pinned-Flag.
+  List<FavoriteMeal> get _pinned =>
+      _favorites.where((f) => f.pinned).toList(growable: false);
+  List<FavoriteMeal> get _recents =>
+      _favorites.where((f) => !f.pinned).toList(growable: false);
 
   Widget _buildFavorites() {
     if (_favorites.isEmpty) {
       return const _EmptyState();
     }
+    final pinned = _pinned;
+    final recents = _recents;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionLabel('Letzte Mahlzeiten'),
-        const SizedBox(height: 8),
-        for (var i = 0; i < _favorites.length; i++) ...[
-          _favoriteItem(i),
-          if (i != _favorites.length - 1) const SizedBox(height: 8),
+        if (pinned.isNotEmpty) ...[
+          const _SectionLabel('Favoriten'),
+          const SizedBox(height: 8),
+          for (var i = 0; i < pinned.length; i++) ...[
+            _favoriteItem(pinned[i], i, pinned: true),
+            if (i != pinned.length - 1) const SizedBox(height: 8),
+          ],
+          if (recents.isNotEmpty) const SizedBox(height: 18),
+        ],
+        if (recents.isNotEmpty) ...[
+          const _SectionLabel('Letzte Mahlzeiten'),
+          const SizedBox(height: 8),
+          for (var i = 0; i < recents.length; i++) ...[
+            _favoriteItem(recents[i], i, pinned: false),
+            if (i != recents.length - 1) const SizedBox(height: 8),
+          ],
         ],
       ],
     );
   }
 
-  Widget _favoriteItem(int index) {
-    final favorite = _favorites[index];
+  Widget _favoriteItem(FavoriteMeal favorite, int index,
+      {required bool pinned}) {
     final key = 'favorite:${favorite.id}';
+    // Stabile, sektionsweise Keys: angeheftete -> favorite-pinned-*, Recents
+    // behalten den bestehenden favorite-tile-* Key (Test-Pin) bei.
+    final tileKey = pinned ? 'favorite-pinned-$index' : 'favorite-tile-$index';
+    final addKey =
+        pinned ? 'favorite-pinned-add-$index' : 'favorite-tile-add-$index';
     return MealSuggestionItem(
-      key: ValueKey('favorite-tile-$index'),
+      key: ValueKey(tileKey),
       result: favorite.result,
-      fallbackIcon: Icons.bookmark_outline_rounded,
+      fallbackIcon:
+          pinned ? Icons.favorite_rounded : Icons.bookmark_outline_rounded,
       accent: orange,
       expanded: _expandedItemKey == key,
       justAdded: _justAddedKeys.contains(key),
       onTap: () => _toggleExpanded(key),
       onAdd: (result) => _handleAdd(key, result),
       onRemove: () => _removeFavorite(favorite.id),
-      addButtonKey: ValueKey('favorite-tile-add-$index'),
+      addButtonKey: ValueKey(addKey),
+      isFavorite: favorite.pinned,
+      onToggleFavorite: widget.onToggleFavorite == null
+          ? null
+          : (result) => _handleToggleFavorite(result),
+      favoriteButtonKey: ValueKey('$tileKey-fav'),
     );
+  }
+
+  // Toggle nach oben melden UND die lokale Sheet-Liste sofort spiegeln, damit
+  // das Herz ohne Sheet-Neuaufbau umschaltet (Favoriten <-> Recents).
+  void _handleToggleFavorite(MealAnalysisResult result) {
+    widget.onToggleFavorite?.call(result);
+    final id = FavoriteMeal.idFor(result);
+    setState(() {
+      final idx = _favorites.indexWhere((f) => f.id == id);
+      if (idx == -1) {
+        _favorites = [
+          FavoriteMeal(
+              id: id, result: result, addedAt: DateTime.now(), pinned: true),
+          ..._favorites,
+        ];
+      } else {
+        final current = _favorites[idx];
+        final next = [..._favorites];
+        next[idx] = current.copyWith(pinned: !current.pinned);
+        _favorites = next;
+      }
+    });
   }
 }
 
