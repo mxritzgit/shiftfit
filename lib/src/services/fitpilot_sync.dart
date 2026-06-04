@@ -6,6 +6,7 @@ import 'lifetime_stats_sync.dart';
 import 'meals_sync.dart';
 import 'profile_sync.dart';
 import 'tracking_sync.dart';
+import 'user_recipes_sync.dart';
 import 'weekly_plan_sync.dart';
 
 /// Bundles alle Supabase-Sync-Services fuer einen einzelnen authentifizierten
@@ -21,6 +22,7 @@ class FitPilotSync {
     required this.coachChat,
     required this.lifetimeStats,
     required this.weeklyPlan,
+    required this.userRecipes,
   });
 
   factory FitPilotSync.forUser(SupabaseClient client, String userId) {
@@ -33,6 +35,7 @@ class FitPilotSync {
       coachChat: CoachChatService(client, userId),
       lifetimeStats: LifetimeStatsSync(client, userId),
       weeklyPlan: WeeklyPlanSync(client, userId),
+      userRecipes: UserRecipesSync(client, userId),
     );
   }
 
@@ -44,6 +47,7 @@ class FitPilotSync {
   final CoachChatService coachChat;
   final LifetimeStatsSync lifetimeStats;
   final WeeklyPlanSync weeklyPlan;
+  final UserRecipesSync userRecipes;
 
   /// DSGVO Art. 17: löscht den auth.users-Eintrag des Users; alle App-Tabellen
   /// cascaden mit. Danach muss der Client ausloggen. Siehe Migration

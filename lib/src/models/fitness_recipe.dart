@@ -84,6 +84,68 @@ class FitnessRecipe {
     return (macroPart * 0.7 + kcalScore * 0.3).clamp(0.0, 1.0);
   }
 
+  /// Erzeugt einen stabilen Slug fuer ein neu angelegtes User-Rezept.
+  /// Gleiche Konvention wie das Erstell-Sheet (recipes_screen): `user_<ms>`.
+  static String userRecipeSlug() =>
+      'user_${DateTime.now().millisecondsSinceEpoch}';
+
+  /// Serialisiert dieses Rezept fuer ein upsert auf public.user_recipes.
+  /// user_id setzt der Sync; id/created_at/updated_at vergibt die DB per
+  /// Default bzw. Trigger. categories landet als text[].
+  Map<String, dynamic> toRow() {
+    return <String, dynamic>{
+      'slug': slug,
+      'title': title,
+      'description': description,
+      'portion': portion,
+      'ingredients': ingredients,
+      'preparation': preparation,
+      'image_asset': imageAsset,
+      'calories_kcal': caloriesKcal,
+      'protein_g': proteinG,
+      'carbs_g': carbsG,
+      'fat_g': fatG,
+      'estimated_g': estimatedGrams,
+      'categories': categories,
+    };
+  }
+
+  /// Baut ein FitnessRecipe aus einer public.user_recipes-Zeile. Defensiv:
+  /// fehlende/falsch-getypte Spalten fallen auf Defaults zurueck. professionalHint
+  /// existiert in der Tabelle nicht und wird neutral gesetzt. userCreated ist
+  /// per Definition true — alle Zeilen dieser Tabelle sind selbst angelegt.
+  factory FitnessRecipe.fromRow(Map<String, dynamic> row) {
+    final rawCategories = row['categories'];
+    final categories = rawCategories is List
+        ? rawCategories.map((c) => c.toString()).toList(growable: false)
+        : const <String>[];
+    return FitnessRecipe(
+      slug: row['slug']?.toString() ?? userRecipeSlug(),
+      title: row['title']?.toString() ?? 'Eigenes Rezept',
+      description: row['description']?.toString() ?? 'Eigenes Rezept',
+      portion: row['portion']?.toString() ?? '1 Portion',
+      ingredients: row['ingredients']?.toString() ?? 'Keine Angabe',
+      preparation: row['preparation']?.toString() ??
+          'Eigenes Rezept — keine Zubereitung hinterlegt.',
+      professionalHint: 'Selbst angelegt. Werte beruhen auf deinen Angaben.',
+      imageAsset: row['image_asset']?.toString() ?? '',
+      caloriesKcal: _toInt(row['calories_kcal']),
+      proteinG: _toInt(row['protein_g']),
+      carbsG: _toInt(row['carbs_g']),
+      fatG: _toInt(row['fat_g']),
+      estimatedGrams: _toInt(row['estimated_g']),
+      categories: categories.isEmpty ? const <String>['Eigene'] : categories,
+      userCreated: true,
+    );
+  }
+
+  static int _toInt(Object? value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+
   MealAnalysisResult toMealResult() {
     return MealAnalysisResult(
       mealName: title,

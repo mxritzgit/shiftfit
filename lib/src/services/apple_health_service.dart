@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:health/health.dart';
 
 import 'health_service.dart';
@@ -23,6 +25,13 @@ class AppleHealthService implements HealthService {
 
   @override
   Future<HealthAuthState> requestAuthorization() async {
+    // Defense-in-depth: HealthKit gibt es nur auf iOS. Die Auswahl Apple-vs-
+    // Noop passiert zwar schon beim Aufbau, aber falls diese Instanz doch auf
+    // einer anderen Plattform landet, no-op-pen wir hart statt zu crashen.
+    if (!Platform.isIOS) {
+      _authState = HealthAuthState.unsupported;
+      return _authState;
+    }
     try {
       await _ensureConfigured();
       final hasPermissions =
@@ -46,6 +55,7 @@ class AppleHealthService implements HealthService {
 
   @override
   Future<HealthSnapshot?> readSnapshot() async {
+    if (!Platform.isIOS) return null;
     try {
       await _ensureConfigured();
       if (_authState != HealthAuthState.granted) {

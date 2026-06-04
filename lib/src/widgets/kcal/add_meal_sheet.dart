@@ -93,6 +93,10 @@ class _AddMealSheetState extends State<AddMealSheet> {
   int _productSearchRequestId = 0;
   final Map<String, List<ProductSearchResult>> _productSearchCache =
       <String, List<ProductSearchResult>>{};
+  // Sessions-Cache leerer Suchen: ein einmal erfolglos (aber ohne Fehler)
+  // abgefragter Begriff liefert beim erneuten Tippen sofort "nichts gefunden",
+  // statt wieder den vollen Retry-Zyklus zu durchlaufen.
+  final Set<String> _emptyQueryCache = <String>{};
   List<ProductSearchResult> _productSuggestions =
       const <ProductSearchResult>[];
   bool _isSearchingProducts = false;
@@ -111,8 +115,8 @@ class _AddMealSheetState extends State<AddMealSheet> {
   static const Duration _productSearchDebounceDelay =
       Duration(milliseconds: 1000);
   static const Duration _productSearchRetryDelay =
-      Duration(milliseconds: 1500);
-  static const int _productSearchMaxAttempts = 6;
+      Duration(milliseconds: 600);
+  static const int _productSearchMaxAttempts = 3;
   static const Duration _justAddedFadeDelay = Duration(seconds: 2);
 
   @override
@@ -208,8 +212,18 @@ class _AddMealSheetState extends State<AddMealSheet> {
         _productSuggestions = cached;
         _isSearchingProducts = false;
         _productSearchMessage = cached.isEmpty
-            ? 'Nichts gefunden. Versuche Marke + Produktname.'
+            ? 'Keine passenden Produkte gefunden. Versuche Marke + Produktname.'
             : null;
+      });
+      return;
+    }
+    // Bekannte Leersuche: sofort "nichts gefunden", kein Retry-Zyklus.
+    if (_emptyQueryCache.contains(cacheKey)) {
+      _productSearchRequestId++;
+      setState(() {
+        _productSuggestions = const <ProductSearchResult>[];
+        _isSearchingProducts = false;
+        _productSearchMessage = 'Keine passenden Produkte gefunden. Versuche Marke + Produktname.';
       });
       return;
     }
@@ -231,7 +245,7 @@ class _AddMealSheetState extends State<AddMealSheet> {
         _productSuggestions = suggestions;
         _isSearchingProducts = false;
         _productSearchMessage = suggestions.isEmpty
-            ? 'Nichts gefunden. Versuche Marke + Produktname.'
+            ? 'Keine passenden Produkte gefunden. Versuche Marke + Produktname.'
             : null;
       });
     } catch (_) {
@@ -254,30 +268,41 @@ class _AddMealSheetState extends State<AddMealSheet> {
     int requestId,
   ) async {
     Object? lastError;
-    var lastSuggestions = const <ProductSearchResult>[];
+    final cacheKey = _normalizeQuery(query);
 
     for (var attempt = 0; attempt < _productSearchMaxAttempts; attempt++) {
+      List<ProductSearchResult>? suggestions;
       try {
-        final suggestions = await widget.productService.searchProducts(query);
+        suggestions = await widget.productService.searchProducts(query);
         lastError = null;
+        // Treffer sind sofort autoritativ und werden gecached.
         if (suggestions.isNotEmpty) {
-          _productSearchCache[_normalizeQuery(query)] = suggestions;
+          _productSearchCache[cacheKey] = suggestions;
           return suggestions;
         }
-        lastSuggestions = suggestions;
+        // Eine leere Antwort kann transient sein (Mirror gerade kalt, Index
+        // noch nicht warm). Sie wird wie ein Fehler über die *begrenzte*
+        // Retry-Schleife (max 3 Versuche, je 600 ms) erneut versucht – nicht
+        // über den langen ~30-s-Zyklus. Erst wenn alle Versuche leer bleiben,
+        // gilt "nichts gefunden" als final und wird gecached.
       } catch (error) {
         lastError = error;
       }
 
-      if (attempt == _productSearchMaxAttempts - 1 ||
-          requestId != _productSearchRequestId) {
+      final isLastAttempt = attempt == _productSearchMaxAttempts - 1;
+      if (isLastAttempt || requestId != _productSearchRequestId) {
+        // Nach erschöpften Versuchen: leere (aber fehlerfreie) Antwort ist
+        // jetzt autoritativ -> als Leersuche cachen und zurückgeben.
+        if (lastError == null) {
+          _emptyQueryCache.add(cacheKey);
+          return suggestions ?? const <ProductSearchResult>[];
+        }
         break;
       }
       await Future<void>.delayed(_productSearchRetryDelay);
     }
 
-    if (lastError == null) return lastSuggestions;
-    throw lastError;
+    throw lastError!;
   }
 
   static String _normalizeQuery(String query) =>

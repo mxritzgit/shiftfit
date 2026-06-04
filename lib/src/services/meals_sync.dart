@@ -45,7 +45,10 @@ class MealsSync {
 
   Future<void> insertLoggedMeal(LoggedMeal meal) async {
     try {
-      await _client.from('logged_meals').insert({
+      // Upsert auf der Client-UUID statt insert: ein Retry nach einem
+      // unklaren Netzwerk-Timeout (Antwort verloren, Zeile aber geschrieben)
+      // erzeugt so keinen Duplikat-Fehler, sondern bleibt idempotent.
+      await _client.from('logged_meals').upsert({
         'id': meal.id,
         'user_id': _userId,
         'logged_at': meal.loggedAt.toUtc().toIso8601String(),
@@ -60,7 +63,7 @@ class MealsSync {
         'brand': meal.result.brand,
         'source_label': meal.result.sourceLabel,
         'payload': mealResultToJson(meal.result),
-      });
+      }, onConflict: 'id', ignoreDuplicates: false);
     } catch (e, stack) {
       dev.log('MealsSync.insertLoggedMeal failed',
           error: e, stackTrace: stack, name: 'meals_sync');
