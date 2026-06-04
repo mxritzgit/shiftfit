@@ -10,27 +10,44 @@ import '../../theme/app_colors.dart';
 Future<SettingsResult?> showSettingsSheet(
   BuildContext context, {
   required UserProfile profile,
+  bool notificationsEnabled = false,
 }) {
   return showModalBottomSheet<SettingsResult>(
     context: context,
     backgroundColor: surface,
     showDragHandle: true,
     isScrollControlled: true,
-    builder: (context) => _SettingsSheet(initial: profile),
+    builder: (context) => _SettingsSheet(
+      initial: profile,
+      notificationsEnabled: notificationsEnabled,
+    ),
   );
 }
 
 class SettingsResult {
-  const SettingsResult({required this.profile, required this.resetDay});
+  const SettingsResult({
+    required this.profile,
+    required this.resetDay,
+    required this.notificationsEnabled,
+  });
 
   final UserProfile profile;
   final bool resetDay;
+
+  /// Zustand des Erinnerungen-Schalters beim Speichern. Der Aufrufer vergleicht
+  /// mit dem vorigen Stand und ruft requestPermission()/reschedule bzw.
+  /// cancelAll auf (PROD-1).
+  final bool notificationsEnabled;
 }
 
 class _SettingsSheet extends StatefulWidget {
-  const _SettingsSheet({required this.initial});
+  const _SettingsSheet({
+    required this.initial,
+    required this.notificationsEnabled,
+  });
 
   final UserProfile initial;
+  final bool notificationsEnabled;
 
   @override
   State<_SettingsSheet> createState() => _SettingsSheetState();
@@ -58,9 +75,14 @@ class _SettingsSheetState extends State<_SettingsSheet> {
   /// bleiben manuelle Werte erhalten.
   late bool _manualEnergy;
 
+  /// Lokaler Schalterzustand fuer die Erinnerungen (PROD-1). Beim Speichern
+  /// landet er in [SettingsResult.notificationsEnabled].
+  late bool _notificationsEnabled;
+
   @override
   void initState() {
     super.initState();
+    _notificationsEnabled = widget.notificationsEnabled;
     final p = widget.initial;
     _weight = TextEditingController(text: p.weightKg.toString());
     _height = TextEditingController(text: p.heightCm.toString());
@@ -167,7 +189,11 @@ class _SettingsSheetState extends State<_SettingsSheet> {
   void _save({required bool resetDay}) {
     Navigator.pop(
       context,
-      SettingsResult(profile: _buildProfile(), resetDay: resetDay),
+      SettingsResult(
+        profile: _buildProfile(),
+        resetDay: resetDay,
+        notificationsEnabled: _notificationsEnabled,
+      ),
     );
   }
 
@@ -407,6 +433,24 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                     onChanged: (v) => setState(() => _sleepGoalMinutes = v),
                   ),
                 ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            _GroupCard(
+              icon: Icons.notifications_active_rounded,
+              title: 'Erinnerungen',
+              subtitle: 'Wasser, Koffein-Stopp, Schlaf & Streak — lokal, '
+                  'ohne Server.',
+              trailing: _NotificationsToggle(
+                value: _notificationsEnabled,
+                onChanged: (v) => setState(() => _notificationsEnabled = v),
+              ),
+              child: _InfoNote(
+                _notificationsEnabled
+                    ? 'Aktiv. Du bekommst gezielte Nudges zur passenden Zeit. '
+                        'Erteile beim ersten Mal die Mitteilungs-Berechtigung.'
+                    : 'Aus. Schalter umlegen, um lokale Erinnerungen zu '
+                        'aktivieren.',
               ),
             ),
             const SizedBox(height: 18),
@@ -769,6 +813,36 @@ class _ManualToggle extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _NotificationsToggle extends StatelessWidget {
+  const _NotificationsToggle({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    // A11y: 0.8 skaliert nur die Optik; volle Tap-Flaeche bleibt. Eigenes
+    // Semantics-Label fuer Screenreader.
+    return Semantics(
+      label: 'Lokale Erinnerungen aktivieren',
+      child: Transform.scale(
+        scale: 0.8,
+        child: Switch(
+          key: const ValueKey('settings-notifications'),
+          value: value,
+          onChanged: onChanged,
+          thumbColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected) ? bg : null,
+          ),
+          trackColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected) ? lime : null,
+          ),
+        ),
+      ),
     );
   }
 }

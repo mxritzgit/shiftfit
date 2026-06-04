@@ -6,6 +6,7 @@ import '../services/fitpilot_sync.dart';
 import '../services/health_service.dart';
 import '../services/meal_analyzer.dart';
 import '../services/meal_photo_input.dart';
+import '../services/notification_service.dart';
 import '../services/open_food_facts_product_service.dart';
 import '../theme/app_theme.dart';
 import 'auth_gate.dart';
@@ -19,6 +20,7 @@ class ShiftFitApp extends StatelessWidget {
     this.photoInput,
     this.healthService,
     this.authRepository,
+    this.notificationService,
   });
 
   final MealAnalyzer? mealAnalyzer;
@@ -26,6 +28,11 @@ class ShiftFitApp extends StatelessWidget {
   final MealPhotoInput? photoInput;
   final HealthService? healthService;
   final AuthRepository? authRepository;
+
+  /// On-device-Notification-Schicht (PROD-1). In Production die echte
+  /// [LocalNotificationService] (s. main.dart); in Tests/Preview null ->
+  /// ShiftFitHomePage faellt auf NoopNotificationService zurueck.
+  final NotificationService? notificationService;
 
   @override
   Widget build(BuildContext context) {
@@ -58,6 +65,8 @@ class ShiftFitApp extends StatelessWidget {
           productService: productService,
           photoInput: photoInput,
           healthService: healthService,
+          notificationService:
+              notificationService ?? const NoopNotificationService(),
           initialUserName: user.firstName,
           onSignOut: repository.signOut,
           sync: _syncFor(user.id),

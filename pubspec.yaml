@@ -58,6 +58,13 @@ dependencies:
   # TZDateTime-Basis, auf der flutter_local_notifications zonedSchedule fusst.
   flutter_local_notifications: ^21.0.0
   timezone: ^0.11.0
+  # flutter_timezone liefert den IANA-Namen der Geraete-Zone (z.B.
+  # "Europe/Berlin"). Damit setzt LocalNotificationService.init() die lokale
+  # tz-Location korrekt — sonst faellt zonedSchedule auf UTC zurueck, weil
+  # DateTime.now().timeZoneName oft nur Abkuerzungen (CET/CEST) liefert, die
+  # tz.getLocation nicht aufloesen kann. Der Lookup ist in try/catch gekapselt,
+  # damit Tests / nicht unterstuetzte Plattformen weiter auf UTC zurueckfallen.
+  flutter_timezone: ^4.1.1
 
 dev_dependencies:
   flutter_test:

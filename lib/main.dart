@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'src/app/shiftfit_app.dart';
 import 'src/config/supabase_config.dart';
 import 'src/services/apple_health_service.dart';
+import 'src/services/notification_service.dart';
 
 export 'src/app/shiftfit_app.dart';
 
@@ -18,7 +19,14 @@ Future<void> main() async {
     runApp(_BootErrorApp(error: error));
     return;
   }
-  runApp(ShiftFitApp(healthService: AppleHealthService()));
+  // PROD-1: echte on-device-Notification-Schicht nur in Production injizieren.
+  // LocalNotificationService ist plattform-gegated (Noop ausserhalb iOS/Android),
+  // ein Konstruktor-Aufruf hier ist also auch auf Desktop/Web gefahrlos. Tests
+  // konstruieren ShiftFitApp ohne diesen Parameter -> NoopNotificationService.
+  runApp(ShiftFitApp(
+    healthService: AppleHealthService(),
+    notificationService: LocalNotificationService(),
+  ));
 }
 
 class _BootErrorApp extends StatelessWidget {

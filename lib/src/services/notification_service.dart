@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
@@ -75,16 +76,7 @@ class LocalNotificationService implements NotificationService {
     // gesetzte local-Location, sonst wirft tz.local. Wir nehmen die vom System
     // gemeldete Zone; faellt das fehl, bleibt UTC (besser als Crash).
     tzdata.initializeTimeZones();
-    try {
-      final name = DateTime.now().timeZoneName;
-      // timeZoneName liefert oft Abkuerzungen (CET/CEST); ein direkter
-      // Location-Lookup gelingt nur bei IANA-Namen. Schlaegt er fehl, bleibt
-      // der Default (UTC) — die Plan-Zeiten der Engine sind ohnehin lokale
-      // Wandzeiten, die wir unten als local interpretieren.
-      tz.setLocalLocation(tz.getLocation(name));
-    } catch (_) {
-      // UTC-Default behalten.
-    }
+    await _setLocalTimezone();
 
     const androidInit =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -115,6 +107,25 @@ class LocalNotificationService implements NotificationService {
     );
 
     _initialized = true;
+  }
+
+  /// Setzt die lokale tz-Location aus dem IANA-Namen der Geraete-Zone
+  /// (z.B. "Europe/Berlin"). flutter_timezone liefert den vollen IANA-Namen,
+  /// den tz.getLocation aufloesen kann — anders als DateTime.now().timeZoneName,
+  /// das oft nur Abkuerzungen (CET/CEST) liefert und damit auf UTC zurueckfaellt
+  /// (der CET/CEST->UTC-Fallback, den die Infra angemerkt hat). In try/catch:
+  /// schlaegt der Plugin-Call oder der Location-Lookup fehl (unsupported
+  /// Platform / fehlender Plattform-Channel im Test), bleibt der UTC-Default.
+  Future<void> _setLocalTimezone() async {
+    try {
+      // flutter_timezone 4.x liefert den IANA-Namen direkt als String
+      // (z.B. "Europe/Berlin"). getLocation loest nur diesen vollen Namen auf.
+      final name = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(name));
+    } catch (_) {
+      // UTC-Default behalten — Engine-Plan-Zeiten sind lokale Wandzeiten, die
+      // wir in scheduleAll als local interpretieren.
+    }
   }
 
   @override

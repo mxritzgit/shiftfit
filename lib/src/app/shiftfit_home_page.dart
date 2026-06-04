@@ -25,6 +25,8 @@ import '../services/local_cache.dart';
 import '../services/meal_analyzer.dart';
 import '../services/meal_photo_input.dart';
 import '../services/meal_totals.dart' as totals;
+import '../services/notification_content_engine.dart';
+import '../services/notification_service.dart';
 import '../services/open_food_facts_product_service.dart';
 import '../services/uuid.dart';
 import '../screens/coach_chat_screen.dart';
@@ -51,6 +53,7 @@ class ShiftFitHomePage extends StatefulWidget {
     this.productService,
     this.photoInput,
     this.healthService,
+    this.notificationService = const NoopNotificationService(),
     this.initialUserName = 'Moritz',
     this.onSignOut,
     this.sync,
@@ -62,6 +65,13 @@ class ShiftFitHomePage extends StatefulWidget {
   final ProductLookupService? productService;
   final MealPhotoInput? photoInput;
   final HealthService? healthService;
+
+  /// On-device-Notification-Schicht (PROD-1). Default ist
+  /// [NoopNotificationService], damit die Widget-Tests (die die Page OHNE
+  /// Service konstruieren) nie einen Plattform-Channel ziehen oder crashen.
+  /// In Production injiziert main.dart die echte LocalNotificationService.
+  final NotificationService notificationService;
+
   final String initialUserName;
   final Future<void> Function()? onSignOut;
   final FitPilotSync? sync;
@@ -121,6 +131,17 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
   List<DailyLog> _trendsHistory = const <DailyLog>[];
   // Debounce für den Lifetime-Stats-Write (mehrere Quick-Logs → 1 RPC-Call).
   Timer? _statsSaveDebounce;
+
+  // --- PROD-1: lokale Erinnerungen (Nudges) --------------------------------
+  // Opt-in-Flag. Default OFF: erst beim Onboarding-Opt-in (oder spaeter ueber
+  // den Settings-Schalter) werden Nudges geplant. So zeigt eine frische App nie
+  // einen Permission-Dialog, ohne dass der User zugestimmt hat. Persistiert in
+  // LocalCache (notifications_enabled), beim Boot rehydriert.
+  bool _notificationsEnabled = false;
+  // Debounce fuer das Neu-Planen: schnelle Quick-Logs (mehrere +Wasser-Taps in
+  // Folge) sollen scheduleAll (cancel+reschedule) nicht thrashen. 700ms ist
+  // grosszuegig genug, dass eine Klick-Serie nur EINEN Reschedule ausloest.
+  Timer? _notificationDebounce;
   // Ausstehende, noch nicht persistierte Lifetime-Stats-DELTAS. Quick-Logs
   // (Wasser/Schritte/Mahlzeit/Gewicht) addieren hier auf und werden gesammelt
   // als EIN atomarer increment_lifetime_stats-RPC geflusht. So zaehlt ein
@@ -235,6 +256,10 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
       await _hydrateFromCache();
     }
     await _bootFromSupabase();
+    // Nach dem vollstaendigen Boot-Load (Server-Wahrheit liegt im State) die
+    // Nudges aufsetzen — aber nur, wenn der User Erinnerungen aktiviert hat.
+    // Auf das persistierte Flag gegated; Default OFF.
+    await _initNotificationsFromCache();
   }
 
   /// Liest Profil / heutiges daily_logs / lifetime_stats aus dem durablen Cache
@@ -533,6 +558,83 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
     unawaited(_cache?.writeLifetimeStats(lifetimeStats) ?? Future<void>.value());
   }
 
+  // --- PROD-1: Nudge-Scheduling -------------------------------------------
+
+  /// Baut den aktuellen Notification-Plan aus dem Live-State und schiebt ihn an
+  /// die Notification-Schicht. scheduleAll ist cancel-then-reschedule
+  /// (idempotent), daher reicht es, IMMER die volle Engine-Liste zu uebergeben.
+  /// Gegated auf das User-Opt-in [_notificationsEnabled] — ist es aus, planen
+  /// wir nichts (der Toggle/cancelAll-Pfad haelt die Plattform leer).
+  Future<void> _pushSchedule() async {
+    if (!_notificationsEnabled) return;
+    final specs = const NotificationContentEngine().buildSchedule(
+      now: DateTime.now(),
+      // selectedShift traegt den Trainingsfokus (z.B. 'Muskelaufbau'); die
+      // Engine degradiert fuer unbekannte Shifts sauber (Default-Koffein-Cutoff,
+      // kein Morgenlicht-Nudge) — kein Sonderfall noetig.
+      shift: selectedShift,
+      dailyWaterMl: dailyWaterMl,
+      waterGoalMl: profile.dailyWaterGoalMl,
+      caffeineDay: caffeineDay,
+      lastBedtimeMinutes: lastSleep?.bedtimeMinutes,
+      sleepGoalMinutes: profile.dailySleepGoalMinutes,
+      stats: lifetimeStats,
+    );
+    await widget.notificationService.scheduleAll(specs);
+  }
+
+  /// Debounced Reschedule: nach jeder relevanten Datenaenderung (Wasser /
+  /// Koffein / Schlaf / Workout-Abschluss / Shift-Wechsel) aufrufen. Sammelt
+  /// rasche Aufrufe in EIN scheduleAll, damit eine Quick-Log-Serie die
+  /// Plattform (cancelAll + zonedSchedule pro Spec) nicht thrasht. No-Op, wenn
+  /// Erinnerungen aus sind.
+  void _rescheduleNotifications() {
+    if (!_notificationsEnabled) return;
+    _notificationDebounce?.cancel();
+    _notificationDebounce = Timer(const Duration(milliseconds: 700), () {
+      unawaited(_pushSchedule());
+    });
+  }
+
+  /// Liest das persistierte Opt-in-Flag und plant – falls aktiv – beim Boot die
+  /// faelligen Nudges einmal sofort (nicht debounced). Default bleibt OFF, wenn
+  /// kein Flag gespeichert ist. Boot-Scheduling ist auf das Flag gegated.
+  Future<void> _initNotificationsFromCache() async {
+    final cache = _cache;
+    if (cache == null) return;
+    final enabled = await cache.readNotificationsEnabled() ?? false;
+    if (!mounted) return;
+    if (!enabled) return;
+    setState(() => _notificationsEnabled = true);
+    // Beim Boot direkt planen (kein Debounce noetig — einmaliger Aufruf).
+    await widget.notificationService.init();
+    await _pushSchedule();
+  }
+
+  /// Schaltet Erinnerungen ein/aus (Settings-Toggle bzw. Onboarding-Opt-in).
+  /// AN -> Permission anfragen + Flag persistieren + sofort planen.
+  /// AUS -> Flag persistieren + alle geplanten Nudges verwerfen (cancelAll).
+  /// Bei verweigerter Permission bleibt die App-Seite zwar "an", die Plattform
+  /// zeigt aber nichts — das ist ok, der User kann die Berechtigung in den
+  /// System-Settings nachziehen.
+  Future<void> _setNotificationsEnabled(bool enabled) async {
+    if (mounted) {
+      setState(() => _notificationsEnabled = enabled);
+    } else {
+      _notificationsEnabled = enabled;
+    }
+    unawaited(_cache?.writeNotificationsEnabled(enabled) ??
+        Future<void>.value());
+    if (enabled) {
+      await widget.notificationService.init();
+      await widget.notificationService.requestPermission();
+      await _pushSchedule();
+    } else {
+      _notificationDebounce?.cancel();
+      await widget.notificationService.cancelAll();
+    }
+  }
+
   /// Reiht ein Lifetime-Stats-Delta zur debounced Persistenz ein. Die Deltas
   /// werden akkumuliert (mehrere +Wasser/+Schritte-Taps) und nach 600ms als EIN
   /// atomarer increment_lifetime_stats-RPC geflusht (analog zu
@@ -629,6 +731,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _statsSaveDebounce?.cancel();
+    _notificationDebounce?.cancel();
     _profileRefresh.dispose();
     widget.sync?.dispose();
     super.dispose();
@@ -714,6 +817,8 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
     });
     _queueDailyLogSync();
     if (ml > 0) _queueStatsDelta(water: ml);
+    // Hydration-Stand aenderte sich -> Hydration-Nudge ggf. neu planen.
+    _rescheduleNotifications();
   }
 
   void _toggleHabit(String id) {
@@ -759,6 +864,8 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
       widget.sync?.tracking.insertCaffeine(mg, ts),
       () => caffeineDay = prev,
     );
+    // Erster Koffein-Eintrag des Tages aktiviert den Cutoff-Nudge.
+    _rescheduleNotifications();
   }
 
   void _resetCaffeine() {
@@ -769,6 +876,8 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
       widget.sync?.tracking.resetCaffeineDay(DateTime.now()),
       () => caffeineDay = prev,
     );
+    // Kein Koffein mehr heute -> Cutoff-Nudge faellt weg.
+    _rescheduleNotifications();
   }
 
   void _setSteps(int amount) {
@@ -799,6 +908,8 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
         widget.sync?.tracking.upsertSleep(entry),
         () => lastSleep = prev,
       );
+      // Neue Bettzeit -> Schlaf-Runway-Nudge neu planen.
+      _rescheduleNotifications();
     }
   }
 
@@ -843,6 +954,8 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
     // Optimistisch hochgezaehlte Workouts/Streak durabel spiegeln (der
     // Server-RPC adoptiert spaeter die wahre Zeile und cached erneut).
     if (allDone && !wasCompletedToday) _cacheLifetimeStats();
+    // Workout heute abgeschlossen -> Streak-at-risk-Nudge faellt weg; neu planen.
+    if (allDone && !wasCompletedToday) _rescheduleNotifications();
 
     if (allDone && !wasCompletedToday) {
       // Persist über den Streak-RPC: record_workout_day schreibt current/longest
@@ -1196,8 +1309,18 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
   }
 
   Future<void> _openSettings() async {
-    final result = await showSettingsSheet(context, profile: profile);
+    final result = await showSettingsSheet(
+      context,
+      profile: profile,
+      notificationsEnabled: _notificationsEnabled,
+    );
     if (result == null || !mounted) return;
+    // PROD-1: Erinnerungen-Schalter ausgewertet. Nur bei echtem Wechsel handeln
+    // (AN -> Permission+reschedule, AUS -> cancelAll). _setNotificationsEnabled
+    // persistiert das Flag und ist in Tests (Noop) ein No-Op.
+    if (result.notificationsEnabled != _notificationsEnabled) {
+      unawaited(_setNotificationsEnabled(result.notificationsEnabled));
+    }
     final wasReset = result.resetDay;
     // Clobber-Guard (DATA-3): den Stand VOR dem Edit festhalten. Stand das
     // angezeigte Profil noch auf den nackten Ctor-Defaults (Offline-Kaltstart,
@@ -1249,6 +1372,11 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
       showAppSnack(context, 'Tagesdaten zurückgesetzt.',
           icon: Icons.restart_alt_rounded, accent: orange);
     }
+    // Geaenderte Ziele (Wasser-/Schlafziel) oder ein Tages-Reset veraendern den
+    // Nudge-Plan -> neu planen, falls Erinnerungen an sind. Wenn der Toggle
+    // gerade erst AN-geschaltet wurde, hat _setNotificationsEnabled oben bereits
+    // geplant; ein zusaetzlicher debounced Reschedule ist idempotent.
+    _rescheduleNotifications();
   }
 
   /// Setzt alle Tages-Zustände zurück. Gemeinsam genutzt vom Settings-Reset und
@@ -1327,6 +1455,14 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
     if (sync == null) return;
     // Fertiges Profil durabel cachen (gegen Kaltstart-Defaults absichern).
     unawaited(_cache?.writeProfile(finished) ?? Future<void>.value());
+    // PROD-1: Erinnerungen direkt nach dem Onboarding-Opt-in aktivieren. UX-
+    // Entscheidung: der User hat gerade sein Ziel gesetzt — Reminders default
+    // ON ist hier der erwartete Mehrwert (statt vergrabenem Settings-Schalter).
+    // _setNotificationsEnabled persistiert das Flag, loest den Permission-Dialog
+    // aus und plant die faelligen Nudges. In Tests (NoopNotificationService) ist
+    // das ein No-Op. Bewusst NICHT awaiten, damit ein haengender Permission-
+    // Dialog den Profil-Save unten nicht blockiert.
+    unawaited(_setNotificationsEnabled(true));
     try {
       await sync.profile.save(finished);
     } catch (e) {
@@ -1502,7 +1638,11 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
         selectedEnergy: selectedEnergy,
         selectedStress: selectedStress,
         plan: plan,
-        onShiftSelected: (value) => setState(() => selectedShift = value),
+        onShiftSelected: (value) {
+          setState(() => selectedShift = value);
+          // Shift-Wechsel beeinflusst Koffein-Cutoff + Morgenlicht-Nudge.
+          _rescheduleNotifications();
+        },
         onEnergySelected: (value) => setState(() => selectedEnergy = value),
         onStressSelected: (value) => setState(() => selectedStress = value),
         dailyConsumedKcal: dailyConsumedKcal,

@@ -101,6 +101,26 @@ class LocalCache {
   String get _profileKey => 'fitpilot.v1.profile.$_userId';
   String get _dailyKey => 'fitpilot.v1.daily.$_userId';
   String get _statsKey => 'fitpilot.v1.stats.$_userId';
+  String get _notificationsKey => 'fitpilot.v1.notifications_enabled.$_userId';
+
+  // ---- Erinnerungen (PROD-1) ----------------------------------------------
+  // Opt-in-Flag fuer die lokalen Retention-Nudges. Persistiert pro User, damit
+  // ein Kaltstart die geplanten Nudges nur dann wieder aufsetzt, wenn der User
+  // sie aktiviert hat. Wir reusen den vorhandenen JSON-Slot statt eines eigenen
+  // bool-Channels, damit der Wire-Pfad einheitlich (und defensiv) bleibt.
+
+  /// Schreibt das Erinnerungs-Opt-in-Flag. No-Op bei Plugin-Fehler (s. _writeJson).
+  Future<void> writeNotificationsEnabled(bool enabled) =>
+      _writeJson(_notificationsKey, <String, dynamic>{'enabled': enabled});
+
+  /// Liest das Opt-in-Flag. Fehlt/korrupt -> null (Aufrufer waehlt seinen
+  /// Default, in der App: OFF bis der User opt-in macht).
+  Future<bool?> readNotificationsEnabled() async {
+    final json = await _readJson(_notificationsKey);
+    if (json == null) return null;
+    final v = json['enabled'];
+    return v is bool ? v : null;
+  }
 
   // ---- Profil -------------------------------------------------------------
 
@@ -167,6 +187,7 @@ class LocalCache {
     await _store.remove(_profileKey);
     await _store.remove(_dailyKey);
     await _store.remove(_statsKey);
+    await _store.remove(_notificationsKey);
   }
 
   // ---- Low-level ----------------------------------------------------------
