@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../models/shift_fit_plan.dart';
+import '../models/workout_set.dart';
 import '../theme/app_colors.dart';
 import '../widgets/common/basic_widgets.dart';
 import '../widgets/shared/shiftfit_top_bar.dart';
+import '../widgets/week/set_logger_sheet.dart';
 import '../widgets/week/week_widgets.dart';
 
 class WeekPlannerScreen extends StatefulWidget {
@@ -18,6 +20,8 @@ class WeekPlannerScreen extends StatefulWidget {
     this.onSettingsPressed,
     this.onProfilePressed,
     this.profileInitial,
+    this.workoutHistory,
+    this.onLogSet,
   });
 
   static const days = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
@@ -35,6 +39,19 @@ class WeekPlannerScreen extends StatefulWidget {
   final VoidCallback? onSettingsPressed;
   final VoidCallback? onProfilePressed;
   final String? profileInitial;
+
+  /// PROD-5: bereits geloggte Saetze (fuer last-time/PR im Set-Logger). Wenn
+  /// null (Default), bleibt die Log-Affordance verborgen — die Wiring in die
+  /// HomePage (Boot-Load + Injektion) ist dem Integrator vorbehalten.
+  final List<WorkoutSet>? workoutHistory;
+
+  /// PROD-5: persistiert einen frisch geloggten Satz (Aufrufer ruft
+  /// `sync.workoutLog.insert(set)` und pflegt die lokale History nach). Nur
+  /// wenn sowohl dies als auch [workoutHistory] gesetzt sind, erscheint die
+  /// "Satz loggen"-Affordance.
+  final Future<void> Function(WorkoutSet set)? onLogSet;
+
+  bool get _loggingEnabled => workoutHistory != null && onLogSet != null;
 
   @override
   State<WeekPlannerScreen> createState() => _WeekPlannerScreenState();
@@ -68,6 +85,17 @@ class _WeekPlannerScreenState extends State<WeekPlannerScreen> {
     _savedTimer = Timer(const Duration(milliseconds: 1200), () {
       if (mounted) setState(() => _showSaved = false);
     });
+  }
+
+  void _openSetLogger() {
+    final history = widget.workoutHistory;
+    final onLogSet = widget.onLogSet;
+    if (history == null || onLogSet == null) return;
+    showSetLoggerSheet(
+      context,
+      history: history,
+      onLogSet: onLogSet,
+    );
   }
 
   void _openDayDetail(int dayIndex) {
@@ -164,6 +192,10 @@ class _WeekPlannerScreenState extends State<WeekPlannerScreen> {
             ),
           ],
         ),
+        if (widget._loggingEnabled) ...[
+          const SizedBox(height: 16),
+          LogWorkoutCard(onTap: _openSetLogger),
+        ],
         if (widget.onSavePlan != null) ...[
           const SizedBox(height: 16),
           SavePlanBar(onSave: _handleSave, showSaved: _showSaved),

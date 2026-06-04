@@ -428,6 +428,69 @@ class SavePlanBar extends StatelessWidget {
   }
 }
 
+/// PROD-5: Affordance-Karte, die den Set-Logger oeffnet. Nur sichtbar, wenn
+/// das Logging in der HomePage verdrahtet ist (Sync + History injiziert).
+/// On-Brand (lime-Akzent, Radius-Skala) und im Stil der SummaryCard.
+class LogWorkoutCard extends StatelessWidget {
+  const LogWorkoutCard({super.key, required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      key: const ValueKey('week-log-workout'),
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: AppCard(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: lime.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(rControl),
+              ),
+              child: const Icon(Icons.fitness_center_rounded,
+                  color: lime, size: 20),
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Sätze loggen',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  SizedBox(height: 3),
+                  Text(
+                    'Gewicht, Wiederholungen und PR festhalten.',
+                    style: TextStyle(
+                      color: textMuted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Icon(Icons.add_rounded, color: lime, size: 22),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Per-day detail sheet (entity-tap → modal sheet). Lets the user pick the
 /// training type AND read focus / volume / exercise cues for the day.
 Future<void> showWeekDaySheet(

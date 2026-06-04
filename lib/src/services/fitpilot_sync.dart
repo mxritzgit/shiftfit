@@ -8,6 +8,7 @@ import 'profile_sync.dart';
 import 'tracking_sync.dart';
 import 'user_recipes_sync.dart';
 import 'weekly_plan_sync.dart';
+import 'workout_log_sync.dart';
 
 /// Bundles alle Supabase-Sync-Services fuer einen einzelnen authentifizierten
 /// User. Wird in ShiftFitApp pro User aufgebaut, an die HomePage uebergeben
@@ -23,6 +24,7 @@ class FitPilotSync {
     required this.lifetimeStats,
     required this.weeklyPlan,
     required this.userRecipes,
+    required this.workoutLog,
   });
 
   factory FitPilotSync.forUser(SupabaseClient client, String userId) {
@@ -36,6 +38,7 @@ class FitPilotSync {
       lifetimeStats: LifetimeStatsSync(client, userId),
       weeklyPlan: WeeklyPlanSync(client, userId),
       userRecipes: UserRecipesSync(client, userId),
+      workoutLog: WorkoutLogSync(client, userId),
     );
   }
 
@@ -48,6 +51,7 @@ class FitPilotSync {
   final LifetimeStatsSync lifetimeStats;
   final WeeklyPlanSync weeklyPlan;
   final UserRecipesSync userRecipes;
+  final WorkoutLogSync workoutLog;
 
   /// DSGVO Art. 17: löscht den auth.users-Eintrag des Users; alle App-Tabellen
   /// cascaden mit. Danach muss der Client ausloggen. Siehe Migration
