@@ -49,3 +49,8 @@ danach die `schema_migrations`-Historie auf alle Repo-Versionen gebackfillt.
   Drift-Gate-Job in CI zu aktivieren (ohne sie: sauberer Skip).
 - Client-Wiring der neuen RPCs (`lifetime_stats_sync` / `daily_log_sync`) erfolgt in
   der Integrations-Welle (separat).
+- **NEU (INT-2 / PROD-4):** Migration `20260604130000_favorite_meals_pinned`
+  (`favorite_meals.pinned boolean not null default false`) ist im Repo, aber noch
+  NICHT gegen die Live-DB abgeglichen — beim nächsten `db push` mit ausrollen und
+  die `schema_migrations`-Historie nachziehen. Default false → alte Zeilen bleiben
+  Auto-Recents, kein Datenrückbau nötig.
