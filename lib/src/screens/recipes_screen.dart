@@ -474,7 +474,7 @@ class _RecipeHeroCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(rSheet),
       child: SizedBox(
-        width: 198,
+        width: 200,
         child: Container(
           decoration: BoxDecoration(
             color: surface,
@@ -488,7 +488,7 @@ class _RecipeHeroCard extends StatelessWidget {
               Stack(
                 children: [
                   SizedBox(
-                    height: 126,
+                    height: 132,
                     width: double.infinity,
                     child: _RecipeImage(recipe: recipe),
                   ),
@@ -500,8 +500,9 @@ class _RecipeHeroCard extends StatelessWidget {
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            Colors.black.withValues(alpha: 0.26),
+                            Colors.black.withValues(alpha: 0.55),
                           ],
+                          stops: const [0.45, 1.0],
                         ),
                       ),
                     ),
@@ -517,40 +518,51 @@ class _RecipeHeroCard extends StatelessWidget {
                       top: 10,
                       child: _MatchBadge(text: badgeText!),
                     ),
+                  if (recipe.categories.isNotEmpty)
+                    Positioned(
+                      left: 10,
+                      bottom: 10,
+                      child: _CategoryPill(
+                        label: recipe.categories.first,
+                        onImage: true,
+                      ),
+                    ),
                 ],
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      recipe.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: textPrimary,
-                        fontSize: 15,
-                        height: 1.2,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.2,
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 11, 14, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        recipe.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: textPrimary,
+                          fontSize: 15,
+                          height: 1.2,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.2,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      recipe.description,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: textMuted,
-                        fontSize: 11.5,
-                        height: 1.35,
-                        fontWeight: FontWeight.w500,
+                      const SizedBox(height: 6),
+                      Text(
+                        recipe.description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: textMuted,
+                          fontSize: 11.5,
+                          height: 1.32,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    _MacroRow(recipe: recipe, compact: true),
-                  ],
+                      const Spacer(),
+                      _MacroRow(recipe: recipe, compact: true),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -577,39 +589,61 @@ class _RecipeListTile extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(rCard),
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(11),
         decoration: BoxDecoration(
           color: surface,
           borderRadius: BorderRadius.circular(rCard),
           border: Border.all(color: hairline),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(rControl),
-              child: SizedBox(
-                width: 72,
-                height: 72,
-                child: _RecipeImage(recipe: recipe),
-              ),
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(rControl),
+                  child: SizedBox(
+                    width: 84,
+                    height: 84,
+                    child: _RecipeImage(recipe: recipe),
+                  ),
+                ),
+                Positioned(
+                  left: 6,
+                  bottom: 6,
+                  child: _GlassBadge(text: '${recipe.caloriesKcal} kcal'),
+                ),
+              ],
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 13),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    recipe.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: textPrimary,
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.15,
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          recipe.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: textPrimary,
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.15,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: textMuted,
+                        size: 20,
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 5),
                   Text(
                     recipe.description,
                     maxLines: 2,
@@ -621,13 +655,11 @@ class _RecipeListTile extends StatelessWidget {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 9),
                   _MacroRow(recipe: recipe),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            const Icon(Icons.chevron_right_rounded, color: textMuted, size: 20),
           ],
         ),
       ),
@@ -741,6 +773,17 @@ class RecipeDetailScreen extends StatelessWidget {
                   fontWeight: FontWeight.w500,
                 ),
               ),
+              if (recipe.categories.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final category in recipe.categories)
+                      _CategoryPill(label: category),
+                  ],
+                ),
+              ],
               const SizedBox(height: 18),
               _NutritionGrid(recipe: recipe),
               const SizedBox(height: 18),
@@ -1220,6 +1263,42 @@ class _MatchBadge extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Kompakte Kategorie-Pille. Auf dem Bild (onImage) dunkel-transluzent, sonst
+/// lime-getönt — nutzt dieselbe Token-Skala wie der Rest des Screens.
+class _CategoryPill extends StatelessWidget {
+  const _CategoryPill({required this.label, this.onImage = false});
+
+  final String label;
+  final bool onImage;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: onImage
+            ? Colors.black.withValues(alpha: 0.5)
+            : lime.withValues(alpha: 0.13),
+        borderRadius: BorderRadius.circular(rPill),
+        border: Border.all(
+          color: onImage
+              ? Colors.white.withValues(alpha: 0.18)
+              : lime.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: onImage ? textPrimary : lime,
+          fontSize: 10.5,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.1,
+        ),
       ),
     );
   }
