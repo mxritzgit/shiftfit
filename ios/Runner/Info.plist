@@ -48,9 +48,9 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>FitPilot braucht Zugriff auf deine Fotobibliothek, damit du Mahlzeiten, Training oder Coach-Bilder aus der Galerie analysieren kannst.</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>FitPilot liest deine Schrittzahl aus Apple Health, damit dein Tagesziel automatisch aktualisiert wird.</string>
+	<string>FitPilot liest deine Schritte, dein Gewicht und deine Schlafdaten aus Apple Health, damit Tagesziel und Logbuch automatisch aktuell bleiben.</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>FitPilot kann optional Schrittdaten in Apple Health zurückschreiben.</string>
+	<string>FitPilot schreibt optional dein eingetragenes Gewicht und abgeschlossene Workouts nach Apple Health zurück.</string>
 	<!-- PROD-1 (flutter_local_notifications, on-device): Lokale Notifications
 	     brauchen KEINEN eigenen Usage-Description-Key — der iOS-Permission-
 	     Dialog ist systemgeneriert und wird ueber requestPermissions() (alert/

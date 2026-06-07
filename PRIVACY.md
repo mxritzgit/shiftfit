@@ -1,6 +1,6 @@
 # Privacy Policy — FitPilot
 
-_Last updated: 2026-06-02_
+_Last updated: 2026-06-07_
 
 FitPilot ("the app") is a fitness, recovery, and nutrition tracker. This policy
 explains what data the app processes, why, and the rights you have over it. It is
@@ -21,9 +21,16 @@ You enter and the app stores the following, tied to your account:
 - **Health & wellness log:** weight history, sleep entries, caffeine intake, mood,
   habits, water and step counts, and your completed workout days / streak.
 - **Coach chat:** the messages you send to the in-app AI coach and its replies.
-- **Apple Health (optional):** if you grant permission, the app reads your step
-  count for the day. It does not read other health categories and does not write
-  back to Apple Health.
+- **Apple Health (optional, iOS only):** if you grant permission, the app reads
+  your step count, body-weight history, and sleep duration from Apple Health to
+  fill in and keep your targets and logs current. With the same permission it
+  also writes back to Apple Health: a body-weight entry when you record a weigh-in,
+  and a workout entry when you complete a training session. It reads and writes
+  only these categories and accesses no other Apple Health data.
+- **Voice input (optional, iOS only):** if you use the coach's microphone button,
+  audio is captured only while you hold the button and is converted to text by
+  Apple's speech recognition. Only the resulting text is sent to the coach — the
+  app neither stores the audio recording nor sends it to our servers.
 
 We do **not** collect advertising identifiers, location, or contacts, and the app
 contains no third-party analytics or ad SDKs.
@@ -40,6 +47,9 @@ contains no third-party analytics or ad SDKs.
 - **OpenFoodFacts** (and our self-hosted search mirror) is queried for public
   product/nutrition data when you search or scan a barcode. Your identity is not
   sent with these queries.
+- **Apple Speech Recognition** converts your spoken coach questions to text if you
+  use voice input. To do so Apple may process the audio on its servers; see Apple's
+  privacy policy. Only the resulting transcript reaches our systems, never the audio.
 
 API keys for these services live only on our server, never in the app.
 
@@ -47,8 +57,8 @@ API keys for these services live only on our server, never in the app.
 
 We process this data to provide the tracking features you ask for — i.e. to perform
 the service you signed up for (GDPR Art. 6(1)(b)), and, for the optional Apple Health
-read and AI features, on the basis of the explicit permission you grant in-app
-(Art. 6(1)(a), Art. 9 for health data).
+read/write, voice input, and AI features, on the basis of the explicit permission you
+grant in-app (Art. 6(1)(a), Art. 9 for health data).
 
 ## Your rights
 
@@ -59,8 +69,8 @@ You can, at any time:
 - **Correct** any value directly in the app.
 - **Delete** your account and all associated data — in-app via Profile → Account
   löschen, which removes your auth record and cascades to every table.
-- **Withdraw consent** for Apple Health (in iOS Settings) or AI features (by not
-  using them).
+- **Withdraw consent** for Apple Health or voice input (in iOS Settings → Privacy)
+  or AI features (by not using them).
 
 To exercise a right or ask a question, contact **moritz.gietl@gmail.com**. You also
 have the right to lodge a complaint with your data-protection authority.
