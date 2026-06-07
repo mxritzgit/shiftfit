@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../models/shift_fit_plan.dart';
+import '../app/home_store.dart';
 import '../theme/app_colors.dart';
 import '../widgets/common/basic_widgets.dart';
+import '../widgets/common/store_selector.dart';
 import '../widgets/shared/shiftfit_top_bar.dart';
 import '../widgets/today/caffeine_card.dart';
 import '../widgets/today/caffeine_half_life_card.dart';
@@ -18,27 +19,28 @@ import '../widgets/today/weight_card.dart';
 import '../widgets/today/workout_timer_sheet.dart';
 import 'today_dashboard_models.dart';
 
+/// PERF-2: Das Today-Dashboard liest seinen Zustand jetzt direkt aus dem
+/// [HomeStore] und teilt sich in Sektionen, von denen jede per [StoreSelector]
+/// an genau ihre Slice haengt. Frueher baute jeder Quick-Log (Wasser, Mood, …)
+/// als monolithisches `setState` ALLE ~16 Karten neu; jetzt rebuildet z.B. ein
+/// Wasser-Tap nur die Tracker- und Reminder-Sektion — Wohlbefinden (Mood/Habits/
+/// Koffein-Halbwertszeit/Gewicht) und Session (Plan/Streak/Challenge) bleiben
+/// stehen. Karten-Reihenfolge, -Keys und -Conditionals sind unveraendert.
 class TodayDashboard extends StatelessWidget {
   const TodayDashboard({
     super.key,
-    required this.metrics,
+    required this.store,
     required this.actions,
-    required this.plan,
     required this.onSettingsPressed,
     this.onProfilePressed,
     this.profileInitial,
   });
 
-  /// ARCH-3: der angezeigte Tages-Zustand (vorher ~20 Einzel-Parameter).
-  final DailyMetrics metrics;
+  /// Single source of truth (ARCH-4). Die Sektionen selektieren ihre Slices.
+  final HomeStore store;
 
-  /// ARCH-3: das Callback-Buendel (vorher ~17 Einzel-Parameter).
+  /// Callback-Buendel (stabil; treibt keine Rebuilds).
   final TodayActions actions;
-
-  /// Aus [metrics] ableitbar, aber die HomePage haelt [plan] ohnehin als
-  /// gemeinsamen Chrome-Wert ueber alle Tabs — daher genuine eigenes Feld
-  /// (nicht in [DailyMetrics] gedoppelt).
-  final ShiftFitPlan plan;
 
   /// App-Chrome (TopBar), nicht Teil des Tages-Zustands.
   final VoidCallback onSettingsPressed;
@@ -47,52 +49,127 @@ class TodayDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Lokale Aliasse: die build-Logik unten liest unveraendert ueber kurze
-    // Namen — rein mechanische Entflechtung von metrics/actions, kein
-    // Verhaltens-/Render-Unterschied.
-    final selectedShift = metrics.selectedShift;
-    final selectedEnergy = metrics.selectedEnergy;
-    final selectedStress = metrics.selectedStress;
-    final dailyConsumedKcal = metrics.dailyConsumedKcal;
-    final kcalGoal = metrics.kcalGoal;
-    final dailyWaterMl = metrics.dailyWaterMl;
-    final waterGoalMl = metrics.waterGoalMl;
-    final dailySteps = metrics.dailySteps;
-    final stepsGoal = metrics.stepsGoal;
-    final lastSleep = metrics.lastSleep;
-    final sleepGoalMinutes = metrics.sleepGoalMinutes;
-    final completedBlockIds = metrics.completedBlockIds;
-    final workoutStreak = metrics.workoutStreak;
-    final healthAuthState = metrics.healthAuthState;
-    final healthLastFetch = metrics.healthLastFetch;
-    final caffeineDay = metrics.caffeineDay;
-    final mood = metrics.mood;
-    final habits = metrics.habits;
-    final weightLog = metrics.weightLog;
+    return Column(
+      key: const ValueKey('screen-today'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // --- A: Chrome + Check-in (rebuildet nur bei Shift/Energy/Stress) ----
+        StoreSelector(
+          store: store,
+          selector: () =>
+              (store.selectedShift, store.selectedEnergy, store.selectedStress),
+          builder: _buildChrome,
+        ),
+        const SizedBox(height: 14),
+        // --- B: Tracker (rebuildet bei Wasser/Schritten/Schlaf/Kcal/Health) --
+        StoreSelector(
+          store: store,
+          selector: () => (
+            store.dailyWaterMl,
+            store.profile.dailyWaterGoalMl,
+            store.dailySteps,
+            store.stepsGoal,
+            store.lastSleep,
+            store.profile.dailySleepGoalMinutes,
+            store.dailyConsumedKcal,
+            store.profile.dailyKcalGoal,
+            store.completedBlockIds,
+            store.plan.blocks.length,
+            store.healthAuthState,
+            store.healthLastFetch,
+          ),
+          builder: _buildTracker,
+        ),
+        const SizedBox(height: 20),
+        // --- C: Wohlbefinden (rebuildet bei Mood/Habits/Koffein/Gewicht) -----
+        StoreSelector(
+          store: store,
+          selector: () => (
+            store.mood,
+            store.habits,
+            store.caffeineDay,
+            store.weightLog,
+            store.selectedShift,
+          ),
+          builder: _buildWellbeing,
+        ),
+        const SizedBox(height: 16),
+        // --- D: Reminders + Tip (rebuildet bei Wasser/Koffein/Schlaf/Shift) --
+        StoreSelector(
+          store: store,
+          selector: () => (
+            store.selectedShift,
+            store.dailyWaterMl,
+            store.profile.dailyWaterGoalMl,
+            store.caffeineDay,
+            store.lastSleep,
+            store.profile.dailySleepGoalMinutes,
+          ),
+          builder: _buildReminders,
+        ),
+        const SizedBox(height: 20),
+        // --- E: Session + Motivation (rebuildet bei Plan/Blocks/Streak) ------
+        StoreSelector(
+          store: store,
+          selector: () => (
+            store.selectedShift,
+            store.selectedEnergy,
+            store.selectedStress,
+            store.completedBlockIds,
+            store.workoutStreak,
+          ),
+          builder: _buildSession,
+        ),
+      ],
+    );
+  }
 
-    final onShiftSelected = actions.onShiftSelected;
-    final onEnergySelected = actions.onEnergySelected;
-    final onStressSelected = actions.onStressSelected;
-    final onToggleBlock = actions.onToggleBlock;
-    final onConnectHealth = actions.onConnectHealth;
-    final onRefreshHealth = actions.onRefreshHealth;
-    final onAddWater = actions.onAddWater;
-    final onSetSteps = actions.onSetSteps;
-    final onLogSleep = actions.onLogSleep;
-    final onMoodScore = actions.onMoodScore;
-    final onEditMoodNote = actions.onEditMoodNote;
-    final onToggleHabit = actions.onToggleHabit;
-    final onAddCaffeine = actions.onAddCaffeine;
-    final onResetCaffeine = actions.onResetCaffeine;
-    final onLogWeight = actions.onLogWeight;
-    final onOpenTraining = actions.onOpenTraining;
-    final onOpenFood = actions.onOpenFood;
+  Widget _buildChrome(BuildContext context) {
+    final plan = store.plan;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ShiftFitTopBar(
+          plan: plan,
+          onSettingsPressed: onSettingsPressed,
+          onProfilePressed: onProfilePressed,
+          profileInitial: profileInitial,
+        ),
+        const SizedBox(height: 18),
+        ShiftFitHero(plan: plan),
+        const SizedBox(height: 14),
+        FitPilotHubGrid(
+          plan: plan,
+          onTapWorkout: actions.onOpenTraining,
+          onTapNutrition: actions.onOpenFood,
+          onTapGuides: () => showPlanSheet(context, plan),
+        ),
+        const SizedBox(height: 14),
+        QuickCheckInCard(
+          selectedShift: store.selectedShift,
+          selectedEnergy: store.selectedEnergy,
+          selectedStress: store.selectedStress,
+          plan: plan,
+          onShiftSelected: actions.onShiftSelected,
+          onEnergySelected: actions.onEnergySelected,
+          onStressSelected: actions.onStressSelected,
+        ),
+      ],
+    );
+  }
 
-    final completedCount = completedBlockIds.length;
-    final total = plan.blocks.length;
-    final planAction = total == 0
-        ? '${plan.totalMinutes} Min'
-        : '$completedCount/$total · ${plan.totalMinutes} Min';
+  Widget _buildTracker(BuildContext context) {
+    final dailyConsumedKcal = store.dailyConsumedKcal;
+    final kcalGoal = store.profile.dailyKcalGoal;
+    final dailyWaterMl = store.dailyWaterMl;
+    final waterGoalMl = store.profile.dailyWaterGoalMl;
+    final dailySteps = store.dailySteps;
+    final stepsGoal = store.stepsGoal;
+    final lastSleep = store.lastSleep;
+    final sleepGoalMinutes = store.profile.dailySleepGoalMinutes;
+    final completedCount = store.completedBlockIds.length;
+    final total = store.plan.blocks.length;
 
     final sleepMinutes = lastSleep?.duration.inMinutes ?? 0;
     final double kcalRatio = kcalGoal <= 0
@@ -110,7 +187,7 @@ class TodayDashboard extends StatelessWidget {
     final double workoutRatio =
         total <= 0 ? 0.0 : (completedCount / total).clamp(0.0, 1.0).toDouble();
 
-    // Tracker stats are now tappable quick-log entry points (slot-tap pattern):
+    // Tracker stats are tappable quick-log entry points (slot-tap pattern):
     // Wasser/Schritte open a focused sheet, Schlaf opens the sleep log, Kcal
     // jumps to the Food tab where meals are logged.
     final stats = <TrackerStat>[
@@ -121,7 +198,7 @@ class TodayDashboard extends StatelessWidget {
         color: orange,
         ratio: kcalRatio,
         statKey: const ValueKey('tracker-stat-kcal'),
-        onTap: onOpenFood,
+        onTap: actions.onOpenFood,
       ),
       TrackerStat(
         icon: Icons.water_drop_outlined,
@@ -136,7 +213,7 @@ class TodayDashboard extends StatelessWidget {
             intakeMl: dailyWaterMl,
             goalMl: waterGoalMl,
           );
-          if (ml != null) onAddWater(ml);
+          if (ml != null) actions.onAddWater(ml);
         },
       ),
       TrackerStat(
@@ -148,7 +225,7 @@ class TodayDashboard extends StatelessWidget {
         statKey: const ValueKey('tracker-stat-steps'),
         onTap: () async {
           final s = await showStepsQuickSetSheet(context, steps: dailySteps);
-          if (s != null) onSetSteps(s);
+          if (s != null) actions.onSetSteps(s);
         },
       ),
       TrackerStat(
@@ -160,40 +237,14 @@ class TodayDashboard extends StatelessWidget {
         color: wellnessTone,
         ratio: sleepRatio,
         statKey: const ValueKey('tracker-stat-sleep'),
-        onTap: onLogSleep,
+        onTap: actions.onLogSleep,
       ),
     ];
 
     return Column(
-      key: const ValueKey('screen-today'),
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ShiftFitTopBar(
-          plan: plan,
-          onSettingsPressed: onSettingsPressed,
-          onProfilePressed: onProfilePressed,
-          profileInitial: profileInitial,
-        ),
-        const SizedBox(height: 18),
-        ShiftFitHero(plan: plan),
-        const SizedBox(height: 14),
-        FitPilotHubGrid(
-          plan: plan,
-          onTapWorkout: onOpenTraining,
-          onTapNutrition: onOpenFood,
-          onTapGuides: () => showPlanSheet(context, plan),
-        ),
-        const SizedBox(height: 14),
-        QuickCheckInCard(
-          selectedShift: selectedShift,
-          selectedEnergy: selectedEnergy,
-          selectedStress: selectedStress,
-          plan: plan,
-          onShiftSelected: onShiftSelected,
-          onEnergySelected: onEnergySelected,
-          onStressSelected: onStressSelected,
-        ),
-        const SizedBox(height: 14),
         DayOverviewCard(
           waterRatio: waterRatio,
           sleepRatio: sleepRatio,
@@ -203,58 +254,92 @@ class TodayDashboard extends StatelessWidget {
         const SizedBox(height: 14),
         DailyTrackerCard(
           stats: stats,
-          healthAuthState: healthAuthState,
-          healthLastFetch: healthLastFetch,
-          onConnectHealth: onConnectHealth,
-          onRefreshHealth: onRefreshHealth,
+          healthAuthState: store.healthAuthState,
+          healthLastFetch: store.healthLastFetch,
+          onConnectHealth: actions.onConnectHealth,
+          onRefreshHealth: actions.onRefreshHealth,
         ),
-        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _buildWellbeing(BuildContext context) {
+    final caffeineDay = store.caffeineDay;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
         const SectionHeader(title: 'Wohlbefinden', action: 'heute'),
         const SizedBox(height: 10),
         MoodCard(
-          mood: mood,
-          onMoodChanged: onMoodScore,
-          onEditNote: onEditMoodNote,
+          mood: store.mood,
+          onMoodChanged: actions.onMoodScore,
+          onEditNote: actions.onEditMoodNote,
         ),
         const SizedBox(height: 10),
         HabitsCard(
           habits: defaultHabits,
-          state: habits,
-          onToggle: onToggleHabit,
+          state: store.habits,
+          onToggle: actions.onToggleHabit,
         ),
         const SizedBox(height: 10),
         CaffeineCard(
           day: caffeineDay,
-          shift: selectedShift,
-          onAdd: onAddCaffeine,
-          onReset: onResetCaffeine,
+          shift: store.selectedShift,
+          onAdd: actions.onAddCaffeine,
+          onReset: actions.onResetCaffeine,
         ),
         if (caffeineDay.entries.isNotEmpty) ...[
           const SizedBox(height: 10),
           CaffeineHalfLifeCard(day: caffeineDay),
         ],
         const SizedBox(height: 10),
-        WeightCard(log: weightLog, onLog: onLogWeight),
-        const SizedBox(height: 16),
+        WeightCard(log: store.weightLog, onLog: actions.onLogWeight),
+      ],
+    );
+  }
+
+  Widget _buildReminders(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
         SmartRemindersCard(
-          shift: selectedShift,
-          dailyWaterMl: dailyWaterMl,
-          waterGoalMl: waterGoalMl,
-          caffeineDay: caffeineDay,
-          lastBedtimeMinutes: lastSleep?.bedtimeMinutes,
-          sleepGoalMinutes: sleepGoalMinutes,
-          onAddWater: onAddWater,
+          shift: store.selectedShift,
+          dailyWaterMl: store.dailyWaterMl,
+          waterGoalMl: store.profile.dailyWaterGoalMl,
+          caffeineDay: store.caffeineDay,
+          lastBedtimeMinutes: store.lastSleep?.bedtimeMinutes,
+          sleepGoalMinutes: store.profile.dailySleepGoalMinutes,
+          onAddWater: actions.onAddWater,
         ),
         const SizedBox(height: 10),
-        TipOfDayCard(shift: selectedShift),
-        const SizedBox(height: 20),
+        TipOfDayCard(shift: store.selectedShift),
+      ],
+    );
+  }
+
+  Widget _buildSession(BuildContext context) {
+    final plan = store.plan;
+    final completedBlockIds = store.completedBlockIds;
+    final workoutStreak = store.workoutStreak;
+    final completedCount = completedBlockIds.length;
+    final total = plan.blocks.length;
+    final planAction = total == 0
+        ? '${plan.totalMinutes} Min'
+        : '$completedCount/$total · ${plan.totalMinutes} Min';
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
         SectionHeader(title: 'Session', action: planAction),
         const SizedBox(height: 10),
         Builder(
           builder: (innerContext) => DailyPlanCard(
             plan: plan,
             completed: completedBlockIds,
-            onToggleBlock: onToggleBlock,
+            onToggleBlock: actions.onToggleBlock,
             onStartTimer: (block) async {
               final markDone = await showWorkoutTimerSheet(
                 innerContext,
@@ -263,7 +348,7 @@ class TodayDashboard extends StatelessWidget {
               );
               if (markDone == true) {
                 final index = plan.blocks.indexOf(block) + 1;
-                onToggleBlock('$index:${block.title}');
+                actions.onToggleBlock('$index:${block.title}');
               }
             },
           ),

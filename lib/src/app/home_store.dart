@@ -1,0 +1,1218 @@
+import 'dart:async';
+import 'dart:developer' as dev;
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../models/caffeine_entry.dart';
+import '../models/daily_mood.dart';
+import '../models/favorite_meal.dart';
+import '../models/fitness_recipe.dart';
+import '../models/habit.dart';
+import '../models/lifetime_stats.dart';
+import '../models/logged_meal.dart';
+import '../models/macro_progress.dart';
+import '../models/meal_analysis_result.dart';
+import '../models/shift_fit_plan.dart';
+import '../models/sleep_entry.dart';
+import '../models/user_profile.dart';
+import '../models/weight_log.dart';
+import '../models/workout_set.dart';
+import '../services/daily_log_sync.dart';
+import '../services/fitpilot_sync.dart';
+import '../services/health_service.dart';
+import '../services/local_cache.dart';
+import '../services/meal_totals.dart' as totals;
+import '../services/notification_content_engine.dart';
+import '../services/notification_service.dart';
+import '../services/uuid.dart';
+import '../theme/app_colors.dart';
+import '../widgets/common/app_snack.dart';
+
+/// Vom [HomeStore] ausgesendete, context-FREIE Snackbar-Anforderung. Der Store
+/// haelt bewusst nie einen BuildContext (ARCH-4 Store-Seam) — er signalisiert
+/// nur „zeige diese Meldung", die `_ShiftFitHomePageState` uebersetzt das in ein
+/// echtes [showAppSnack]. So bleibt die gesamte Sync-/Rollback-Logik testbar und
+/// vom Widget-Baum entkoppelt.
+typedef SnackEmitter = void Function(
+  String message, {
+  IconData icon,
+  Color accent,
+  Duration? duration,
+  SnackBarAction? action,
+});
+
+/// ARCH-4: Single source of truth fuer den Home-State. Frueher lebten diese ~40
+/// Felder + ~50 Mutationen als God-Object direkt im `_ShiftFitHomePageState`, wo
+/// jede Mutation ueber `setState` den GANZEN Home-Baum neu baute (Wurzel der
+/// PERF-2-Rebuild-Schulden). Jetzt ist der State ein [ChangeNotifier]: die UI
+/// haengt sich per `ListenableBuilder`/Slice-Selector dran und rebuildet gezielt.
+///
+/// Der Store kennt KEINEN BuildContext. Navigation + modale Sheets bleiben in der
+/// State-Schale; nutzerseitige Meldungen laufen ueber den injizierten
+/// [SnackEmitter]. Verhalten ist 1:1 zum vorherigen God-Object — die 283 Tests
+/// gelten als Charakterisierung.
+class HomeStore extends ChangeNotifier {
+  HomeStore({
+    required this.sync,
+    required this.health,
+    required this.notificationService,
+    required this.initialUserName,
+    required SnackEmitter emitSnack,
+    this.debugCache,
+  })  : _emitSnack = emitSnack {
+    userName = initialUserName;
+  }
+
+  final FitPilotSync? sync;
+  final HealthService health;
+  final NotificationService notificationService;
+  final String initialUserName;
+  final LocalCache? debugCache;
+  final SnackEmitter _emitSnack;
+
+  bool _disposed = false;
+
+  // --- State (vormals Felder von _ShiftFitHomePageState) --------------------
+  String selectedShift = 'Muskelaufbau';
+  String selectedEnergy = 'Normal';
+  String selectedStress = 'Mittel';
+  int selectedTab = 0;
+  int dailyConsumedKcal = 0;
+  int dailyWaterMl = 0;
+  int dailySteps = 0;
+  DateTime selectedFoodDate = DateUtils.dateOnly(DateTime.now());
+  UserProfile profile = const UserProfile();
+  MacroProgress macroProgress = MacroProgress.empty;
+  SleepEntry? lastSleep;
+  Set<String> completedBlockIds = <String>{};
+  int workoutStreak = 0;
+  List<FavoriteMeal> favorites = <FavoriteMeal>[];
+  List<LoggedMeal> loggedMeals = <LoggedMeal>[];
+  List<FitnessRecipe> _userRecipes = const <FitnessRecipe>[];
+  CaffeineDay caffeineDay = const CaffeineDay();
+  DailyMood mood = DailyMood.empty;
+  HabitState habits = const HabitState();
+  WeightLog weightLog = const WeightLog();
+  HealthAuthState healthAuthState = HealthAuthState.unknown;
+  DateTime? healthLastFetch;
+  bool healthSyncing = false;
+  LifetimeStats lifetimeStats = LifetimeStats();
+  bool workoutCompletedToday = false;
+  List<DailyLog> _trendsHistory = const <DailyLog>[];
+  List<WorkoutSet> _workoutHistory = <WorkoutSet>[];
+  Timer? _statsSaveDebounce;
+
+  bool _notificationsEnabled = false;
+  Timer? _notificationDebounce;
+  int _pendingWaterDelta = 0;
+  int _pendingStepsDelta = 0;
+  int _pendingMealsDelta = 0;
+  int _pendingWeightLogsDelta = 0;
+  bool _statsFlushInFlight = false;
+  String userName = 'Moritz';
+  bool _onboardingDone = false;
+  final Completer<void> _profileReadyCompleter = Completer<void>();
+
+  LocalCache? _cache;
+  bool _hydratedFromRealSource = false;
+
+  final List<String> weekPlan = [
+    'Kraft',
+    'Muskelaufbau',
+    'Ausdauer',
+    'Mobility',
+    'Kraft',
+    'Recovery',
+    'Frei',
+  ];
+
+  // --- Read-only Sichten fuer die UI-Schale --------------------------------
+  List<FitnessRecipe> get userRecipes => _userRecipes;
+  List<DailyLog> get trendsHistory => _trendsHistory;
+  List<WorkoutSet> get workoutHistory => _workoutHistory;
+  bool get notificationsEnabled => _notificationsEnabled;
+  Future<void> get profileReady => _profileReadyCompleter.future;
+
+  int get stepsGoal => profile.dailyStepsGoal;
+
+  ShiftFitPlan get plan => ShiftFitPlan.from(
+        shift: selectedShift,
+        energy: selectedEnergy,
+        stress: selectedStress,
+      );
+
+  /// Onboarding ist Pflicht, sobald ein echter Supabase-Sync existiert und das
+  /// Profil noch nicht durchlaufen wurde. Ohne Sync (Test/Preview) nie.
+  bool get needsOnboarding =>
+      sync != null && !_onboardingDone && !profile.onboardingCompleted;
+
+  String get profileInitial {
+    final parts = userName.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts.first.isEmpty) return 'S';
+    return parts.first.substring(0, 1).toUpperCase();
+  }
+
+  /// Kompakter Tages-/Profil-Snapshot für den AI-Coach, damit er konkret statt
+  /// generisch beraten kann (z.B. „dir fehlen heute 38 g Protein").
+  String get coachContext {
+    final p = profile;
+    final remKcal = p.dailyKcalGoal - dailyConsumedKcal;
+    final remProt = (p.proteinGoalG - macroProgress.proteinG).round();
+    final remCarbs = (p.carbsGoalG - macroProgress.carbsG).round();
+    final remFat = (p.fatGoalG - macroProgress.fatG).round();
+    return [
+      'Körpergewicht: ${p.weightKg} kg (Ziel ${p.targetWeightKg} kg).',
+      'Heute gegessen: $dailyConsumedKcal von ${p.dailyKcalGoal} kcal '
+          '(noch $remKcal kcal übrig).',
+      'Makros heute noch offen: Protein $remProt g, Kohlenhydrate $remCarbs g, '
+          'Fett $remFat g.',
+      'Aktueller Workout-Streak: $workoutStreak Tage.',
+    ].join(' ');
+  }
+
+  bool get selectedFoodDateIsToday =>
+      _isSameFoodDate(selectedFoodDate, DateTime.now());
+
+  // Reine Aggregation lebt in services/meal_totals.dart (unit-getestet) — hier
+  // nur dünne Wrapper, die den aktuellen loggedMeals-Stand binden.
+  List<LoggedMeal> mealsForFoodDate(DateTime date) =>
+      totals.mealsForFoodDate(loggedMeals, date);
+
+  int consumedKcalForFoodDate(DateTime date) =>
+      totals.consumedKcalForFoodDate(loggedMeals, date);
+
+  MacroProgress macroProgressForFoodDate(DateTime date) =>
+      totals.macroProgressForFoodDate(loggedMeals, date);
+
+  // --- interne Helfer -------------------------------------------------------
+  /// Fuehrt [fn] aus und benachrichtigt danach die Listener (ersetzt das alte
+  /// `setState`). Nach dispose ein No-Op auf der Notify-Seite.
+  void _mutate(VoidCallback fn) {
+    fn();
+    if (!_disposed) notifyListeners();
+  }
+
+  bool _isSameFoodDate(DateTime a, DateTime b) => DateUtils.isSameDay(a, b);
+
+  DateTime _timestampForFoodDate(DateTime date) {
+    final now = DateTime.now();
+    final day = DateUtils.dateOnly(date);
+    return DateTime(day.year, day.month, day.day, now.hour, now.minute);
+  }
+
+  // --- Boot / Hydration -----------------------------------------------------
+
+  /// Startet den Boot. Ohne Sync (Test/Preview) ist sofort „ready"; mit Sync
+  /// zuerst aus dem durablen Cache hydratisieren, dann der Netz-Boot.
+  void start() {
+    if (sync == null) {
+      if (!_profileReadyCompleter.isCompleted) _profileReadyCompleter.complete();
+      return;
+    }
+    unawaited(_hydrateThenBoot());
+  }
+
+  Future<void> _hydrateThenBoot() async {
+    final s = sync;
+    if (s == null) return;
+    if (debugCache != null) {
+      _cache = debugCache;
+    } else {
+      final userId = s.client.auth.currentUser?.id;
+      if (userId != null && userId.isNotEmpty) {
+        _cache = await LocalCache.create(userId);
+      }
+    }
+    if (_cache != null) {
+      await _hydrateFromCache();
+    }
+    await _bootFromSupabase();
+    await _initNotificationsFromCache();
+  }
+
+  Future<void> _hydrateFromCache() async {
+    final cache = _cache;
+    if (cache == null) return;
+    final today = DateTime.now();
+    UserProfile? cachedProfile;
+    DailyLog? cachedDaily;
+    LifetimeStats? cachedStats;
+    try {
+      cachedProfile = await cache.readProfile();
+      cachedDaily = await cache.readDailyLog(today);
+      cachedStats = await cache.readLifetimeStats();
+    } catch (e, st) {
+      dev.log('LocalCache hydrate failed',
+          error: e, stackTrace: st, name: 'local_cache');
+    }
+    if (_disposed) return;
+    if (cachedProfile == null && cachedDaily == null && cachedStats == null) {
+      return;
+    }
+    _mutate(() {
+      if (cachedProfile != null) {
+        profile = cachedProfile;
+        _hydratedFromRealSource = true;
+      }
+      if (cachedDaily != null) {
+        dailyWaterMl = cachedDaily.waterMl;
+        if (cachedDaily.steps > 0) dailySteps = cachedDaily.steps;
+        mood = cachedDaily.mood;
+        habits = cachedDaily.habitState;
+        completedBlockIds = cachedDaily.completedBlockIds;
+        workoutCompletedToday = cachedDaily.workoutCompleted;
+      }
+      if (cachedStats != null) {
+        lifetimeStats = cachedStats;
+        workoutStreak = cachedStats.currentStreak;
+      }
+      dailyConsumedKcal = consumedKcalForFoodDate(today);
+      macroProgress = macroProgressForFoodDate(today);
+    });
+  }
+
+  Future<void> _bootFromSupabase() async {
+    final s = sync!;
+    s.dailyLog.onError = _onDailyLogSyncError;
+    final today = DateTime.now();
+    final results = await Future.wait<Object?>([
+      _safeLoad(() => s.profile.load()),
+      _safeLoad(() => s.meals.loadLoggedMeals()),
+      _safeLoad(() => s.meals.loadFavorites()),
+      _safeLoad(() => s.dailyLog.loadForDate(today)),
+      _safeLoad(() => s.tracking.loadWeightLog()),
+      _safeLoad(() => s.tracking.loadCaffeineDay(today)),
+      _safeLoad(() => s.tracking.loadLatestSleep()),
+      _safeLoad(() => s.lifetimeStats.load()),
+      _safeLoad(() => s.weeklyPlan.load()),
+      _safeLoad(() => s.dailyLog
+          .loadRange(today.subtract(const Duration(days: 29)), today)),
+      _safeLoad(() => s.userRecipes.load()),
+      _safeLoad(() => s.workoutLog.loadRecent()),
+    ]);
+    if (_disposed) return;
+    _mutate(() {
+      final loadedProfile = results[0] as UserProfile?;
+      if (loadedProfile != null) {
+        profile = loadedProfile;
+        _hydratedFromRealSource = true;
+      }
+
+      final loadedMeals = results[1] as List<LoggedMeal>?;
+      if (loadedMeals != null) {
+        loggedMeals = loadedMeals;
+      }
+
+      final loadedFavorites = results[2] as List<FavoriteMeal>?;
+      if (loadedFavorites != null) favorites = loadedFavorites;
+
+      final loadedDailyLog = results[3] as DailyLog?;
+      if (loadedDailyLog != null) {
+        dailyWaterMl = loadedDailyLog.waterMl;
+        if (loadedDailyLog.steps > 0) {
+          dailySteps = loadedDailyLog.steps;
+        }
+        mood = loadedDailyLog.mood;
+        habits = loadedDailyLog.habitState;
+        completedBlockIds = loadedDailyLog.completedBlockIds;
+        workoutCompletedToday = loadedDailyLog.workoutCompleted;
+      }
+
+      final loadedWeightLog = results[4] as WeightLog?;
+      if (loadedWeightLog != null) weightLog = loadedWeightLog;
+
+      final loadedCaffeine = results[5] as CaffeineDay?;
+      if (loadedCaffeine != null) caffeineDay = loadedCaffeine;
+
+      final loadedSleep = results[6] as SleepEntry?;
+      if (loadedSleep != null) lastSleep = loadedSleep;
+
+      final loadedStats = results[7] as LifetimeStats?;
+      if (loadedStats != null) {
+        lifetimeStats = loadedStats;
+        workoutStreak = loadedStats.currentStreak;
+      }
+
+      final loadedWeek = results[8] as List<String>?;
+      if (loadedWeek != null && loadedWeek.length == 7) {
+        weekPlan
+          ..clear()
+          ..addAll(loadedWeek);
+      }
+
+      final loadedHistory = results[9] as List<DailyLog>?;
+      if (loadedHistory != null) _trendsHistory = loadedHistory;
+
+      final loadedRecipes = results[10] as List<FitnessRecipe>?;
+      if (loadedRecipes != null) _userRecipes = loadedRecipes;
+
+      final loadedWorkoutSets = results[11] as List<WorkoutSet>?;
+      if (loadedWorkoutSets != null) _workoutHistory = loadedWorkoutSets;
+
+      dailyConsumedKcal = consumedKcalForFoodDate(today);
+      macroProgress = macroProgressForFoodDate(today);
+    });
+    unawaited(_writeCacheSnapshot());
+    if (!_profileReadyCompleter.isCompleted) {
+      _profileReadyCompleter.complete();
+    }
+  }
+
+  Future<T?> _safeLoad<T>(Future<T?> Function() loader) async {
+    try {
+      return await loader();
+    } catch (e, st) {
+      dev.log('FitPilot load failed',
+          error: e, stackTrace: st, name: 'fitpilot_sync');
+      return null;
+    }
+  }
+
+  // --- Fehler-/Sync-Routing -------------------------------------------------
+
+  void _reportSyncError(String operation, Object error) {
+    dev.log('$operation failed', error: error, name: 'fitpilot_sync');
+    if (_disposed) return;
+    final msg = error.toString();
+    final short = msg.length > 140 ? '${msg.substring(0, 140)}…' : msg;
+    _emitSnack(
+      'Sync ($operation): $short',
+      icon: Icons.error_outline_rounded,
+      accent: danger,
+      duration: kSnackError,
+    );
+  }
+
+  /// Fire-and-forget Sync-Write MIT Rollback: schlägt der Write fehl, wird der
+  /// Fehler sichtbar gemeldet UND der optimistische lokale State via [restore]
+  /// zurückgerollt — sonst driften lokal und Remote auseinander.
+  void _syncWithRollback(
+    String operation,
+    Future<void>? future,
+    VoidCallback restore,
+  ) {
+    future?.catchError((Object e) {
+      _reportSyncError(operation, e);
+      if (!_disposed) _mutate(restore);
+    });
+  }
+
+  void _onDailyLogSyncError(Object error) {
+    _reportSyncError('Tagesziel', error);
+    final s = sync;
+    if (s == null) return;
+    final today = DateTime.now();
+    s.dailyLog.loadForDate(today).then((loaded) {
+      if (_disposed || loaded == null) return;
+      _mutate(() {
+        dailyWaterMl = loaded.waterMl;
+        if (loaded.steps > 0) {
+          dailySteps = loaded.steps;
+        }
+        mood = loaded.mood;
+        habits = loaded.habitState;
+        completedBlockIds = loaded.completedBlockIds;
+        workoutCompletedToday = loaded.workoutCompleted;
+      });
+    }).catchError((Object e, StackTrace st) {
+      dev.log('Tagesziel Re-Sync fehlgeschlagen',
+          error: e, stackTrace: st, name: 'fitpilot_sync');
+    });
+  }
+
+  void _showUndoSnackBar(String label, VoidCallback onUndo) {
+    if (_disposed) return;
+    _emitSnack(
+      label,
+      icon: Icons.delete_outline_rounded,
+      accent: danger,
+      action: SnackBarAction(label: 'Rückgängig', onPressed: onUndo),
+    );
+  }
+
+  /// DSGVO Art. 17: löscht Konto + alle Daten serverseitig (RPC). Liefert true,
+  /// wenn die Löschung durchlief (dann darf die Schale ausloggen). Bei Fehler
+  /// false (kein Logout, damit der User es erneut versuchen kann).
+  Future<bool> deleteAccount() async {
+    try {
+      await sync?.deleteAccount();
+    } catch (e) {
+      _reportSyncError('Konto-Löschung', e);
+      return false;
+    }
+    await _cache?.clear();
+    return true;
+  }
+
+  // --- Persistenz-Helfer ----------------------------------------------------
+
+  void _queueDailyLogSync() {
+    final s = sync;
+    if (s == null) return;
+    final log = DailyLog(
+      date: DateTime.now(),
+      waterMl: dailyWaterMl,
+      steps: dailySteps,
+      moodScore: mood.score,
+      moodNote: mood.note,
+      completedBlockIds: completedBlockIds,
+      completedHabitIds: habits.completedIds,
+      workoutCompleted: workoutCompletedToday,
+    );
+    s.dailyLog.queueUpsert(log);
+    unawaited(_cache?.writeDailyLog(log) ?? Future<void>.value());
+  }
+
+  Future<void> _writeCacheSnapshot() async {
+    final cache = _cache;
+    if (cache == null) return;
+    await cache.writeProfile(profile);
+    await cache.writeDailyLog(DailyLog(
+      date: DateTime.now(),
+      waterMl: dailyWaterMl,
+      steps: dailySteps,
+      moodScore: mood.score,
+      moodNote: mood.note,
+      completedBlockIds: completedBlockIds,
+      completedHabitIds: habits.completedIds,
+      workoutCompleted: workoutCompletedToday,
+    ));
+    await cache.writeLifetimeStats(lifetimeStats);
+  }
+
+  void _cacheLifetimeStats() {
+    unawaited(_cache?.writeLifetimeStats(lifetimeStats) ?? Future<void>.value());
+  }
+
+  // --- Nudge-Scheduling -----------------------------------------------------
+
+  Future<void> _pushSchedule() async {
+    if (!_notificationsEnabled) return;
+    final specs = const NotificationContentEngine().buildSchedule(
+      now: DateTime.now(),
+      shift: selectedShift,
+      dailyWaterMl: dailyWaterMl,
+      waterGoalMl: profile.dailyWaterGoalMl,
+      caffeineDay: caffeineDay,
+      lastBedtimeMinutes: lastSleep?.bedtimeMinutes,
+      sleepGoalMinutes: profile.dailySleepGoalMinutes,
+      stats: lifetimeStats,
+    );
+    await notificationService.scheduleAll(specs);
+  }
+
+  void _rescheduleNotifications() {
+    if (!_notificationsEnabled) return;
+    _notificationDebounce?.cancel();
+    _notificationDebounce = Timer(const Duration(milliseconds: 700), () {
+      unawaited(_pushSchedule());
+    });
+  }
+
+  Future<void> _initNotificationsFromCache() async {
+    final cache = _cache;
+    if (cache == null) return;
+    final enabled = await cache.readNotificationsEnabled() ?? false;
+    if (_disposed) return;
+    if (!enabled) return;
+    _mutate(() => _notificationsEnabled = true);
+    await notificationService.init();
+    await _pushSchedule();
+  }
+
+  Future<void> _setNotificationsEnabled(bool enabled) async {
+    if (!_disposed) {
+      _mutate(() => _notificationsEnabled = enabled);
+    } else {
+      _notificationsEnabled = enabled;
+    }
+    unawaited(
+        _cache?.writeNotificationsEnabled(enabled) ?? Future<void>.value());
+    if (enabled) {
+      await notificationService.init();
+      await notificationService.requestPermission();
+      await _pushSchedule();
+    } else {
+      _notificationDebounce?.cancel();
+      await notificationService.cancelAll();
+    }
+  }
+
+  /// Schaltet Erinnerungen ein/aus (Settings-Toggle). Oeffentliche Fassade fuer
+  /// die Schale.
+  Future<void> setNotificationsEnabled(bool enabled) =>
+      _setNotificationsEnabled(enabled);
+
+  // --- Lifetime-Stats-Deltas ------------------------------------------------
+
+  void _queueStatsDelta({
+    int water = 0,
+    int steps = 0,
+    int meals = 0,
+    int weightLogs = 0,
+  }) {
+    if (sync == null) return;
+    _pendingWaterDelta += water;
+    _pendingStepsDelta += steps;
+    _pendingMealsDelta += meals;
+    _pendingWeightLogsDelta += weightLogs;
+    _cacheLifetimeStats();
+    _statsSaveDebounce?.cancel();
+    _statsSaveDebounce = Timer(const Duration(milliseconds: 600), () {
+      unawaited(_flushStatsDelta());
+    });
+  }
+
+  Future<void> _flushStatsDelta() async {
+    final s = sync;
+    if (s == null) return;
+    if (_statsFlushInFlight) return;
+    final water = _pendingWaterDelta;
+    final steps = _pendingStepsDelta;
+    final meals = _pendingMealsDelta;
+    final weightLogs = _pendingWeightLogsDelta;
+    if (water == 0 && steps == 0 && meals == 0 && weightLogs == 0) return;
+    _pendingWaterDelta = 0;
+    _pendingStepsDelta = 0;
+    _pendingMealsDelta = 0;
+    _pendingWeightLogsDelta = 0;
+    _statsFlushInFlight = true;
+    final prevStats = lifetimeStats;
+    try {
+      final fresh = await s.lifetimeStats.increment(
+        water: water,
+        steps: steps,
+        meals: meals,
+        weightLogs: weightLogs,
+      );
+      if (!_disposed) {
+        _mutate(() {
+          lifetimeStats = fresh;
+          workoutStreak = fresh.currentStreak;
+        });
+      }
+      _cacheLifetimeStats();
+    } catch (e) {
+      _pendingWaterDelta += water;
+      _pendingStepsDelta += steps;
+      _pendingMealsDelta += meals;
+      _pendingWeightLogsDelta += weightLogs;
+      _reportSyncError('Statistik', e);
+      if (!_disposed) _mutate(() => lifetimeStats = prevStats);
+    } finally {
+      _statsFlushInFlight = false;
+    }
+  }
+
+  void _saveWeeklyPlan() {
+    sync?.weeklyPlan
+        .save(weekPlan)
+        .catchError((Object e) => _reportSyncError('Wochenplan', e));
+  }
+
+  /// Schreibt ausstehende debounced Writes sofort weg (App-Backgrounding).
+  void flushPendingWrites() {
+    final s = sync;
+    if (s == null) return;
+    _statsSaveDebounce?.cancel();
+    _statsSaveDebounce = null;
+    unawaited(_flushStatsDelta());
+    s.dailyLog.flush();
+  }
+
+  // --- Health ---------------------------------------------------------------
+
+  Future<void> connectHealth() async {
+    if (_disposed) return;
+    _mutate(() => healthSyncing = true);
+    final state = await health.requestAuthorization();
+    if (_disposed) return;
+    _mutate(() => healthAuthState = state);
+    if (state == HealthAuthState.granted) {
+      await refreshHealthSteps();
+    } else {
+      _mutate(() => healthSyncing = false);
+    }
+  }
+
+  Future<void> refreshHealthSteps() async {
+    if (_disposed) return;
+    _mutate(() => healthSyncing = true);
+    final snapshot = await health.readSnapshot();
+    if (_disposed) return;
+    _mutate(() {
+      healthSyncing = false;
+      if (snapshot != null) {
+        dailySteps = snapshot.stepsToday;
+        healthLastFetch = snapshot.fetchedAt;
+        healthAuthState = HealthAuthState.granted;
+      }
+    });
+  }
+
+  // --- Tages-Mutationen -----------------------------------------------------
+
+  void addWater(int ml) {
+    HapticFeedback.selectionClick();
+    _mutate(() {
+      dailyWaterMl = (dailyWaterMl + ml).clamp(0, 15000);
+      if (ml > 0) lifetimeStats = lifetimeStats.addWater(ml);
+    });
+    _queueDailyLogSync();
+    if (ml > 0) _queueStatsDelta(water: ml);
+    _rescheduleNotifications();
+  }
+
+  void toggleHabit(String id) {
+    HapticFeedback.selectionClick();
+    _mutate(() => habits = habits.toggle(id));
+    _queueDailyLogSync();
+  }
+
+  void logWeight(double kg) {
+    HapticFeedback.lightImpact();
+    final ts = DateTime.now();
+    final prevWeightLog = weightLog;
+    final prevStats = lifetimeStats;
+    _mutate(() {
+      weightLog = weightLog.add(kg);
+      lifetimeStats = lifetimeStats.incrementWeightLogs();
+    });
+    unawaited(health.writeWeight(kg, ts));
+    final s = sync;
+    if (s == null) return;
+    s.tracking.insertWeight(kg, ts).then((_) {
+      _queueStatsDelta(weightLogs: 1);
+    }).catchError((Object e) {
+      _reportSyncError('Gewicht', e);
+      if (!_disposed) {
+        _mutate(() {
+          weightLog = prevWeightLog;
+          lifetimeStats = prevStats;
+        });
+      }
+    });
+  }
+
+  void addCaffeine(int mg) {
+    final ts = DateTime.now();
+    final prev = caffeineDay;
+    _mutate(() => caffeineDay = caffeineDay.add(mg));
+    _syncWithRollback(
+      'Koffein',
+      sync?.tracking.insertCaffeine(mg, ts),
+      () => caffeineDay = prev,
+    );
+    _rescheduleNotifications();
+  }
+
+  void resetCaffeine() {
+    final prev = caffeineDay;
+    _mutate(() => caffeineDay = caffeineDay.reset());
+    _syncWithRollback(
+      'Koffein-Reset',
+      sync?.tracking.resetCaffeineDay(DateTime.now()),
+      () => caffeineDay = prev,
+    );
+    _rescheduleNotifications();
+  }
+
+  void setSteps(int amount) {
+    _mutate(() => dailySteps = amount.clamp(0, 100000));
+    _queueDailyLogSync();
+  }
+
+  void setMoodScore(int score) {
+    _mutate(() => mood = DailyMood(score: score, note: mood.note));
+    _queueDailyLogSync();
+  }
+
+  /// Uebernimmt eine im Sheet eingegebene Mood-Notiz (das Sheet selbst lebt in
+  /// der context-tragenden Schale).
+  void setMoodNote(String note) {
+    _mutate(() => mood = DailyMood(score: mood.score, note: note));
+    _queueDailyLogSync();
+  }
+
+  /// Uebernimmt einen im Sheet erfassten Schlaf-Eintrag.
+  void logSleep(SleepEntry entry) {
+    final prev = lastSleep;
+    _mutate(() => lastSleep = entry);
+    _syncWithRollback(
+      'Schlaf',
+      sync?.tracking.upsertSleep(entry),
+      () => lastSleep = prev,
+    );
+    _rescheduleNotifications();
+  }
+
+  void toggleBlock(String id) {
+    HapticFeedback.selectionClick();
+    final next = {...completedBlockIds};
+    if (next.contains(id)) {
+      next.remove(id);
+    } else {
+      next.add(id);
+    }
+    final allDone = plan.blocks.isNotEmpty &&
+        plan.blocks.asMap().entries.every(
+              (e) => next.contains('${e.key + 1}:${e.value.title}'),
+            );
+
+    final bool wasCompletedToday = workoutCompletedToday;
+    final prevStats = lifetimeStats;
+    final prevStreak = workoutStreak;
+    _mutate(() {
+      if (allDone) {
+        if (!wasCompletedToday) {
+          lifetimeStats = lifetimeStats
+              .incrementWorkouts()
+              .recordWorkoutDay(DateTime.now());
+          workoutStreak = lifetimeStats.currentStreak;
+          workoutCompletedToday = true;
+        }
+        completedBlockIds = <String>{};
+      } else {
+        completedBlockIds = next;
+      }
+    });
+    _queueDailyLogSync();
+    if (allDone && !wasCompletedToday) _cacheLifetimeStats();
+    if (allDone && !wasCompletedToday) _rescheduleNotifications();
+    if (allDone && !wasCompletedToday) {
+      final end = DateTime.now();
+      final minutes = plan.totalMinutes > 0 ? plan.totalMinutes : 45;
+      final start = end.subtract(Duration(minutes: minutes));
+      unawaited(health.writeWorkout(
+        start: start,
+        end: end,
+        type: 'functionalStrengthTraining',
+      ));
+    }
+
+    if (allDone && !wasCompletedToday) {
+      final s = sync;
+      if (s != null) {
+        s.lifetimeStats.recordWorkoutDay(DateTime.now()).then((fresh) {
+          if (_disposed) return;
+          _mutate(() {
+            lifetimeStats = fresh;
+            workoutStreak = fresh.currentStreak;
+          });
+          _cacheLifetimeStats();
+        }).catchError((Object e) {
+          _reportSyncError('Workout-Streak', e);
+          if (!_disposed) {
+            _mutate(() {
+              lifetimeStats = prevStats;
+              workoutStreak = prevStreak;
+              workoutCompletedToday = wasCompletedToday;
+            });
+          }
+        });
+      }
+      _emitSnack(
+        'Plan abgehakt · Streak: $workoutStreak',
+        icon: Icons.local_fire_department_rounded,
+        accent: forgeLime,
+      );
+    }
+  }
+
+  // --- Mahlzeiten -----------------------------------------------------------
+
+  String addResultToDailyTotal(
+    MealAnalysisResult result, {
+    MealSlot? slot,
+    DateTime? foodDate,
+  }) {
+    final targetDate = DateUtils.dateOnly(foodDate ?? selectedFoodDate);
+    final entry = LoggedMeal(
+      id: uuidV4(),
+      result: result,
+      loggedAt: _timestampForFoodDate(targetDate),
+      forcedSlot: slot,
+    );
+    final targetIsToday = _isSameFoodDate(targetDate, DateTime.now());
+    HapticFeedback.lightImpact();
+    final prevMeals = loggedMeals;
+    final prevKcal = dailyConsumedKcal;
+    final prevMacros = macroProgress;
+    final prevStats = lifetimeStats;
+    _mutate(() {
+      lifetimeStats = lifetimeStats.incrementMeals();
+      _rememberRecent(result);
+      loggedMeals = [entry, ...loggedMeals];
+      if (targetIsToday) {
+        dailyConsumedKcal = consumedKcalForFoodDate(DateTime.now());
+        macroProgress = macroProgressForFoodDate(DateTime.now());
+      }
+    });
+    final s = sync;
+    if (s == null) return entry.id;
+    s.meals.insertLoggedMeal(entry).then((_) {
+      _queueStatsDelta(meals: 1);
+    }).catchError((Object e) {
+      _reportSyncError('Mahlzeit', e);
+      if (!_disposed) {
+        _mutate(() {
+          loggedMeals = prevMeals;
+          lifetimeStats = prevStats;
+          dailyConsumedKcal = prevKcal;
+          macroProgress = prevMacros;
+        });
+      }
+    });
+    return entry.id;
+  }
+
+  void updateLoggedMealResult(String id, MealAnalysisResult scaled) {
+    final index = loggedMeals.indexWhere((m) => m.id == id);
+    if (index == -1) return;
+    final target = loggedMeals[index];
+    final prevMeals = loggedMeals;
+    final prevKcal = dailyConsumedKcal;
+    final prevMacros = macroProgress;
+    final updated = target.copyWith(result: scaled);
+    _mutate(() {
+      final nextMeals = [...loggedMeals];
+      nextMeals[index] = updated;
+      loggedMeals = nextMeals;
+      if (selectedFoodDateIsToday) {
+        dailyConsumedKcal = consumedKcalForFoodDate(DateTime.now());
+        macroProgress = macroProgressForFoodDate(DateTime.now());
+      }
+    });
+    _syncWithRollback(
+      'Mahlzeit-Update',
+      sync?.meals.updateLoggedMeal(updated),
+      () {
+        loggedMeals = prevMeals;
+        dailyConsumedKcal = prevKcal;
+        macroProgress = prevMacros;
+      },
+    );
+  }
+
+  void removeLoggedMeal(String id) {
+    final matches = loggedMeals.where((m) => m.id == id);
+    final removed = matches.isEmpty ? null : matches.first;
+    HapticFeedback.lightImpact();
+    final prevMeals = loggedMeals;
+    final prevKcal = dailyConsumedKcal;
+    final prevMacros = macroProgress;
+    _mutate(() {
+      loggedMeals = loggedMeals.where((m) => m.id != id).toList();
+      if (selectedFoodDateIsToday) {
+        dailyConsumedKcal = consumedKcalForFoodDate(DateTime.now());
+        macroProgress = macroProgressForFoodDate(DateTime.now());
+      }
+    });
+    _syncWithRollback(
+      'Mahlzeit-Delete',
+      sync?.meals.deleteLoggedMeal(id),
+      () {
+        loggedMeals = prevMeals;
+        dailyConsumedKcal = prevKcal;
+        macroProgress = prevMacros;
+      },
+    );
+    if (removed != null) {
+      _showUndoSnackBar('Mahlzeit gelöscht', () => _restoreLoggedMeal(removed));
+    }
+  }
+
+  void _restoreLoggedMeal(LoggedMeal meal) {
+    if (loggedMeals.any((m) => m.id == meal.id)) return;
+    _mutate(() {
+      loggedMeals = [meal, ...loggedMeals];
+      if (selectedFoodDateIsToday) {
+        dailyConsumedKcal = consumedKcalForFoodDate(DateTime.now());
+        macroProgress = macroProgressForFoodDate(DateTime.now());
+      }
+    });
+    _syncWithRollback(
+      'Mahlzeit-Restore',
+      sync?.meals.insertLoggedMeal(meal),
+      () {
+        loggedMeals = loggedMeals.where((m) => m.id != meal.id).toList();
+        if (selectedFoodDateIsToday) {
+          dailyConsumedKcal = consumedKcalForFoodDate(DateTime.now());
+          macroProgress = macroProgressForFoodDate(DateTime.now());
+        }
+      },
+    );
+  }
+
+  static const int _maxAutoRecents = 5;
+
+  void _rememberRecent(MealAnalysisResult result) {
+    final id = FavoriteMeal.idFor(result);
+    final existing = favorites.where((f) => f.id == id);
+    final wasPinned = existing.isNotEmpty && existing.first.pinned;
+    final entry = FavoriteMeal(
+      id: id,
+      result: result,
+      addedAt: DateTime.now(),
+      pinned: wasPinned,
+    );
+    favorites =
+        _cappedFavorites([entry, ...favorites.where((f) => f.id != id)]);
+    sync?.meals
+        .upsertFavorite(entry)
+        .catchError((e) => _reportSyncError('Favorit', e));
+  }
+
+  List<FavoriteMeal> _cappedFavorites(List<FavoriteMeal> source) {
+    final pinned = source.where((f) => f.pinned).toList(growable: false);
+    final recents =
+        source.where((f) => !f.pinned).take(_maxAutoRecents).toList();
+    return [...pinned, ...recents];
+  }
+
+  bool isFavorite(MealAnalysisResult result) {
+    final id = FavoriteMeal.idFor(result);
+    final matches = favorites.where((f) => f.id == id);
+    return matches.isNotEmpty && matches.first.pinned;
+  }
+
+  void toggleFavorite(MealAnalysisResult result) {
+    HapticFeedback.selectionClick();
+    final id = FavoriteMeal.idFor(result);
+    final existing = favorites.where((f) => f.id == id);
+    final isPinned = existing.isNotEmpty && existing.first.pinned;
+    final prev = favorites;
+
+    if (isPinned) {
+      final downgraded = existing.first.copyWith(pinned: false);
+      final next = _cappedFavorites(
+        [...favorites.where((f) => f.id != id), downgraded]
+          ..sort((a, b) => b.addedAt.compareTo(a.addedAt)),
+      );
+      final survived = next.any((f) => f.id == id);
+      _mutate(() => favorites = next);
+      if (survived) {
+        _syncWithRollback(
+          'Favorit',
+          sync?.meals.upsertFavorite(downgraded),
+          () => favorites = prev,
+        );
+      } else {
+        _syncWithRollback(
+          'Favorit-Delete',
+          sync?.meals.deleteFavorite(id),
+          () => favorites = prev,
+        );
+      }
+    } else {
+      final entry = existing.isNotEmpty
+          ? existing.first.copyWith(pinned: true)
+          : FavoriteMeal(
+              id: id, result: result, addedAt: DateTime.now(), pinned: true);
+      _mutate(() {
+        favorites = [entry, ...favorites.where((f) => f.id != id)];
+      });
+      _syncWithRollback(
+        'Favorit',
+        sync?.meals.upsertFavorite(entry),
+        () => favorites = prev,
+      );
+    }
+  }
+
+  void removeFavorite(String id) {
+    final matches = favorites.where((f) => f.id == id);
+    final removed = matches.isEmpty ? null : matches.first;
+    final prev = favorites;
+    _mutate(() {
+      favorites = favorites.where((f) => f.id != id).toList();
+    });
+    _syncWithRollback(
+      'Favorit-Delete',
+      sync?.meals.deleteFavorite(id),
+      () => favorites = prev,
+    );
+    if (removed != null) {
+      _showUndoSnackBar('Favorit entfernt', () => _restoreFavorite(removed));
+    }
+  }
+
+  void _restoreFavorite(FavoriteMeal fav) {
+    if (favorites.any((f) => f.id == fav.id)) return;
+    _mutate(() {
+      favorites = fav.pinned
+          ? [fav, ...favorites]
+          : _cappedFavorites([fav, ...favorites]);
+    });
+    _syncWithRollback(
+      'Favorit-Restore',
+      sync?.meals.upsertFavorite(fav),
+      () => favorites = favorites.where((f) => f.id != fav.id).toList(),
+    );
+  }
+
+  // --- Eigen-Rezepte --------------------------------------------------------
+
+  void createUserRecipe(FitnessRecipe recipe) {
+    final prev = _userRecipes;
+    _mutate(() {
+      _userRecipes = [
+        recipe,
+        ..._userRecipes.where((r) => r.slug != recipe.slug)
+      ];
+    });
+    _syncWithRollback(
+      'Rezept',
+      sync?.userRecipes.upsert(recipe),
+      () => _userRecipes = prev,
+    );
+  }
+
+  void deleteUserRecipe(String slug) {
+    final prev = _userRecipes;
+    _mutate(() {
+      _userRecipes = _userRecipes.where((r) => r.slug != slug).toList();
+    });
+    _syncWithRollback(
+      'Rezept-Delete',
+      sync?.userRecipes.delete(slug),
+      () => _userRecipes = prev,
+    );
+  }
+
+  // --- Settings / Reset / Onboarding ---------------------------------------
+
+  /// Wendet das im Settings-Sheet bearbeitete Profil + Flags an (das Sheet
+  /// selbst lebt in der context-tragenden Schale). Spiegelt das frühere
+  /// `_openSettings` ohne den UI-/Navigations-Teil.
+  Future<void> applySettings({
+    required UserProfile newProfile,
+    required bool notificationsEnabled,
+    required bool resetDay,
+  }) async {
+    if (notificationsEnabled != _notificationsEnabled) {
+      unawaited(_setNotificationsEnabled(notificationsEnabled));
+    }
+    final canPersistProfile = _hydratedFromRealSource;
+    _mutate(() {
+      profile = newProfile;
+      if (resetDay) {
+        _clearTodayState();
+      }
+    });
+    final s = sync;
+    if (s != null) {
+      if (canPersistProfile) {
+        unawaited(_cache?.writeProfile(newProfile) ?? Future<void>.value());
+      }
+      try {
+        if (canPersistProfile) {
+          await s.profile.save(newProfile);
+        } else {
+          dev.log(
+              'ProfileSync.save uebersprungen: profile basiert auf Ctor-Defaults '
+              '(kein Server-/Cache-Hydrate) — Clobber-Schutz',
+              name: 'fitpilot_sync');
+        }
+        if (resetDay) {
+          await s.dailyLog.flush();
+          _queueDailyLogSync();
+        }
+      } catch (e) {
+        if (!_disposed) {
+          _emitSnack('Profil-Sync: $e',
+              icon: Icons.error_outline_rounded,
+              accent: danger,
+              duration: kSnackError);
+        }
+      }
+    }
+    if (resetDay && !_disposed) {
+      _emitSnack('Tagesdaten zurückgesetzt.',
+          icon: Icons.restart_alt_rounded, accent: orange);
+    }
+    _rescheduleNotifications();
+  }
+
+  void _clearTodayState() {
+    dailyConsumedKcal = 0;
+    dailyWaterMl = 0;
+    dailySteps = 0;
+    macroProgress = MacroProgress.empty;
+    completedBlockIds = <String>{};
+    caffeineDay = const CaffeineDay();
+    mood = DailyMood.empty;
+    habits = const HabitState();
+    loggedMeals = <LoggedMeal>[];
+    workoutCompletedToday = false;
+    selectedFoodDate = DateUtils.dateOnly(DateTime.now());
+  }
+
+  void resetTodayData() {
+    _mutate(_clearTodayState);
+    _emitSnack('Tagesdaten zurückgesetzt.',
+        icon: Icons.restart_alt_rounded, accent: orange);
+  }
+
+  Future<void> completeOnboarding(UserProfile finished) async {
+    _mutate(() {
+      profile = finished;
+      _onboardingDone = true;
+      _hydratedFromRealSource = true;
+    });
+    final s = sync;
+    if (s == null) return;
+    unawaited(_cache?.writeProfile(finished) ?? Future<void>.value());
+    unawaited(_setNotificationsEnabled(true));
+    try {
+      await s.profile.save(finished);
+    } catch (e) {
+      if (!_disposed) {
+        _emitSnack('Profil-Sync: $e',
+            icon: Icons.error_outline_rounded,
+            accent: danger,
+            duration: kSnackError);
+      }
+    }
+  }
+
+  // --- Tab / Datum / Plan ---------------------------------------------------
+
+  void setTab(int index) => _mutate(() => selectedTab = index);
+
+  void setFoodDate(DateTime date) =>
+      _mutate(() => selectedFoodDate = DateUtils.dateOnly(date));
+
+  void setShift(String value) {
+    _mutate(() => selectedShift = value);
+    _rescheduleNotifications();
+  }
+
+  void setEnergy(String value) => _mutate(() => selectedEnergy = value);
+
+  void setStress(String value) => _mutate(() => selectedStress = value);
+
+  void setWeekPlanDay(int dayIndex, String shift) {
+    _mutate(() => weekPlan[dayIndex] = shift);
+    _saveWeeklyPlan();
+  }
+
+  void saveWeeklyPlan() => _saveWeeklyPlan();
+
+  Future<void> logWorkoutSet(WorkoutSet set) async {
+    await sync!.workoutLog.insert(set);
+    if (!_disposed) {
+      _mutate(() => _workoutHistory = [set, ..._workoutHistory]);
+    }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _statsSaveDebounce?.cancel();
+    _notificationDebounce?.cancel();
+    sync?.dispose();
+    super.dispose();
+  }
+}
