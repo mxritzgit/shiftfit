@@ -21,9 +21,9 @@
 -- Increment nie auf 0 Zeilen laeuft.
 --
 -- HINWEIS: Das Client-Wiring (lib/src/services/lifetime_stats_sync.dart +
--- daily_log_sync.dart) erfolgt in der Integrations-Welle, NICHT hier. Diese
--- Migration ist NOCH NICHT auf die Live-DB angewendet (PENDING APPLY) — per
--- `supabase db push` bzw. Management-API nachziehen.
+-- daily_log_sync.dart) erfolgt in der Integrations-Welle, NICHT hier. Status der
+-- Migration selbst: am 2026-06-07 gegen die Live-DB verifiziert — angewendet UND
+-- in supabase_migrations.schema_migrations registriert (beide RPCs vorhanden).
 
 -- ---------------------------------------------------------------------------
 -- 1) increment_lifetime_stats — atomares Hochzaehlen der Kumulativ-Zaehler.

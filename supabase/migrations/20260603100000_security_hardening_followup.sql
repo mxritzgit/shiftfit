@@ -1,5 +1,7 @@
--- Security-Hardening-Followup (Audit 2026-06-03). Rein additiv + idempotent;
--- per Management-API oder `supabase db push` anzuwenden — NOCH NICHT angewendet.
+-- Security-Hardening-Followup (Audit 2026-06-03). Rein additiv + idempotent.
+-- Status: am 2026-06-07 gegen die Live-DB verifiziert — angewendet UND in
+-- supabase_migrations.schema_migrations registriert (delete_account-Guard live,
+-- touch_chat_session fuer authenticated revoked).
 --
 -- 1) delete_account(): expliziter auth.uid()-Guard, wie ihn bereits alle
 --    Chat-Session-RPCs haben (EX_USER_REQUIRED). delete_account() war der

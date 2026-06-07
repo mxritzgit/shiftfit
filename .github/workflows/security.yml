@@ -148,12 +148,13 @@ jobs:
           done
 
   supabase-migration-drift:
-    name: Supabase migration drift (Linked DB)
+    name: Supabase migration drift (Management API)
     runs-on: ubuntu-latest
-    # Faellt nur, wenn die Live-DB von den Repo-Migrationen abweicht (pending
-    # Migration nicht gepusht). Gegated hinter Secrets: ohne SUPABASE_ACCESS_TOKEN
-    # + SUPABASE_PROJECT_REF wird der Drift-Schritt sauber uebersprungen, damit
-    # Forks/PRs ohne Secret-Zugriff den Build nicht rot machen.
+    # Faellt nur, wenn eine Repo-Migration NICHT in der Live-Migrationshistorie
+    # (supabase_migrations.schema_migrations) registriert ist. Gegated hinter
+    # Secrets: ohne SUPABASE_ACCESS_TOKEN + SUPABASE_PROJECT_REF wird der Check
+    # sauber uebersprungen, damit Forks/PRs ohne Secret-Zugriff den Build nicht
+    # rot machen. Nutzt die Management-API (kein DB-Passwort/CLI-Login noetig).
     steps:
       - uses: actions/checkout@v4
 
@@ -173,35 +174,46 @@ jobs:
             echo "::notice::SUPABASE_ACCESS_TOKEN/SUPABASE_PROJECT_REF nicht gesetzt — Migration-Drift-Check uebersprungen."
           fi
 
-      - name: Install Supabase CLI
-        if: steps.secrets.outputs.available == 'true'
-        uses: supabase/setup-cli@v1
-        with:
-          version: latest
-
-      - name: Link project
-        if: steps.secrets.outputs.available == 'true'
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-        run: supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"
-
-      # `db push --dry-run` listet Migrationen, die lokal vorhanden, aber auf der
-      # Live-DB NOCH NICHT angewendet sind. Wenn die Ausgabe solche Eintraege
-      # enthaelt -> Drift -> Job failt. So kann keine PENDING-Migration unbemerkt
-      # in main landen, ohne dass sie auch deployt wurde.
-      - name: Migration drift check (db push --dry-run)
+      # Fragt die registrierte Migrationshistorie der Live-DB ueber die
+      # Management-API ab und vergleicht sie gegen die Dateinamen in
+      # supabase/migrations/. Eine Repo-Version, die nicht registriert ist ->
+      # Drift -> Job failt. Kein `supabase db push --dry-run` mehr: das brauchte
+      # ein zusaetzliches SUPABASE_DB_PASSWORD-Secret + DB-Login.
+      - name: Migration drift check (Management API)
         if: steps.secrets.outputs.available == 'true'
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: |
-          echo "::group::supabase db push --dry-run"
-          OUT="$(supabase db push --dry-run 2>&1)"
-          echo "$OUT"
-          echo "::endgroup::"
-          if echo "$OUT" | grep -qiE 'Would push|Applying migration|pending'; then
-            echo "::error::Pending Supabase-Migration(en) erkannt — Live-DB weicht vom Repo ab. Bitte 'supabase db push' ausfuehren. Siehe supabase/SCHEMA_STATE_2026-06-04.md."
+          set -euo pipefail
+          QUERY="select coalesce(string_agg(version, ',' order by version), '') as v from supabase_migrations.schema_migrations"
+          BODY="$(jq -n --arg q "$QUERY" '{query:$q}')"
+          # Browser-User-Agent: Supabase haengt vor der Management-API eine
+          # Cloudflare-Regel, die Default-curl-UAs mit Fehler 1010 blockt.
+          RESP="$(curl -sS -X POST \
+            "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/database/query" \
+            -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" \
+            --data-binary "$BODY")"
+          REGISTERED="$(echo "$RESP" | jq -r '.[0].v // empty')"
+          if [ -z "$REGISTERED" ]; then
+            echo "::error::Konnte die Migrationshistorie nicht lesen (leere/fehlerhafte Antwort der Management-API): $RESP"
             exit 1
           fi
-          echo "Keine Migration-Drift erkannt — Live-DB == Repo."
+          echo "::group::Registrierte Versionen (Live-DB)"
+          echo "$REGISTERED" | tr ',' '\n'
+          echo "::endgroup::"
+          MISSING=""
+          for f in supabase/migrations/*.sql; do
+            v="$(basename "$f" | cut -d_ -f1)"
+            case ",$REGISTERED," in
+              *",$v,"*) ;;
+              *) MISSING="$MISSING $v" ;;
+            esac
+          done
+          if [ -n "$MISSING" ]; then
+            echo "::error::Nicht in supabase_migrations.schema_migrations registrierte Repo-Migration(en):$MISSING — Live-DB weicht vom Repo ab. Migration anwenden + Historie nachziehen. Siehe supabase/SCHEMA_STATE_2026-06-07.md."
+            exit 1
+          fi
+          echo "Keine Migration-Drift — alle $(ls supabase/migrations/*.sql | wc -l) Repo-Migrationen sind auf der Live-DB registriert."
