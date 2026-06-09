@@ -87,7 +87,8 @@ class ProfileSync {
           .eq('id', _userId)
           .maybeSingle();
       if (row == null) {
-        dev.log('ProfileSync.load: no row for $_userId', name: 'profile_sync');
+        dev.log('ProfileSync.load: no row for current user',
+            name: 'profile_sync');
         return null;
       }
       final weightKg = _toInt(row['weight_kg']) ?? 78;

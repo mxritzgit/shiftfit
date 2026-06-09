@@ -157,6 +157,8 @@ Future<String?> showMoodNoteSheet(
   required String initial,
 }) {
   final controller = TextEditingController(text: initial);
+  // Der Controller wird im Top-Level-Helper allokiert (kein StatefulWidget), also
+  // beim Schliessen des Sheets explizit freigeben (Audit 2026-06-09, Memory-Leak).
   return showModalBottomSheet<String>(
     context: context,
     backgroundColor: surface,
@@ -225,5 +227,5 @@ Future<String?> showMoodNoteSheet(
         ),
       );
     },
-  );
+  ).whenComplete(controller.dispose);
 }

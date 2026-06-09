@@ -1,6 +1,6 @@
 # Privacy Policy — FitPilot
 
-_Last updated: 2026-06-07_
+_Last updated: 2026-06-09_
 
 FitPilot ("the app") is a fitness, recovery, and nutrition tracker. This policy
 explains what data the app processes, why, and the rights you have over it. It is
@@ -21,6 +21,12 @@ You enter and the app stores the following, tied to your account:
 - **Health & wellness log:** weight history, sleep entries, caffeine intake, mood,
   habits, water and step counts, and your completed workout days / streak.
 - **Coach chat:** the messages you send to the in-app AI coach and its replies.
+  You may optionally attach a photo to a coach message (for example a meal or a
+  progress picture); it is sent to the AI provider only to generate that reply and
+  is not stored afterwards. So the coach can give specific rather than generic
+  advice, each coach message is automatically accompanied by a short snapshot of
+  your current targets and progress — your body weight and goal weight, today's
+  calorie balance and remaining macros, and your workout streak.
 - **Apple Health (optional, iOS only):** if you grant permission, the app reads
   your step count, body-weight history, and sleep duration from Apple Health to
   fill in and keep your targets and logs current. With the same permission it
@@ -28,8 +34,8 @@ You enter and the app stores the following, tied to your account:
   and a workout entry when you complete a training session. It reads and writes
   only these categories and accesses no other Apple Health data.
 - **Voice input (optional, iOS only):** if you use the coach's microphone button,
-  audio is captured only while you hold the button and is converted to text by
-  Apple's speech recognition. Only the resulting text is sent to the coach — the
+  audio is captured only while the microphone is active (tap to start, tap again
+  to stop) and is converted to text by Apple's speech recognition. Only the resulting text is sent to the coach — the
   app neither stores the audio recording nor sends it to our servers.
 
 We do **not** collect advertising identifiers, location, or contacts, and the app
@@ -40,10 +46,12 @@ contains no third-party analytics or ad SDKs.
 - **Supabase** (Postgres + Auth, EU region) hosts your account and all the data
   above. Every row is protected by row-level security so it is only accessible to
   your authenticated account.
-- **OpenAI / OpenRouter** processes your coach-chat messages and the photo you
-  submit for AI meal analysis, solely to generate the response. These requests run
-  through our server (Supabase Edge Functions); your API traffic is not used to
-  train models under the configured API terms.
+- **OpenRouter** routes your AI requests to the underlying model providers, solely
+  to generate the response: coach-chat messages — together with the profile/progress
+  snapshot and any photo you attach, as described above — are answered by **xAI's
+  Grok**, and the photo you submit for AI meal analysis is processed by **OpenAI's
+  GPT-4o-mini**. These requests run through our server (Supabase Edge Functions);
+  your API traffic is not used to train models under the configured API terms.
 - **OpenFoodFacts** (and our self-hosted search mirror) is queried for public
   product/nutrition data when you search or scan a barcode. Your identity is not
   sent with these queries.

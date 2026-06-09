@@ -441,8 +441,31 @@ class HomeStore extends ChangeNotifier {
       _reportSyncError('Konto-Löschung', e);
       return false;
     }
-    await _cache?.clear();
+    await _clearCache();
     return true;
+  }
+
+  /// Räumt den lokalen Klartext-PII-Cache (Profil, Mood-Notiz, Lifetime-Stats,
+  /// Notification-Flag) beim Sign-Out — anders als [deleteAccount] OHNE
+  /// Server-RPC. Ohne diesen Schritt überlebten Gesundheits-/Profildaten den
+  /// Logout unverschlüsselt in den SharedPreferences (Audit 2026-06-09, M-1).
+  /// Muss VOR dem eigentlichen `signOut()` laufen, solange der User noch der
+  /// aktuelle ist — der defensive Pfad braucht dessen ID.
+  Future<void> signOutCleanup() => _clearCache();
+
+  /// Löscht den lokalen Cache. Bevorzugt den bereits gebooteten [_cache], im
+  /// Test den injizierten [debugCache]; kommt der Logout vor dem Boot-Ende
+  /// (noch kein _cache), wird er defensiv aus der aktuellen Session-User-ID
+  /// gebaut, damit auch dann nichts liegen bleibt.
+  Future<void> _clearCache() async {
+    final cache = _cache ?? debugCache ?? await _resolveCacheForCurrentUser();
+    await cache?.clear();
+  }
+
+  Future<LocalCache?> _resolveCacheForCurrentUser() async {
+    final userId = sync?.client.auth.currentUser?.id;
+    if (userId == null || userId.isEmpty) return null;
+    return LocalCache.create(userId);
   }
 
   // --- Persistenz-Helfer ----------------------------------------------------

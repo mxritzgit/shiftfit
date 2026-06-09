@@ -25,7 +25,10 @@ class AppleHealthService implements HealthService {
     HealthDataAccess.READ,
     HealthDataAccess.READ_WRITE,
     HealthDataAccess.READ,
-    HealthDataAccess.READ_WRITE,
+    // Workout ist WRITE-only (wir schreiben abgeschlossene Sessions zurueck,
+    // lesen aber nie Workouts) — so fragt der HealthKit-Dialog keinen
+    // ueberfluessigen Workout-LESE-Zugriff an (Audit 2026-06-09, L-1).
+    HealthDataAccess.WRITE,
   ];
 
   Future<void> _ensureConfigured() async {

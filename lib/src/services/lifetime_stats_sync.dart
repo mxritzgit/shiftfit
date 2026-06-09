@@ -33,7 +33,7 @@ class LifetimeStatsSync {
           .eq('user_id', _userId)
           .maybeSingle();
       if (row == null) {
-        dev.log('LifetimeStatsSync.load: no row for $_userId',
+        dev.log('LifetimeStatsSync.load: no row for current user',
             name: 'lifetime_stats_sync');
         return null;
       }

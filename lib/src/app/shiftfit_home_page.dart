@@ -204,6 +204,14 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
     }
   }
 
+  /// Regulärer Sign-Out: erst den lokalen PII-Cache räumen (M-1), dann die
+  /// Session beenden. Reihenfolge zählt — [HomeStore.signOutCleanup] braucht den
+  /// noch eingeloggten User für den defensiven Cache-Pfad.
+  Future<void> _signOut() async {
+    await _store.signOutCleanup();
+    await widget.onSignOut?.call();
+  }
+
   Future<void> _openProfile() async {
     // ARCH-1/PERF-2: Route als offen markieren -> ab jetzt bumpt der Store-
     // Listener _profileRefresh, sodass ein mid-route State-Wechsel (z.B.
@@ -235,7 +243,7 @@ class _ShiftFitHomePageState extends State<ShiftFitHomePage>
               onResetDay: _store.resetTodayData,
               onConnectHealth: _store.connectHealth,
               onRefreshHealth: _store.refreshHealthSteps,
-              onSignOut: widget.onSignOut,
+              onSignOut: widget.onSignOut != null ? _signOut : null,
               onDeleteAccount: widget.sync != null ? _deleteAccount : null,
             ),
           ),
