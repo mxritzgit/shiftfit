@@ -118,9 +118,10 @@ class LocalNotificationService implements NotificationService {
   /// Platform / fehlender Plattform-Channel im Test), bleibt der UTC-Default.
   Future<void> _setLocalTimezone() async {
     try {
-      // flutter_timezone 4.x liefert den IANA-Namen direkt als String
-      // (z.B. "Europe/Berlin"). getLocation loest nur diesen vollen Namen auf.
-      final name = await FlutterTimezone.getLocalTimezone();
+      // flutter_timezone 5.x liefert ein TimezoneInfo; der volle IANA-Name
+      // (z.B. "Europe/Berlin") steht in .identifier. getLocation loest nur
+      // diesen vollen Namen auf (nicht die CET/CEST-Abkuerzungen).
+      final name = (await FlutterTimezone.getLocalTimezone()).identifier;
       tz.setLocalLocation(tz.getLocation(name));
     } catch (_) {
       // UTC-Default behalten — Engine-Plan-Zeiten sind lokale Wandzeiten, die
