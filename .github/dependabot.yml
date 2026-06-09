@@ -1,0 +1,14 @@
+version: 2
+# Automatische, gebuendelte Update-PRs, damit Dep-/Action-Lag nicht mehr still
+# altert (Audit 2026-06-09, L5). pub seit 2023 von Dependabot unterstuetzt.
+updates:
+  - package-ecosystem: "pub"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5

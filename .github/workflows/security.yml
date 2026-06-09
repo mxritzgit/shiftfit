@@ -12,27 +12,31 @@ on:
     - cron: '0 6 * * 1'
   workflow_dispatch:
 
+# Minimal-Default: nur Lesen. Jobs, die mehr brauchen (SARIF-Upload), heben
+# das Recht job-lokal an (Least-Privilege, Audit 2026-06-09, I1).
 permissions:
   contents: read
-  security-events: write
 
 jobs:
   flutter-analyze-test:
     name: Flutter analyze + test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@f2c4f6686ca8e8d6e6d0f28410eeef506ed66aff # v2.18.0
         with:
           channel: stable
+          flutter-version: 3.44.0
           cache: true
 
       - name: pub get
         run: flutter pub get
 
+      # --fatal-infos/--fatal-warnings: Info-/Warning-Lints failen den Build,
+      # damit die heute saubere Analyse nicht still erodiert (Audit 2026-06-09, L4).
       - name: analyze
-        run: flutter analyze
+        run: flutter analyze --fatal-infos --fatal-warnings
 
       # Defines sind im CI Dummies — wir wollen nur dass Code kompiliert
       # und Widget-Tests laufen, nicht gegen Supabase netzwerken.
@@ -87,25 +91,48 @@ jobs:
     name: Flutter pub outdated (Info)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: subosito/flutter-action@f2c4f6686ca8e8d6e6d0f28410eeef506ed66aff # v2.18.0
         with:
           channel: stable
+          flutter-version: 3.44.0
           cache: true
       - run: flutter pub get
       # Info-only — failt den Job nicht. So sehen wir veraltete Deps im
       # Action-Log ohne dass jeder Patch-Release den Build rot macht.
+      # (--mode=null-safety wurde mit Dart 3 entfernt und liess den Befehl
+      # frueher still mit Exit 65 abbrechen — Audit 2026-06-09, L1.)
       - name: pub outdated
-        run: flutter pub outdated --mode=null-safety || true
+        run: flutter pub outdated || true
+
+  secret-scan:
+    name: Secret scanning (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          # Volle History scannen, nicht nur den HEAD-Commit, damit ein
+          # versehentlich (auch in einem aelteren Commit) committetes Secret
+          # auffaellt. Public Repo -> gitleaks ist kostenlos, kein Lizenz-Key.
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   osv-scanner:
     name: OSV-Scanner (Pub + Deno)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       # Scannt pubspec.lock (Pub-Ecosystem) und deno.lock falls vorhanden.
-      # SARIF-Upload landet im Security-Tab des Repos.
-      - uses: google/osv-scanner-action/osv-scanner-action@v1.9.1
+      # SARIF-Upload landet im Security-Tab des Repos. KEIN continue-on-error
+      # mehr am Scanner-Step: ein bekannter CVE in den Deps failt den Build
+      # jetzt sichtbar, statt im Log eines gruenen Jobs zu verschwinden
+      # (Audit 2026-06-09, M4).
+      - uses: google/osv-scanner-action/osv-scanner-action@daa2c68f50d845057895a9c300e42478481c1d26 # v1.9.1
         with:
           scan-args: |-
             --recursive
@@ -113,15 +140,15 @@ jobs:
             --format=sarif
             --output=osv-results.sarif
             ./
-        continue-on-error: true
       # SARIF-Upload braucht Code-Scanning auf Repo-Ebene aktiviert
       # (in den GitHub-Security-Settings). Solange das nicht aktiv ist,
       # failt der Upload mit "Resource not accessible by integration".
-      # Tolerant halten — die Scan-Resultate stehen weiter im Job-Log.
+      # Tolerant halten — die Scan-Resultate stehen weiter im Job-Log, und
+      # der Scanner-Step oben faellt bereits bei echten Findings.
       - name: Upload SARIF
         if: always() && hashFiles('osv-results.sarif') != ''
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@dd903d2e4f5405488e5ef1422510ee31c8b32357 # v3
         with:
           sarif_file: osv-results.sarif
 
@@ -129,10 +156,12 @@ jobs:
     name: Deno lint + check (Edge Functions)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: denoland/setup-deno@v1
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: denoland/setup-deno@909cc5acb0fdd60627fb858598759246509fa755 # v2.0.2
         with:
-          deno-version: v1.x
+          # Deno 1.x ist EOL; die Edge-Runtime ist auf Deno 2. Die Functions
+          # sind dependency-frei, der Umstieg ist risikoarm (Audit 2026-06-09, L7).
+          deno-version: v2.x
       - name: deno lint
         working-directory: supabase/functions
         run: deno lint
@@ -156,7 +185,7 @@ jobs:
     # sauber uebersprungen, damit Forks/PRs ohne Secret-Zugriff den Build nicht
     # rot machen. Nutzt die Management-API (kein DB-Passwort/CLI-Login noetig).
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       # Verfuegbarkeit der Secrets EINMAL als Output festhalten. Secrets duerfen
       # nicht direkt in `if:`-Job-Conditions stehen, daher der Umweg ueber einen
