@@ -23,7 +23,10 @@ class FitPilotSupabaseConfig {
   );
 
   static Future<void> initialize() async {
-    await Supabase.initialize(url: url, anonKey: anonKey);
+    // supabase_flutter 2.14 hat den Init-Parameter `anonKey` zugunsten von
+    // `publishableKey` deprecatet (akzeptiert weiterhin den Legacy-anon-JWT).
+    // Unser interner Konstanten-Name bleibt `anonKey` (liest SUPABASE_ANON_KEY).
+    await Supabase.initialize(url: url, publishableKey: anonKey);
     _wireOAuthSheetDismiss();
   }
 
